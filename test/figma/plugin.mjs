@@ -3,7 +3,7 @@
 // Gates the generator-as-Figma-plugin without Figma: manifest shape + offline, code.js
 // parses + uses no network APIs, ui.html carries the generator + the bridge, AND the
 // load-bearing contract — model.figmaBundle() fed to code.applyBundle() (on a MOCK figma)
-// builds a raw-colors collection + a Semantic (Light/Dark) collection in which EVERY
+// builds a raw-colors collection + a semantic-colors (Light/Dark) collection in which EVERY
 // semantic var, in BOTH modes, is aliased to a raw var that was actually created.
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -101,10 +101,10 @@ if (applyBundle) {
   try {
     const res = await applyBundle(bundle);
     const raw = F.collections.find((c) => c.name === "raw-colors");
-    const sem = F.collections.find((c) => c.name === "Semantic");
+    const sem = F.collections.find((c) => c.name === "semantic-colors");
     if (!raw) FAIL("apply", "no raw-colors collection created");
-    if (!sem) FAIL("apply", "no Semantic collection created");
-    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("apply", `Semantic modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark`);
+    if (!sem) FAIL("apply", "no semantic-colors collection created");
+    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("apply", `semantic-colors modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark`);
     if (res.raw !== rawExpect) FAIL("apply", `created ${res.raw} raw vars, expected ${rawExpect}`);
     if (res.semantic !== semExpect) FAIL("apply", `created ${res.semantic} semantic vars, expected ${semExpect}`);
 
@@ -128,14 +128,14 @@ if (applyBundle) {
     //  modes would corrupt the variable panel). Proven, not assumed.
     const res2 = await applyBundle(bundle);
     const rawColls = F.collections.filter((c) => c.name === "raw-colors").length;
-    const semColls = F.collections.filter((c) => c.name === "Semantic").length;
+    const semColls = F.collections.filter((c) => c.name === "semantic-colors").length;
     if (rawColls !== 1) FAIL("idempotent", `re-apply made ${rawColls} raw-colors collections, want 1`);
-    if (semColls !== 1) FAIL("idempotent", `re-apply made ${semColls} Semantic collections, want 1`);
+    if (semColls !== 1) FAIL("idempotent", `re-apply made ${semColls} semantic-colors collections, want 1`);
     const rawVars2 = F.variables.filter((v) => raw && v.variableCollectionId === raw.id).length;
     const semVars2 = F.variables.filter((v) => sem && v.variableCollectionId === sem.id).length;
     if (rawVars2 !== rawExpect) FAIL("idempotent", `re-apply left ${rawVars2} raw vars, want ${rawExpect} (no duplicates)`);
     if (semVars2 !== semExpect) FAIL("idempotent", `re-apply left ${semVars2} semantic vars, want ${semExpect} (no duplicates)`);
-    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("idempotent", `re-apply left Semantic modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark (no duplicate mode)`);
+    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("idempotent", `re-apply left semantic-colors modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark (no duplicate mode)`);
     if (res2.raw !== rawExpect || res2.semantic !== semExpect) FAIL("idempotent", `re-apply reported ${res2.raw}/${res2.semantic} vars, want ${rawExpect}/${semExpect}`);
 
     // ── ORPHAN PRUNE: re-apply removes any var NOT in the current bundle, in BOTH generated
@@ -151,7 +151,7 @@ if (applyBundle) {
     for (const dead of ["neutral/500-0", "neutral/750-3", "ghost/050"]) if (rawNames3.includes(dead)) FAIL("prune", `orphan raw var '${dead}' not pruned`);
     if (semNames3.includes("ghost/primary")) FAIL("prune", "orphan semantic var 'ghost/primary' not pruned");
     if (rawNames3.length !== rawExpect) FAIL("prune", `raw-colors has ${rawNames3.length} vars after prune, want ${rawExpect}`);
-    if (semNames3.length !== semExpect) FAIL("prune", `Semantic has ${semNames3.length} vars after prune, want ${semExpect}`);
+    if (semNames3.length !== semExpect) FAIL("prune", `semantic-colors has ${semNames3.length} vars after prune, want ${semExpect}`);
     if (res3.pruned !== 4) FAIL("prune", `apply reported pruned=${res3.pruned}, expected 4`);
   } catch (e) { FAIL("apply", "applyBundle threw: " + e.message); }
 

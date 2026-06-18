@@ -1,6 +1,6 @@
 # Knowledge 05 — Figma Plugin (Cascade Binder)
 
-> Topic: the companion Figma plugin that binds a `Semantic` collection to existing raw
+> Topic: the companion Figma plugin that binds a `semantic-colors` collection to existing raw
 > variables by reference, providing the live cascade that JSON import cannot.
 
 ## Table of Contents
@@ -36,12 +36,12 @@ variable APIs.
 
 ## 3. What it does
 
-Constants: `RAW_COLLECTION = "raw-colors"`, `SEMANTIC_COLLECTION = "Semantic"`,
+Constants: `RAW_COLLECTION = "raw-colors"`, `SEMANTIC_COLLECTION = "semantic-colors"`,
 `PALETTES = [neutral, primary, secondary, tertiary, info, success, danger, warning]`.
 
 Steps:
 1. Find the raw collection by name; index its variables by name into `rawVars`.
-2. Create or find the `Semantic` collection; ensure it has `Light` and `Dark` modes.
+2. Create or find the `semantic-colors` collection; ensure it has `Light` and `Dark` modes.
 3. For each palette and each role in `semanticRoles(n)`:
    - resolve `lt = rawVars["{n}/{refKey(r.light)}"]`, `dt = rawVars["{n}/{refKey(r.dark)}"]`
    - create/find the semantic variable `"{n}/{r.key}"`

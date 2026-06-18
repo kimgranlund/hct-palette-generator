@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.1 — 2026-06-18 — semantic variable collection renamed `Semantic` → `semantic-colors`
+
+Both Figma plugin runtimes now create the semantic variables in a collection named
+**`semantic-colors`** (was `Semantic`), matching the `raw-colors` collection naming. Updated:
+`figma/plugin/code.js`, `figma/binder/figma-semantic-binder/code.js`, `test/figma/plugin.mjs`
+(the collection-name assertions), and `knowledge-05`/`SKILL`; regenerated `figma-plugin-assets.js`
++ `figma/plugin/ui.html`. No role/ref/token change.
+
+> Migration note: re-applying on a file that already has a `Semantic` collection from a prior run
+> creates a NEW `semantic-colors` collection and leaves the old one orphaned (the prune only manages
+> the collection the plugin creates) — delete the old `Semantic` collection by hand.
+
 ## 1.0 — 2026-06-18 — scrim ramp → 11 even steps (5–95%); strengths span the full range (CONTRACT change)
 
 The scrim translucency ramp changed from 7 clustered steps (`100/175/250/300/400/450/550` = 10/17.5/25/30/40/45/55%)

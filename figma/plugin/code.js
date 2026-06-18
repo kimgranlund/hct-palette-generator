@@ -7,7 +7,7 @@
 // into two Figma variable COLLECTIONS:
 //
 //   raw-colors  (mode "Value")        — one COLOR var per stop/scrim, the concrete colors
-//   Semantic    (modes "Light","Dark")— one COLOR var per role, each mode ALIASED to the
+//   semantic-colors    (modes "Light","Dark")— one COLOR var per role, each mode ALIASED to the
 //                                        raw var named by the leaf's com.figma.aliasData
 //                                        (the live raw→semantic cascade native import can't do)
 //
@@ -15,7 +15,7 @@
 // so this file is palette-agnostic: it walks the tree, it does NOT hard-code the role table.
 
 const RAW_COLLECTION = "raw-colors";
-const SEMANTIC_COLLECTION = "Semantic";
+const SEMANTIC_COLLECTION = "semantic-colors";
 
 figma.showUI(__html__, { width: 1440, height: 900, themeColors: true });
 // Tell the UI it is running inside Figma so it reveals its "Apply to Figma" button.
@@ -146,7 +146,7 @@ async function applyBundle(dtcg) {
   const darkMode = (sem.modes[1] && sem.modes[1].modeId) || sem.addMode("Dark");
   if (sem.modes[1]) sem.renameMode(darkMode, "Dark");
   const semByName = await varsByName(sem.id);
-  const currentSem = new Set(); // names this bundle WANTS in Semantic — everything else is stale
+  const currentSem = new Set(); // names this bundle WANTS in semantic-colors — everything else is stale
   let semCount = 0;
   for (const n of childKeys(semLight)) {
     for (const key of childKeys(semLight[n])) {
