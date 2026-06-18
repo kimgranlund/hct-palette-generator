@@ -131,8 +131,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-.gallery-header .brand { font-weight: 650; letter-spacing: -.01em; }
-.gallery-header .brand .dia { color: var(--accent); margin-right: 6px; }
+.gallery-header .brand { font-weight: 650; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 7px; }
 .gallery-header .spacer { flex: 1; }
 .gallery-body { flex: 1; overflow: auto; padding: 22px 24px; }
 /* the "read a project that has no config yet" row — shown above the sets when the Figma file
@@ -256,8 +255,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-.app-header .brand { font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
-.app-header .brand .dia { color: var(--accent); margin-right: 6px; }
+.app-header .brand { font-weight: 650; letter-spacing: -.01em; white-space: nowrap; gap: 7px; }
+/* the NONOUN brand mark (icons.js#brandMark) — accent-tinted, echoing the old ◆ */
+.brand-mark { color: var(--accent); }
 /* the brand doubles as the "back to gallery" affordance (replaced the ◀ Gallery button). */
 .brand-link { cursor: pointer; display: inline-flex; align-items: center; padding: 4px 6px; margin-left: -6px; border-radius: var(--r-sm); }
 .brand-link:hover { background: var(--line-2); }

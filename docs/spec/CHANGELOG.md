@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.9 — 2026-06-18 — branding: "Color Tokens by NONOUN" + NONOUN favicon / logo mark
+
+The running app is now branded **Color Tokens by NONOUN** (the codebase / spec keep the internal
+"HCT Palette Generator" name — this is product-surface branding only):
+
+- **Title** set on `index.html`, `src/ui/index.html`, and the single-file `bundle.mjs` build.
+- **Favicon** from `public/favicon/` wired: `index.html` gets the full `<link>` set (svg / png / ico /
+  apple-touch / manifest); the offline bundle inlines `favicon.svg` as a base64 data URI (self-
+  contained, no request); `site.webmanifest` fixed (placeholder name → the product name, and the
+  broken `/favicon.ico/…` icon paths → `/favicon/…`).
+- **Brand mark** — the old accent `◆` is replaced by the NONOUN "N" logo via a new `brandMark()` in
+  `icons.js` (a 512-viewBox currentColor glyph; the favicon's `:root` invert `<style>` is intentionally
+  dropped for the inline mark so it can't invert the page). Gallery header reads "◇ Color Tokens by
+  NONOUN"; the compact editor header reads "◇ Color Tokens".
+- **Figma plugin** `manifest.json` name → "Color Tokens by NONOUN" (the plugin test asserts shape, not
+  name, so this is safe).
+
+UI/branding only — no token/role/export/persistence change. `(ff)` still passes (keys off `.brand-link`).
+
 ## 1.8 — 2026-06-18 — editor: retune the backdrop / container stops (125 bg · 75 container)
 
 Adjusts the two canvas tints introduced in 1.7 (`app.js`, UI-only):

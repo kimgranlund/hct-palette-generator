@@ -42,9 +42,14 @@ for (const [key, rel] of MODS) {
 }
 
 const css = readFileSync(`${ROOT}/src/ui/styles.css`, "utf8");
+// inline the favicon as a data URI so the SINGLE-FILE offline build carries its tab icon with no
+// external request (same reason icons.js inlines its SVGs). The favicon SVG's own prefers-color-scheme
+// invert <style> is scoped to the icon's render context, not the page, so it's safe as rel=icon.
+const favHref = "data:image/svg+xml;base64," + Buffer.from(readFileSync(`${ROOT}/public/favicon/favicon.svg`)).toString("base64");
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HCT Palette Generator</title>
+<link rel="icon" type="image/svg+xml" href="${favHref}">
+<title>Color Tokens by NONOUN</title>
 <style>${css}</style></head>
 <body><hct-app></hct-app>
 <script type="module">

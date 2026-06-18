@@ -22,7 +22,7 @@ import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
 import { TRAVEL_PRESETS } from "./travel-presets.js";
 import { zipStore } from "./zip.mjs";
-import { icon } from "./icons.js";
+import { icon, brandMark } from "./icons.js";
 
 // ── Multi-set storage ─────────────────────────────────────────────────────────
 // persist.js owns ONE document's serialize/hydrate. The gallery needs many sets,
@@ -707,7 +707,7 @@ class HctApp extends HTMLElement {
       h(
         "header",
         { class: "gallery-header" },
-        h("div", { class: "brand" }, h("span", { class: "dia" }, "◆"), "HCT Palette Generator"),
+        h("div", { class: "brand" }, brandMark(), "Color Tokens by NONOUN"),
         h("div", { class: "spacer" }),
         h("button", { class: "ghost", onclick: () => this.loadFromProject(), title: this.inFigma ? "Load the config saved in this Figma file" : "Load the config saved to the project (Source of Truth)" }, icon("download"), "Project"),
         h("button", { class: "ghost", onclick: () => this.importSet(), title: "Import a palette config (.json) exported from Export → Config" }, icon("upload"), "Import"),
@@ -884,8 +884,8 @@ class HctApp extends HTMLElement {
           onclick: () => this.toGallery(),
           onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.toGallery(); } },
         },
-        h("span", { class: "dia" }, "◆"),
-        "HCT",
+        brandMark(),
+        "Color Tokens",
       ),
       h("input", {
         class: "docname",

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HCT Palette Generator</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9ImJsYWNrIj48L3JlY3Q+PHBhdGggZD0iTTI4NS4zMjQgMTEyLjY0SDQxOC45MDlWMTIyLjQxNUM0MDEuODA0IDEyMi40MTUgMzc5LjgxMSAxNjAuMjkxIDM3OS44MTEgMTk2LjEzMVYzMjUuNjQ0QzM3OS44MTEgMzYzLjUyIDM4Ny4xNDIgMzg5LjU4NSAzOTkuMzYgMzg5LjU4NVYzOTkuMzZIMzAzLjI0NEwxNDguNDggMTk4LjE2N1YyOTkuNTc4QzE0OC40OCAzNDguNDUxIDE4MC4yNDcgMzg5LjU4NSAyMjYuNjc2IDM4OS41ODVWMzk5LjM2SDkzLjA5MDlWMzg5LjU4NUMxMTAuMTk2IDM4OS41ODUgMTMyLjE4OSAzNTEuNzA5IDEzMi4xODkgMzE1Ljg2OVYxNjYuODA3QzEzMi4xODkgMTI5Ljc0NSAxMTAuMTk2IDEyMi40MTUgOTMuMDkwOSAxMjIuNDE1VjExMi42NEgyNDYuMjI1VjEyMi40MTVDMjIzLjAxMSAxMjIuNDE1IDI0My4zNzUgMTczLjMyNCAyNzUuMTQyIDIxMi40MjJMMzYzLjUyIDMyMS4xNjRWMjEyLjQyMkMzNjMuNTIgMTYzLjU0OSAzMzEuNzUzIDEyMi40MTUgMjg1LjMyNCAxMjIuNDE1VjExMi42NFoiIGZpbGw9IndoaXRlIj48L3BhdGg+PHN0eWxlPkBtZWRpYSAocHJlZmVycy1jb2xvci1zY2hlbWU6IGxpZ2h0KSB7IDpyb290IHsgZmlsdGVyOiBub25lOyB9IH0KQG1lZGlhIChwcmVmZXJzLWNvbG9yLXNjaGVtZTogZGFyaykgeyA6cm9vdCB7IGZpbHRlcjogaW52ZXJ0KDEwMCUpOyB9IH0KPC9zdHlsZT48L3N2Zz4=">
+<title>Color Tokens by NONOUN</title>
 <style>/* styles.css — HCT Palette Generator UI.
    App-shell as a CSS grid; gallery, drawer, swatch, slider, analysis rail,
    ramp navigator, segmented inspector.
@@ -134,8 +135,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-.gallery-header .brand { font-weight: 650; letter-spacing: -.01em; }
-.gallery-header .brand .dia { color: var(--accent); margin-right: 6px; }
+.gallery-header .brand { font-weight: 650; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 7px; }
 .gallery-header .spacer { flex: 1; }
 .gallery-body { flex: 1; overflow: auto; padding: 22px 24px; }
 /* the "read a project that has no config yet" row — shown above the sets when the Figma file
@@ -259,8 +259,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-.app-header .brand { font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
-.app-header .brand .dia { color: var(--accent); margin-right: 6px; }
+.app-header .brand { font-weight: 650; letter-spacing: -.01em; white-space: nowrap; gap: 7px; }
+/* the NONOUN brand mark (icons.js#brandMark) — accent-tinted, echoing the old ◆ */
+.brand-mark { color: var(--accent); }
 /* the brand doubles as the "back to gallery" affordance (replaced the ◀ Gallery button). */
 .brand-link { cursor: pointer; display: inline-flex; align-items: center; padding: 4px 6px; margin-left: -6px; border-radius: var(--r-sm); }
 .brand-link:hover { background: var(--line-2); }
@@ -2173,7 +2174,23 @@ function icon(name, opts = {}) {
   return el;
 }
 
-return { ICONS, icon };
+// The NONOUN wordmark glyph — the "N" letterform from public/favicon/favicon.svg (a 512 viewBox,
+// so it can't ride icon()'s 256 box). Rendered as a currentColor fill, WITHOUT the favicon's black
+// background rect or its `prefers-color-scheme` `:root { filter:invert }` <style> — that media query
+// inverts the whole *document* root when inlined into the page, so it must stay in the standalone
+// favicon only. Used as the app brand mark next to the "Color Tokens by NONOUN" wordmark.
+const NONOUN_N = '<path d="M285.324 112.64H418.909V122.415C401.804 122.415 379.811 160.291 379.811 196.131V325.644C379.811 363.52 387.142 389.585 399.36 389.585V399.36H303.244L148.48 198.167V299.578C148.48 348.451 180.247 389.585 226.676 389.585V399.36H93.0909V389.585C110.196 389.585 132.189 351.709 132.189 315.869V166.807C132.189 129.745 110.196 122.415 93.0909 122.415V112.64H246.225V122.415C223.011 122.415 243.375 173.324 275.142 212.422L363.52 321.164V212.422C363.52 163.549 331.753 122.415 285.324 122.415V112.64Z"/>';
+
+function brandMark(opts = {}) {
+  const { size = 18, cls = "" } = opts;
+  const el = document.createElement("span");
+  el.className = "ic brand-mark" + (cls ? " " + cls : "");
+  el.setAttribute("aria-hidden", "true");
+  el.innerHTML = `<svg viewBox="0 0 512 512" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${NONOUN_N}</svg>`;
+  return el;
+}
+
+return { ICONS, icon, brandMark };
 })();
 __M.model = (function(){
 // model.mjs — the PURE, importable core of the HCT Palette Generator UI.
@@ -2515,7 +2532,7 @@ const { STORAGE_KEY, serialize, hydrate } = __M.persist;
 const { FIGMA_PLUGIN } = __M.figmaPlugin;
 const { TRAVEL_PRESETS } = __M.travelPresets;
 const { zipStore } = __M.zip;
-const { icon } = __M.icons;
+const { icon, brandMark } = __M.icons;
 
 // ── Multi-set storage ─────────────────────────────────────────────────────────
 // persist.js owns ONE document's serialize/hydrate. The gallery needs many sets,
@@ -3200,7 +3217,7 @@ class HctApp extends HTMLElement {
       h(
         "header",
         { class: "gallery-header" },
-        h("div", { class: "brand" }, h("span", { class: "dia" }, "◆"), "HCT Palette Generator"),
+        h("div", { class: "brand" }, brandMark(), "Color Tokens by NONOUN"),
         h("div", { class: "spacer" }),
         h("button", { class: "ghost", onclick: () => this.loadFromProject(), title: this.inFigma ? "Load the config saved in this Figma file" : "Load the config saved to the project (Source of Truth)" }, icon("download"), "Project"),
         h("button", { class: "ghost", onclick: () => this.importSet(), title: "Import a palette config (.json) exported from Export → Config" }, icon("upload"), "Import"),
@@ -3377,8 +3394,8 @@ class HctApp extends HTMLElement {
           onclick: () => this.toGallery(),
           onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.toGallery(); } },
         },
-        h("span", { class: "dia" }, "◆"),
-        "HCT",
+        brandMark(),
+        "Color Tokens",
       ),
       h("input", {
         class: "docname",

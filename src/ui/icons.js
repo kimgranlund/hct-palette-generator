@@ -44,3 +44,19 @@ export function icon(name, opts = {}) {
     : "";
   return el;
 }
+
+// The NONOUN wordmark glyph — the "N" letterform from public/favicon/favicon.svg (a 512 viewBox,
+// so it can't ride icon()'s 256 box). Rendered as a currentColor fill, WITHOUT the favicon's black
+// background rect or its `prefers-color-scheme` `:root { filter:invert }` <style> — that media query
+// inverts the whole *document* root when inlined into the page, so it must stay in the standalone
+// favicon only. Used as the app brand mark next to the "Color Tokens by NONOUN" wordmark.
+const NONOUN_N = '<path d="M285.324 112.64H418.909V122.415C401.804 122.415 379.811 160.291 379.811 196.131V325.644C379.811 363.52 387.142 389.585 399.36 389.585V399.36H303.244L148.48 198.167V299.578C148.48 348.451 180.247 389.585 226.676 389.585V399.36H93.0909V389.585C110.196 389.585 132.189 351.709 132.189 315.869V166.807C132.189 129.745 110.196 122.415 93.0909 122.415V112.64H246.225V122.415C223.011 122.415 243.375 173.324 275.142 212.422L363.52 321.164V212.422C363.52 163.549 331.753 122.415 285.324 122.415V112.64Z"/>';
+
+export function brandMark(opts = {}) {
+  const { size = 18, cls = "" } = opts;
+  const el = document.createElement("span");
+  el.className = "ic brand-mark" + (cls ? " " + cls : "");
+  el.setAttribute("aria-hidden", "true");
+  el.innerHTML = `<svg viewBox="0 0 512 512" width="${size}" height="${size}" fill="currentColor" aria-hidden="true">${NONOUN_N}</svg>`;
+  return el;
+}

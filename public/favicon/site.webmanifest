@@ -1,0 +1,21 @@
+{
+  "name": "Color Tokens by NONOUN",
+  "short_name": "Color Tokens",
+  "icons": [
+    {
+      "src": "/favicon/web-app-manifest-192x192.png?v=20260618",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon/web-app-manifest-512x512.png?v=20260618",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "display": "standalone"
+}
