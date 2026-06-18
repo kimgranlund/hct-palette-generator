@@ -2265,7 +2265,6 @@ class HctApp extends HTMLElement {
     const p = this.doc.palettes[i];
     if (!p) return h("div", {}, "No palette selected");
     const vp = view.palettes[i];
-    const cr = view.contrast.find((c) => c.palette === p.name);
 
     return h(
       "div",
@@ -2338,31 +2337,12 @@ class HctApp extends HTMLElement {
         }),
         "ends bend same way",
       ),
-      cr ? this.renderContrast(cr) : null,
       h(
         "div",
         { class: "insp-actions" },
         h("button", { class: "ghost", onclick: () => this.duplicatePalette(i) }, icon("copy"), "Duplicate"),
         h("button", { class: "ghost danger", onclick: () => this.deletePalette(i) }, icon("trash"), "Delete"),
       ),
-    );
-  }
-
-  renderContrast(cr) {
-    const row = (label, ratio) => {
-      const pass = ratio >= 4.5;
-      return h(
-        "div",
-        { class: "cr" },
-        h("span", {}, label),
-        h("b", { class: pass ? "pass" : "fail" }, ratio.toFixed(2) + ":1 ", icon(pass ? "check" : "warning", { size: 12 })),
-      );
-    };
-    return h(
-      "div",
-      { class: "field" },
-      h("label", {}, "Contrast (prime fill 550)"),
-      h("div", { class: "contrast-box" }, row("on-color (50)", cr.onFill), row("vs white", cr.onWhite), row("vs black", cr.onBlack)),
     );
   }
 

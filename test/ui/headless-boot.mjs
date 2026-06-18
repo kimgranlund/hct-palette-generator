@@ -297,6 +297,9 @@ flushRaf();
 
 const rightPane = findIn(app, (e) => e.classList.contains("right-pane"));
 ok(!!rightPane, "right pane present");
+// the Inspector must NOT duplicate the left-pane Contrast card (removed — it lives in the analysis rail).
+const _rpText = (e) => (e._text || "") + (e.children || []).map(_rpText).join("");
+ok(!/Contrast \(prime fill/.test(_rpText(rightPane)), "(rp) right pane no longer carries the duplicate 'Contrast (prime fill 550)' panel");
 const sceneEl0 = app.querySelector(".canvas-scene");
 ok(!!sceneEl0, "canvas-scene present");
 sceneEl0.style.transform = "translate(-50%, -50%) translate(7px, 9px) scale(1.5)"; // a pan/zoom transform

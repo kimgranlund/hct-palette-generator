@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.17 — 2026-06-18 — remove the duplicate Contrast panel from the right-pane Inspector
+
+The Inspector's "Contrast (prime fill 550)" panel duplicated the left-pane analysis card
+("Contrast — on-colors vs fills"), which already shows the same on-color/white/black ratios (as bars).
+Removed it from `renderPaletteInspector`: dropped the panel, its now-unused `renderContrast` method +
+`cr` lookup, and the dead `.contrast-box` CSS. The left-pane card is the single home for contrast.
+`src/ui/app.js` + `styles.css`; headless-boot `(rp)` guards against the panel returning.
+
 ## 1.16 — 2026-06-18 — OKHSL ⇄ sRGB engine module (Option B foundation; not yet wired)
 
 Adds **`src/engine/okhsl.js`** — Björn Ottosson's OKHSL ⇄ sRGB (perceptual HSL over OKLab), ported

@@ -649,15 +649,6 @@ input[type="range"]::-moz-range-thumb {
 .toggle.on .track { background: var(--accent); }
 .toggle.on .track::after { transform: translateX(15px); }
 
-.contrast-box {
-  background: var(--container); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 10px; font-size: 11.5px;
-}
-.contrast-box .cr { display: flex; justify-content: space-between; padding: 2px 0; }
-.contrast-box .cr b { font-variant-numeric: tabular-nums; }
-.contrast-box .pass { color: var(--ok); }
-.contrast-box .fail { color: var(--warn); }
-
 .insp-actions { display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .insp-actions .danger:hover { color: var(--danger); }
 
@@ -4793,7 +4784,6 @@ class HctApp extends HTMLElement {
     const p = this.doc.palettes[i];
     if (!p) return h("div", {}, "No palette selected");
     const vp = view.palettes[i];
-    const cr = view.contrast.find((c) => c.palette === p.name);
 
     return h(
       "div",
@@ -4866,31 +4856,12 @@ class HctApp extends HTMLElement {
         }),
         "ends bend same way",
       ),
-      cr ? this.renderContrast(cr) : null,
       h(
         "div",
         { class: "insp-actions" },
         h("button", { class: "ghost", onclick: () => this.duplicatePalette(i) }, icon("copy"), "Duplicate"),
         h("button", { class: "ghost danger", onclick: () => this.deletePalette(i) }, icon("trash"), "Delete"),
       ),
-    );
-  }
-
-  renderContrast(cr) {
-    const row = (label, ratio) => {
-      const pass = ratio >= 4.5;
-      return h(
-        "div",
-        { class: "cr" },
-        h("span", {}, label),
-        h("b", { class: pass ? "pass" : "fail" }, ratio.toFixed(2) + ":1 ", icon(pass ? "check" : "warning", { size: 12 })),
-      );
-    };
-    return h(
-      "div",
-      { class: "field" },
-      h("label", {}, "Contrast (prime fill 550)"),
-      h("div", { class: "contrast-box" }, row("on-color (50)", cr.onFill), row("vs white", cr.onWhite), row("vs black", cr.onBlack)),
     );
   }
 
