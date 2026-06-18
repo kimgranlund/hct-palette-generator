@@ -1480,19 +1480,28 @@ class HctApp extends HTMLElement {
     this.paintCanvasFooter();
   }
 
-  // canvasBg — the canvas backdrop = the SELECTED palette's NEAR-EDGE color: its 100 stop in light
-  // preview, its 900 stop in dark preview (one step in from the 050/950 extremes — so the backdrop
-  // carries a touch of the palette's own hue/tint rather than washing to pure white/black at lmax=100/
-  // lmin=0). Follows BOTH palette selection (selectPalette → render) and lmin/lmax (which shape the
-  // tonal range). Falls back to a neutral gray at the tonal extreme if no palette/ramp is available yet.
+  // canvasBg — the canvas backdrop. When a palette is EXPLICITLY selected it's that palette's
+  // NEAR-EDGE color: its 100 stop in light preview, its 900 stop in dark (one step in from the
+  // 050/950 extremes — so the backdrop carries a touch of the palette's own hue/tint rather than
+  // washing to pure white/black at lmax=100/lmin=0). Follows selection (selectPalette → render) and
+  // lmin/lmax. With NO explicit selection (Esc, or a click on empty canvas → _deselect), it reverts
+  // to the DEFAULT neutral gray at the tonal extreme — same fallback used when no ramp exists yet.
   canvasBg() {
     const v = this._view || projectView(this.doc);
-    const pal = v && v.palettes[this.selectedIndex()];
+    const pal = this.sel.kind === "palette" && v && v.palettes[this.selectedIndex()];
     const stop = pal && pal.ramp.find((s) => s.stop === (this.canvasTheme === "dark" ? 900 : 100));
     if (stop) return stop.hex;
     const L = this.canvasTheme === "dark" ? (this.doc.lmin ?? 5) : (this.doc.lmax ?? 100);
     const g = hctToRgb(0, 0, L).rgb[0].toString(16).padStart(2, "0").toUpperCase();
     return "#" + g + g + g;
+  }
+
+  // containerBg — a palette ROW container is tinted with that palette's OWN 150 stop (a light,
+  // faintly-hued near-edge tone), so each card carries a wash of its palette. Per-palette (unlike
+  // the single canvasBg backdrop). Returns "" when the 150 stop is absent, so the CSS default holds.
+  containerBg(vp) {
+    const s = vp && vp.ramp && vp.ramp.find((x) => x.stop === 150);
+    return s ? s.hex : "";
   }
 
   // The canvas IS the 2D pannable space; the ramp rows ARE the palette navigator. The Mapping
@@ -1608,6 +1617,17 @@ class HctApp extends HTMLElement {
       this.fit();
       this.applyTransform();
     });
+
+    // a plain click on EMPTY canvas clears the selection → canvasBg reverts to the default
+    // neutral backdrop. A click inside a ramp-row is a SELECT (handled by the row's own onclick,
+    // which runs first); a pan-drag is not a click. We walk parentNode (not .closest) so this
+    // also holds under the headless DOM shim.
+    area.addEventListener("click", (e) => {
+      if (this._didDrag) { this._didDrag = false; return; } // a pan, not a click
+      for (let n = e.target; n && n !== area; n = n.parentNode)
+        if (n.classList && n.classList.contains("ramp-row")) return; // a row handled the selection
+      if (this.sel.kind === "palette") this._deselect();
+    });
   }
 
   // Ramps scene — each ENABLED palette = a clickable navigator row: name + ●/○
@@ -1643,6 +1663,7 @@ class HctApp extends HTMLElement {
           "div",
           {
             class: "ramp-row" + (selected ? " sel" : ""),
+            style: this.containerBg(vp) ? "background:" + this.containerBg(vp) : null, // tint = palette's 150 stop
             "data-pi": i, // real index into doc.palettes (for reorder hit-testing)
             // click selects the palette — but never on a pan-drag OR a handle-drag.
             onclick: () => {
@@ -1780,6 +1801,7 @@ class HctApp extends HTMLElement {
           "div",
           {
             class: "ramp-row scrim-row" + (selected ? " sel" : ""),
+            style: this.containerBg(vp) ? "background:" + this.containerBg(vp) : null, // tint = palette's 150 stop
             "data-pi": i,
             onclick: () => {
               if (this._didDrag || this._reordering) {
