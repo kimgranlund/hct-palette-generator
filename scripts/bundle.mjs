@@ -8,11 +8,12 @@ const MODS = [
   ["hct", "src/engine/hct.js"], ["semantic", "src/engine/semantic.js"],
   ["tonal", "src/engine/tonal.js"], ["persist", "src/ui/persist.js"],
   ["exports", "src/engine/exports.js"], ["figmaPlugin", "src/ui/figma-plugin-assets.js"],
+  ["travelPresets", "src/ui/travel-presets.js"],
   ["zip", "src/ui/zip.mjs"],
   ["model", "src/ui/model.mjs"], ["app", "src/ui/app.js"],
 ];
 const KEY = { "hct.js": "hct", "semantic.js": "semantic", "tonal.js": "tonal", "persist.js": "persist",
-  "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "zip.mjs": "zip", "model.mjs": "model" };
+  "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "travel-presets.js": "travelPresets", "zip.mjs": "zip", "model.mjs": "model" };
 
 function transform(src) {
   const names = new Set();

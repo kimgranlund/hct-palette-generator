@@ -20,6 +20,7 @@ import {
 } from "./model.mjs";
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
+import { TRAVEL_PRESETS } from "./travel-presets.js";
 import { zipStore } from "./zip.mjs";
 
 // ── Multi-set storage ─────────────────────────────────────────────────────────
@@ -601,10 +602,44 @@ class HctApp extends HTMLElement {
     return [newTile, ...tiles];
   }
 
-  // refreshTiles — re-render ONLY the grid host's children. Used on search input
-  // so the <input> element is never replaced and keeps focus + caret.
+  // buildPresetTiles — the read-only "Travel presets" shelf. Presets ship in code (TRAVEL_PRESETS,
+  // generated from docs/spec/colors/), never in localStorage; clicking one OPENS AN EDITABLE COPY into
+  // the user's sets (openConfigAsSet hydrates + appends + opens). Filtered by the same search box.
+  buildPresetTiles() {
+    const q = this.search.trim().toLowerCase();
+    const visible = TRAVEL_PRESETS.filter((p) => !q || p.name.toLowerCase().includes(q));
+    return visible.map((preset) => {
+      const v = projectView(hydrate(preset));
+      const enabled = v.palettes.filter((p) => p.on);
+      const strip = h(
+        "div",
+        { class: "strip" },
+        ...enabled.slice(0, 9).map((p) => {
+          const mid = p.ramp.find((s) => s.stop === 550) || p.ramp[Math.floor(p.ramp.length / 2)];
+          return h("i", { style: `background:${mid.hex}` });
+        }),
+      );
+      return h(
+        "button",
+        { class: "set-tile preset", title: `Open a copy of “${preset.name}”`, onclick: () => this.openConfigAsSet(preset, `Opened “${preset.name}”`) },
+        h("div", { class: "set-thumb" }, strip),
+        h(
+          "div",
+          { class: "set-meta" },
+          h("span", { class: "preset-badge" }, "preset"),
+          h("div", { class: "nm" }, preset.name),
+          h("div", { class: "sub" }, `${enabled.length} palettes`),
+        ),
+      );
+    });
+  }
+
+  // refreshTiles — re-render ONLY the grid hosts' children. Used on search input
+  // so the <input> element is never replaced and keeps focus + caret. Refreshes BOTH
+  // the presets shelf and your sets (one search filters both).
   refreshTiles() {
     if (this._gridHost) this._gridHost.replaceChildren(...this.buildTiles());
+    if (this._presetGridHost) this._presetGridHost.replaceChildren(...this.buildPresetTiles());
   }
 
   renderGallery() {
@@ -632,6 +667,8 @@ class HctApp extends HTMLElement {
     }
 
     this._gridHost = h("div", { class: "set-grid" }, ...this.buildTiles());
+    // Read-only curated "Travel presets" — ship in code (TRAVEL_PRESETS), open as an editable copy.
+    this._presetGridHost = h("div", { class: "set-grid preset-grid" }, ...this.buildPresetTiles());
 
     return h(
       "div",
@@ -651,6 +688,14 @@ class HctApp extends HTMLElement {
         "div",
         { class: "gallery-body" },
         this.renderFigmaImportRow(), // a separate row ABOVE the sets when this Figma file already has palette variables
+        // Curated presets shelf (read-only). Opening one copies it into "Your palette sets".
+        h(
+          "div",
+          { class: "gallery-title" },
+          h("h2", {}, "Travel presets"),
+          h("span", { class: "title-count" }, String(TRAVEL_PRESETS.length)),
+        ),
+        this._presetGridHost,
         h(
           "div",
           { class: "gallery-title" },

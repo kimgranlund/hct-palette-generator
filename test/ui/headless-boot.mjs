@@ -759,6 +759,28 @@ globalThis.parent = realParentGG;
 app.inFigma = false; app._figmaProbed = false; app.fileConfig = null;
 app.toGallery();
 
+// ── (hh) Travel-presets shelf: read-only curated presets; opening one copies it into your sets ──
+const { TRAVEL_PRESETS: TP } = await import("../../src/ui/travel-presets.js");
+ok(Array.isArray(TP) && TP.length === 48, `(hh) 48 travel presets ship in code (got ${TP && TP.length})`);
+ok(TP.every((p) => p.palettes.length === 9), "(hh) each preset has 9 palettes (6 sampled + danger/warning/success)");
+const SLOTS = ["primary-base","primary-muted","secondary-base","secondary-muted","accent-base","accent-muted","danger","warning","success"];
+ok(TP.every((p) => JSON.stringify(p.palettes.map((x) => x.name)) === JSON.stringify(SLOTS)), "(hh) every preset uses the {tier}-{rank} + status naming model, identically");
+app.toGallery(); flushRaf();
+ok(app.querySelectorAll(".preset").length === 48, `(hh) the gallery renders a read-only preset tile per preset (got ${app.querySelectorAll(".preset").length})`);
+const presetNames = new Set(TP.map((p) => p.name));
+ok(!app.sets.some((s) => presetNames.has(s.name)), "(hh) presets are NOT seeded into your sets (they ship in code, read-only)");
+const setsBeforeHH = app.sets.length;
+const keaPreset = TP.find((p) => /Kea/.test(p.name));
+app.openConfigAsSet(keaPreset, "Opened");
+ok(app.view === "editor" && app.sets.length === setsBeforeHH + 1, "(hh) opening a preset adds an EDITABLE copy to your sets + enters the editor");
+ok(app.doc.palettes.length === 9 && app.doc.palettes[0].name === "primary-base", "(hh) the opened copy carries the 9 named palettes (primary-base first)");
+ok(app.doc.palettes.some((p) => p.name === "danger") && app.doc.palettes.some((p) => p.name === "success"), "(hh) the status palettes (danger/warning/success) are present in the copy");
+app.toGallery(); flushRaf();
+app.search = "Kea"; app.refreshTiles();
+const filteredHH = app.querySelectorAll(".preset").length;
+ok(filteredHH >= 1 && filteredHH < 48, `(hh) the search box filters the preset shelf too (got ${filteredHH} for "Kea")`);
+app.search = ""; app.refreshTiles(); app.toGallery();
+
 // ── (ee) "Download all (.zip)": one foldered archive of every format + the re-importable config ──
 const setName0 = app.doc.name;
 let zipCap = null;

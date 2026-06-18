@@ -185,6 +185,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 }
 .set-meta .del:hover { color: var(--danger); background: var(--line-2); }
 
+/* Travel-presets shelf: read-only tiles (no delete) with a small "preset" badge; reuse .set-tile. */
+.gallery-title .title-count { color: var(--ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.set-meta .preset-badge {
+  float: right; color: var(--ink-faint); font-size: 9.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px;
+  border: 1px solid var(--line-2); border-radius: 999px;
+}
+.set-tile.preset .nm { padding-right: 6px; }
+
 .new-tile {
   border: 1.5px dashed var(--line);
   border-radius: var(--r-lg);

@@ -10,9 +10,10 @@
     "bundle": "node scripts/bundle.mjs",
     "gen:figma-ui": "node scripts/gen-figma-ui.mjs",
     "gen:preview": "node scripts/gen-preview.mjs",
-    "build": "npm run gen:figma-assets && tsc && vite build && npm run bundle && npm run gen:figma-ui",
+    "gen:travel-presets": "node scripts/gen-travel-presets.mjs",
+    "build": "npm run gen:figma-assets && npm run gen:travel-presets && tsc && vite build && npm run bundle && npm run gen:figma-ui",
     "preview": "vite preview",
-    "test": "npm run gen:figma-assets && npm run bundle && npm run gen:figma-ui && node test/run.mjs"
+    "test": "npm run gen:figma-assets && npm run gen:travel-presets && npm run bundle && npm run gen:figma-ui && node test/run.mjs"
   },
   "devDependencies": {
     "typescript": "~6.0.2",
