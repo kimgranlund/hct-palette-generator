@@ -18,7 +18,7 @@
 // the canonical raw-colors name set — no unpadded "{n}/50", no out-of-range "{n}/500-999".
 
 const RAW_COLLECTION = "raw-colors";
-const SEMANTIC_COLLECTION = "Semantic";
+const SEMANTIC_COLLECTION = "semantic-colors";
 
 // The 8 default palettes (knowledge-05 §3; defaults[].name in data/role-table.json).
 const PALETTES = [
@@ -130,7 +130,7 @@ async function main() {
     if (v.variableCollectionId === rawColl.id) rawVars[v.name] = v;
   }
 
-  // 2. Create/find the Semantic collection with Light + Dark modes.
+  // 2. Create/find the semantic-colors collection with Light + Dark modes.
   let sem = collections.find((c) => c.name === SEMANTIC_COLLECTION);
   if (!sem) sem = figma.variables.createVariableCollection(SEMANTIC_COLLECTION);
   const lightMode = sem.modes[0].modeId;
