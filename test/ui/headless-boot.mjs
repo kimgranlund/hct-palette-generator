@@ -837,7 +837,7 @@ app.doc.name = "My Set";
 app.downloadAllZip(projectViewZ(app.doc));
 app.downloadBytes = realDB;
 app.doc.name = setName0;
-ok(zipCap && zipCap.filename === "hct-my-set-export.zip", `(ee) downloads a single .zip named from the set (${zipCap && zipCap.filename})`);
+ok(zipCap && zipCap.filename === "nonoun-color-tokens-my-set.zip", `(ee) downloads a single .zip named nonoun-color-tokens-{slug} (${zipCap && zipCap.filename})`);
 const zb = zipCap ? zipCap.bytes : new Uint8Array();
 ok(zb[0] === 0x50 && zb[1] === 0x4b && zb[2] === 0x03 && zb[3] === 0x04, "(ee) the archive begins with a ZIP local-file-header signature (PK\\x03\\x04)");
 const eocd = zb.length - 22; // EOCD has no trailing comment → it's the final 22 bytes
@@ -845,7 +845,7 @@ const eocdSig = zb[eocd] === 0x50 && zb[eocd + 1] === 0x4b && zb[eocd + 2] === 0
 const entries = zb[eocd + 10] | (zb[eocd + 11] << 8);
 ok(eocdSig && entries === 9, `(ee) the EOCD reports 9 entries — one per format folder + the config (got ${entries})`);
 const zipText = Buffer.from(zb).toString("latin1");
-const wantPaths = ["css-hex/", "css-oklch/", "json/", "dtcg/", "figma/Light_tokens.json", "figma/Dark_tokens.json", "figma/palette.tokens.json", "ui3/", "hct-my-set-config.json"];
+const wantPaths = ["css-hex/", "css-oklch/", "json/", "dtcg/", "figma/Light_tokens.json", "figma/Dark_tokens.json", "figma/palette.tokens.json", "ui3/", "nonoun-color-tokens-my-set-config.json"];
 ok(wantPaths.every((p) => zipText.includes(p)), "(ee) every format folder + the config file is present in the archive");
 
 // ── (ff) the HCT brand doubles as "back to gallery"; the ◀ Gallery button is removed ──

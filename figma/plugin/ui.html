@@ -5235,10 +5235,10 @@ class HctApp extends HTMLElement {
       { name: "figma/Dark_tokens.json", data: ex.figma.dark },
       { name: "figma/palette.tokens.json", data: ex.figma.raw },
       { name: `ui3/${s}.json`, data: ex.ui3 },
-      { name: `hct-${s}-config.json`, data: JSON.stringify(serialize(this.doc), null, 2) },
+      { name: `nonoun-color-tokens-${s}-config.json`, data: JSON.stringify(serialize(this.doc), null, 2) },
     ];
     const bytes = zipStore(files);
-    this.downloadBytes(bytes, `hct-${s}-export.zip`, "application/zip");
+    this.downloadBytes(bytes, `nonoun-color-tokens-${s}.zip`, "application/zip");
   }
 
   // downloadBytes — trigger a browser download of raw bytes (the binary sibling of download()).

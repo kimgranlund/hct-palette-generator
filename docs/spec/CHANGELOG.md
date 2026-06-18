@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.15 — 2026-06-18 — Download-All export named nonoun-color-tokens-{project}
+
+The "Download All" archive and its inner re-importable config still carried the old `hct-` slug.
+`downloadAllZip` now names the archive **`nonoun-color-tokens-{slug}.zip`** (was `hct-{slug}-export.zip`)
+and the config **`nonoun-color-tokens-{slug}-config.json`** (was `hct-{slug}-config.json`), matching the
+package / repo / build-artifact identity. `{slug}` is the existing `slug(doc.name)` (lowercased/hyphenated).
+Import reads file content, not the name, so re-import is unaffected. `src/ui/app.js`; headless-boot `(ee)`
+assertions updated.
+
 ## 1.14 — 2026-06-18 — a new palette ("+ Palette") starts from clean shaping defaults
 
 `addPalette` seeded each new palette with `skew: -20` — a non-default shaping tweak that quietly carried
