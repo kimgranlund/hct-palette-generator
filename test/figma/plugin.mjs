@@ -28,6 +28,12 @@ const code = readFileSync(`${HERE}/code.js`, "utf8");
 const codeNoComments = code.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, ""); // ignore the comment that NAMES these
 if (/\bfetch\s*\(|new\s+(XMLHttpRequest|WebSocket)|\bimport\s*\(/.test(codeNoComments)) FAIL("offline", "code.js calls a network or dynamic-import API");
 
+// Figma's plugin VM (jsvm-cpp) is NOT modern V8: optional catch binding (ES2019 — `catch {`
+// with no param) PARSE-fails there, yet loads fine in Node — so this verifier's own
+// new Function() load below can't catch it (real incident 2026-06-17: the whole plugin failed
+// to run with "Syntax error: Unexpected token {"). Guard it statically. Write `catch (e) {`.
+if (/\bcatch\s*\{/.test(codeNoComments)) FAIL("vmsyntax", "code.js uses optional catch binding (`catch {`) — Figma's plugin VM rejects it; use `catch (e) {`");
+
 // ── ui.html: the generator + the Figma bridge ───────────────────────────────────
 if (!existsSync(`${HERE}/ui.html`)) FAIL("ui", "ui.html not generated — run gen-ui.mjs");
 else {
@@ -167,7 +173,7 @@ if (applyBundle) {
 }
 
 // ── REPORT ───────────────────────────────────────────────────────────────────────
-for (const g of ["manifest", "offline", "ui", "parse", "apply", "cascade", "idempotent", "config", "read"]) {
+for (const g of ["manifest", "offline", "vmsyntax", "ui", "parse", "apply", "cascade", "idempotent", "config", "read"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }

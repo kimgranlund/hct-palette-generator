@@ -35,7 +35,7 @@ function writeConfig(config) { figma.root.setPluginData(CONFIG_KEY, JSON.stringi
 function readConfig() {
   const raw = figma.root.getPluginData(CONFIG_KEY);
   if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
+  try { return JSON.parse(raw); } catch (e) { return null; } // NB: param required — Figma's plugin VM rejects optional catch binding (ES2019)
 }
 
 figma.ui.onmessage = async (msg) => {
