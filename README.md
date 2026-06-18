@@ -15,6 +15,13 @@ DTCG, Figma variables, and Material UI3 — plus a one-click `.zip` of all of th
 It ships three ways: a **Vite web app**, a single **`<hct-app>` web component**, and a **Figma
 plugin** that writes the palette straight into the file's variable collections.
 
+<!-- Hero: regenerate with `npm run gen:preview` (rendered straight from the engine via projectView). -->
+![The 8 default palettes — perceptually-even HCT tonal ramps, 050 → 950](docs/img/palette-preview.svg)
+
+> The image above is the tool's **real output** — the eight default palettes rendered straight from
+> the engine (no mockup). Note the perceptually-even steps, the in-gamut deep ends, and `Warning`'s
+> deliberately lifted light end. Regenerate any time with `npm run gen:preview`.
+
 ## Quick start
 
 ```bash
