@@ -225,8 +225,8 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   transition: grid-template-columns .18s ease;
 }
 /* Collapsible side panes: the toggles add these modifiers, which drive the side column to 0.
-   The panes already clip (.left-pane overflow-x:hidden, .right-pane overflow:hidden), so content
-   disappears as the track animates closed; the center column (1fr) reclaims the space. */
+   The center column (1fr) reclaims the space as the track animates closed. The pane only truly
+   clips to 0 with min-width:0 + the collapse-state padding/border reset below (see .left-pane). */
 .editor.left-collapsed { grid-template-columns: 0 1fr 300px; }
 .editor.right-collapsed { grid-template-columns: 290px 1fr 0; }
 .editor.left-collapsed.right-collapsed { grid-template-columns: 0 1fr 0; }
@@ -336,8 +336,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   background: var(--bg);
   position: relative; z-index: 0; /* the canvas column sits BELOW the panes (which are z-index 2) */
 }
-/* the panes always paint ABOVE the canvas (defends against any canvas-scene overflow). */
-.left-pane, .right-pane { position: relative; z-index: 2; }
+/* the panes always paint ABOVE the canvas (defends against any canvas-scene overflow).
+   min-width:0 is load-bearing: grid items default to min-width:auto (= content min-content),
+   so without it a pane refuses to shrink below its cards' width and OVERFLOWS the collapsed
+   0-width track into the canvas. With it the 0 track is honored and overflow clips cleanly. */
+.left-pane, .right-pane { position: relative; z-index: 2; min-width: 0; }
+/* on collapse, also drop the pane's own padding + seam border so the track closes to a true 0
+   (border-box can't compress padding/border into a 0 width, which would leave a ~17px strip). */
+.editor.left-collapsed .left-pane { padding: 0; border-right-width: 0; overflow: hidden; }
+.editor.right-collapsed .right-pane { padding: 0; border-left-width: 0; overflow: hidden; }
 .canvas-header {
   display: flex; align-items: center; gap: 10px;
   padding: 0 12px;
