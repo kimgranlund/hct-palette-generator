@@ -670,6 +670,9 @@ input[type="range"]::-moz-range-thumb {
   flex-wrap: wrap; /* footer actions wrap to a 2nd row rather than clipping (narrow plugin window) */
 }
 .drawer-foot .meta { color: var(--ink-dim); font-size: 11.5px; flex: 1; min-width: 140px; font-variant-numeric: tabular-nums; }
+/* the two footer buttons travel together (Apply left, Download right) — never split across rows.
+   The group wraps as a UNIT under the meta on a narrow plugin window; its own buttons stay side by side. */
+.drawer-foot .foot-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 
 /* ── responsive toolbars — the plugin window can be narrow; toolbars must never overflow ── */
 /* never break a button's own label across lines (no 3-line "⚑ Add Variables → Figma"). */
@@ -4810,21 +4813,27 @@ class HctApp extends HTMLElement {
           "div",
           { class: "drawer-foot" },
           h("span", { class: "meta" }, `${(bytes / 1024).toFixed(1)} KB · ${isFigma ? figCur[2] : isConfig ? "re-importable config" : tokenCount(this.doc) + " tokens"}`),
-          // Inside Figma, applying variables directly is the point — primary action, to the LEFT of Download all.
-          this.inFigma
-            ? h(
-                "button",
-                {
-                  class: "primary figma-apply",
-                  title: "Create/update the raw-colors + Light/Dark variable collections directly in this Figma file",
-                  onclick: () => this.applyToFigma(),
-                },
-                "⚑ Add Variables → Figma",
-              )
-            : false,
-          // ONE download action — every format in its own folder + the config, as a single .zip. Always present, primary.
-          h("button", { class: "primary", title: "Download every format (css-hex, css-oklch, json, dtcg, figma, ui3) in its own folder + the config, as one .zip", onclick: () => this.downloadAllZip(view) }, "⬇ Download all (.zip)"),
-          // (Config save/load lives in the config sub-bar above the code.)
+          // Footer actions kept in ONE group so they never split across rows: the foot is
+          // flex-wrap and .meta has flex:1, so as separate children Download all wrapped below
+          // Apply. As a single .foot-actions child they stay together (Apply left, Download right).
+          h(
+            "div",
+            { class: "foot-actions" },
+            // Inside Figma, applying variables directly is the point — primary action, on the LEFT.
+            this.inFigma
+              ? h(
+                  "button",
+                  {
+                    class: "primary figma-apply",
+                    title: "Create/update the raw-colors + Light/Dark variable collections directly in this Figma file",
+                    onclick: () => this.applyToFigma(),
+                  },
+                  "⚑ Apply Variables",
+                )
+              : false,
+            // ONE download action — every format in its own folder + the config, as a single .zip.
+            h("button", { class: "primary", title: "Download every format (css-hex, css-oklch, json, dtcg, figma, ui3) in its own folder + the config, as one .zip", onclick: () => this.downloadAllZip(view) }, "⬇ Download All"),
+          ),
         ),
       ),
     );

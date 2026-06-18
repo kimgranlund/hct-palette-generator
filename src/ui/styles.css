@@ -667,6 +667,9 @@ input[type="range"]::-moz-range-thumb {
   flex-wrap: wrap; /* footer actions wrap to a 2nd row rather than clipping (narrow plugin window) */
 }
 .drawer-foot .meta { color: var(--ink-dim); font-size: 11.5px; flex: 1; min-width: 140px; font-variant-numeric: tabular-nums; }
+/* the two footer buttons travel together (Apply left, Download right) — never split across rows.
+   The group wraps as a UNIT under the meta on a narrow plugin window; its own buttons stay side by side. */
+.drawer-foot .foot-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 
 /* ── responsive toolbars — the plugin window can be narrow; toolbars must never overflow ── */
 /* never break a button's own label across lines (no 3-line "⚑ Add Variables → Figma"). */
