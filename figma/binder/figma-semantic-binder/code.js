@@ -73,14 +73,14 @@ function roleTable(n) {
     { key: "containerHigh", suffix: "-container-high", light: "500-300", dark: "500-300" },
 
     // 6. SCRIM — shared; 7 strengths on the 500 ramp (alpha% = step/10), mode-independent.
-    //    Full-range 5–95%: weakest..strongest = 50/100/200/400/600/800/950.
+    //    Sequential 5–60%: weakest..strongest = 50/100/200/300/400/500/600.
     { key: "scrimWeakest", suffix: "-scrim-weakest", light: "500-50", dark: "500-50" },
     { key: "scrimWeaker", suffix: "-scrim-weaker", light: "500-100", dark: "500-100" },
     { key: "scrimWeak", suffix: "-scrim-weak", light: "500-200", dark: "500-200" },
-    { key: "scrim", suffix: "-scrim", light: "500-400", dark: "500-400" },
-    { key: "scrimStrong", suffix: "-scrim-strong", light: "500-600", dark: "500-600" },
-    { key: "scrimStronger", suffix: "-scrim-stronger", light: "500-800", dark: "500-800" },
-    { key: "scrimStrongest", suffix: "-scrim-strongest", light: "500-950", dark: "500-950" },
+    { key: "scrim", suffix: "-scrim", light: "500-300", dark: "500-300" },
+    { key: "scrimStrong", suffix: "-scrim-strong", light: "500-400", dark: "500-400" },
+    { key: "scrimStronger", suffix: "-scrim-stronger", light: "500-500", dark: "500-500" },
+    { key: "scrimStrongest", suffix: "-scrim-strongest", light: "500-600", dark: "500-600" },
 
     // 7. INVERSE — shared.
     { key: "inverseSurface", suffix: "-inverse-surface", light: "900", dark: "100" },

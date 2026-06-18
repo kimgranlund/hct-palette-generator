@@ -89,9 +89,9 @@ Both are fixed to the light end in *both* modes, for *all* palettes.
 - **Scrim ramp**: a single **500-based** translucency ramp. A scrim primitive is `500-{step}`
   = the palette's 500 color at **alpha% = step/10** (so `500-200` = 500 @ 20%). `SCRIM_BASES = [500]`,
   `SCRIM_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]` — the 11 **emitted** steps
-  (alpha 5–95%). The 7 strength roles bind to a 7-step subset; some emitted steps carry no role.
+  (alpha 5–95%). The 7 strength roles bind to a 7-step subset; steps 700–950 carry no role.
 - **All 12 scrim-using roles** resolve onto this ramp, mode-independent (light === dark): the 7
-  `scrim*` strengths (weakest→strongest = steps 50/100/200/400/600/800/950, the full 5–95% range),
+  `scrim*` strengths (weakest→strongest = steps 50/100/200/300/400/500/600, a sequential 5–60% ladder),
   plus `outline` (600), `outlineVariant` (400), and `container/Low/High` (200/100/300).
 
 > **A scrim is a sub-variant of the palette** — based on the 500 stop, it tracks the palette as

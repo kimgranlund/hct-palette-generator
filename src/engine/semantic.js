@@ -20,10 +20,11 @@
 // "500-{step}" (e.g. "500-200" = 500 @ 20%).
 //
 // The 7 semantic scrim STRENGTHS map onto a 7-step subset of the emitted ramp, weakest ->
-// strongest, spanning the full 5%..95% range. This is distinct from the full set of raw scrim
-// primitives EMITTED (exports.js SCRIM_STEPS = 11 steps) — the export ramp carries more steps
-// than the 7 strengths bind to. outline + containers also resolve onto the 500 ramp (below).
-const SCRIM_STRENGTH_STEPS = [50, 100, 200, 400, 600, 800, 950];
+// strongest: a sequential 5%..60% ladder (50/100/200/300/400/500/600). This is distinct from the
+// full set of raw scrim primitives EMITTED (exports.js SCRIM_STEPS = 11 steps) — the export ramp
+// carries more steps than the 7 strengths bind to (700-950 are emitted but carry no strength role).
+// outline + containers also resolve onto the 500 ramp (below).
+const SCRIM_STRENGTH_STEPS = [50, 100, 200, 300, 400, 500, 600];
 
 // Suffix per scrim level, weakest (index 0) -> strongest (index 6).
 const SCRIM_SUFFIXES = [

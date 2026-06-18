@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.2 — 2026-06-18 — scrim STRENGTH ladder → sequential 5–60% (was full-range 5–95%)
+
+The 7 scrim-strength roles now map weakest→strongest to `50/100/200/300/400/500/600`
+(**5/10/20/30/40/50/60%**), a sequential ladder, replacing the 1.0 full-range `50/100/200/400/600/800/950`
+(5–95%). 4 refs changed: `scrim 400→300`, `scrimStrong 600→400`, `scrimStronger 800→500`,
+`scrimStrongest 950→600`; `scrimWeakest/Weaker/Weak` stay `50/100/200`.
+
+The **emitted** `SCRIM_STEPS` (11 steps) is UNCHANGED — `500-700/800/900/950` are still exported as raw
+primitives but now bind to no strength role. `outline` (`500-600`) now coincides with `scrimStrongest`
+(`500-600`) — allowed (as it did pre-1.0 at `500-550`); nudge if undesired.
+
+Lockstep: `src/engine/semantic.js` (`SCRIM_STRENGTH_STEPS`), `data/role-table.json` (the 4 refs),
+`figma/binder/figma-semantic-binder/code.js` (hardcoded copy — caught by the binder `parity` guard),
+`knowledge-03`; regenerated `figma-plugin-assets.js` + `ui.html`. No emitted-token or collection change.
+
 ## 1.1 — 2026-06-18 — semantic variable collection renamed `Semantic` → `semantic-colors`
 
 Both Figma plugin runtimes now create the semantic variables in a collection named

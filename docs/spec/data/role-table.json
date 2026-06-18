@@ -183,26 +183,26 @@
     {
       "key": "scrim",
       "suffix": "-scrim",
-      "light": "500-400",
-      "dark": "500-400"
+      "light": "500-300",
+      "dark": "500-300"
     },
     {
       "key": "scrimStrong",
       "suffix": "-scrim-strong",
-      "light": "500-600",
-      "dark": "500-600"
+      "light": "500-400",
+      "dark": "500-400"
     },
     {
       "key": "scrimStronger",
       "suffix": "-scrim-stronger",
-      "light": "500-800",
-      "dark": "500-800"
+      "light": "500-500",
+      "dark": "500-500"
     },
     {
       "key": "scrimStrongest",
       "suffix": "-scrim-strongest",
-      "light": "500-950",
-      "dark": "500-950"
+      "light": "500-600",
+      "dark": "500-600"
     },
     {
       "key": "inverseSurface",
