@@ -765,6 +765,18 @@ ok(Array.isArray(TP) && TP.length === 48, `(hh) 48 travel presets ship in code (
 ok(TP.every((p) => p.palettes.length === 9), "(hh) each preset has 9 palettes (6 sampled + danger/warning/success)");
 const SLOTS = ["primary-base","primary-muted","secondary-base","secondary-muted","accent-base","accent-muted","danger","warning","success"];
 ok(TP.every((p) => JSON.stringify(p.palettes.map((x) => x.name)) === JSON.stringify(SLOTS)), "(hh) every preset uses the {tier}-{rank} + status naming model, identically");
+// names are the PLACE only (no "IV·01 ·" vol-index prefix)
+ok(!TP.some((p) => /^[IVXLC]+·\d/.test(p.name)), "(hh) preset names drop the vol·index prefix (just the place)");
+// presets carry the full default controls — a config that OMITS them hydrates to the DARK domain-min
+// (lmax 60), which made every preset render muddy. Regression guard for that fix.
+ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 80), "(hh) presets carry default controls (lmax 100), so they don't hydrate to the dark domain-min");
+// lift-anchoring: a LIGHT dominant (St John's fog cream, src L*≈85) must open LIGHT, not the old mid-dark
+// L*≈46 grey. This is the "colors look really wrong" fix (lift + controls together).
+const { projectView: _pvHH } = await import("../../src/ui/model.mjs");
+const { hydrate: _hydHH } = await import("../../src/ui/persist.js");
+const _sj = TP.find((p) => /St\. John/.test(p.name));
+const _sjPrime = _pvHH(_hydHH(_sj)).palettes[0].ramp.find((s) => s.stop === 550);
+ok(_sjPrime.tone > 72, `(hh) lift anchors the prime to the source lightness — St John's fog-cream dominant opens LIGHT (550 L*=${_sjPrime.tone.toFixed(0)}, was ~46 before)`);
 app.toGallery(); flushRaf();
 ok(app.querySelectorAll(".preset").length === 48, `(hh) the gallery renders a read-only preset tile per preset (got ${app.querySelectorAll(".preset").length})`);
 const presetNames = new Set(TP.map((p) => p.name));

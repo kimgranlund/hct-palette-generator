@@ -21,7 +21,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { cam16FromRgb } from "../src/engine/hct.js";
+import { cam16FromRgb, lstarFromRgb } from "../src/engine/hct.js";
+import { toneAt, DEFAULT_CONTROLS } from "../src/engine/tonal.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = resolve(here, "../docs/spec/colors/travel-palettes.md");
@@ -32,12 +33,27 @@ const hexToRgb = (hex) => {
   const s = hex.replace("#", "");
   return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
 };
-// HEX → the tool's parametric {hue, chroma} (CAM16; chroma clamped to the 0–100 control range).
-const seedFromHex = (hex) => {
-  const { hue, chroma } = cam16FromRgb(hexToRgb(hex));
-  return { hue: Math.round(((hue % 360) + 360) % 360), chroma: Math.round(Math.min(100, Math.max(0, chroma))) };
+// The prime role is stop 550; with default skew/lift its tone is ~46 L*, which would flatten EVERY
+// palette's prime to mid-dark — a light fog-cream and a dark kelp would BOTH render as L*46 grey. So
+// anchor each palette's prime to its SOURCE lightness via `lift` (the centred tone bump), clamped to
+// lift's ±40 domain, so the prime token (--c-{name}) ≈ the curated color. Hue+chroma come from CAM16;
+// lightness comes from lift. (Stops away from 550 still span the full ramp — lift tapers to 0 at the ends.)
+const PRIME_TONE = toneAt(550, 0, 0, DEFAULT_CONTROLS);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const palette = (name, hex) => {
+  const rgb = hexToRgb(hex);
+  const { hue, chroma } = cam16FromRgb(rgb);
+  return {
+    name,
+    hue: Math.round(((hue % 360) + 360) % 360),
+    chroma: Math.round(Math.min(100, Math.max(0, chroma))),
+    skew: 0,
+    lift: Math.round(clamp(lstarFromRgb(rgb) - PRIME_TONE, -40, 40)),
+    hueShift: 0,
+    hueSameDir: false,
+    on: true,
+  };
 };
-const palette = (name, hex) => ({ name, ...seedFromHex(hex), skew: 0, lift: 0, hueShift: 0, hueSameDir: false, on: true });
 
 // ── parse one "### " entry: title + the core-6 table + the system-3 table ──────────────────────
 function parseEntry(block) {
@@ -47,7 +63,7 @@ function parseEntry(block) {
   const rest = dash >= 0 ? heading.slice(dash + 3).trim() : "";
   const parts = rest.split(" · ");
   const place = parts.length > 3 ? parts.slice(3).join(" · ") : rest; // the place, after lat·month·time
-  const name = place ? `${idx} · ${place}` : idx;
+  const name = place || idx; // the place itself is the set name (no "IV·01 ·" prefix); array order keeps vol order
 
   const core = [...block.matchAll(/^\|\s*(Dominant|Supporting|Accent)\s*\|\s*([^|]+?)\s*\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/gm)]
     .map((m) => ({ role: m[1], desc: m[2].trim(), oklch: m[3].trim().split(/\s+/).map(Number), hex: m[4].trim().toUpperCase() }));
@@ -87,7 +103,10 @@ function mapColors({ core, system }) {
 // ── build ───────────────────────────────────────────────────────────────────────────────────────
 const md = readFileSync(SRC, "utf8");
 const entries = md.split(/^### /m).slice(1).map(parseEntry);
-const presets = entries.map((e) => ({ name: e.name, palettes: mapColors(e) }));
+// Spread the full DEFAULT_CONTROLS into every preset. A config that OMITS them hydrates to the
+// domain MINIMUMS (lmin 0, lmax 60, damp 0) — not the sensible defaults (5/100/80) — which caps the
+// whole ramp dark and was a big part of why every preset rendered muddy. Carry them explicitly.
+const presets = entries.map((e) => ({ name: e.name, ...DEFAULT_CONTROLS, palettes: mapColors(e) }));
 
 // One preset per line (compact JSON) — keeps the bundle small AND keeps git diffs readable
 // (a change to one palette shows as a single changed line).

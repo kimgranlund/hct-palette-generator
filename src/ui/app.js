@@ -611,12 +611,17 @@ class HctApp extends HTMLElement {
     return visible.map((preset) => {
       const v = projectView(hydrate(preset));
       const enabled = v.palettes.filter((p) => p.on);
+      // Preview the 6 CURATED colors only (the trailing danger/warning/success are near-identical
+      // across presets and made every tile look the same). Widths emphasize the primary tier
+      // (~55/35/10, primary-base biggest), so a tile reads as "this palette's main color". The 550
+      // stop is now the lift-anchored prime ≈ the source color, so the strip is representative.
+      const SAMPLED_W = [36, 19, 19, 16, 6, 4];
       const strip = h(
         "div",
         { class: "strip" },
-        ...enabled.slice(0, 9).map((p) => {
+        ...enabled.slice(0, 6).map((p, i) => {
           const mid = p.ramp.find((s) => s.stop === 550) || p.ramp[Math.floor(p.ramp.length / 2)];
-          return h("i", { style: `background:${mid.hex}` });
+          return h("i", { style: `background:${mid.hex};flex:${SAMPLED_W[i] || 1}` });
         }),
       );
       return h(
