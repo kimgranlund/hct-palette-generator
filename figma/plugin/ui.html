@@ -978,7 +978,7 @@ __M.semantic = (function(){
 //
 // Two-layer model: raw primitives are mode-independent; the light/dark FLIP
 // lives only here in the semantic layer. Each role declares a `light` ref and a
-// `dark` ref (a solid stop like "550" or a scrim like "500-175"). Token names and
+// `dark` ref (a solid stop like "550" or a scrim like "500-200"). Token names and
 // CSS var() references use refKey() to normalise those refs.
 //
 // `paletteName` is lowercase (e.g. "primary", "success"). Two substitutions:
@@ -993,9 +993,13 @@ __M.semantic = (function(){
 
 // Scrim ramp: the palette's 500 color at alpha% = step/10 — a translucency sub-variant of
 // the palette (so it tracks the 500 stop as hue/chroma/skew/lift change). A scrim ref is
-// "500-{step}" (e.g. "500-175" = 500 @ 17.5%). The 7 semantic scrim strengths map to these
-// stops, weakest -> strongest; outline + containers also resolve onto this 500 ramp.
-const SCRIM_STEPS = [100, 175, 250, 300, 400, 450, 550];
+// "500-{step}" (e.g. "500-200" = 500 @ 20%).
+//
+// The 7 semantic scrim STRENGTHS map onto a 7-step subset of the emitted ramp, weakest ->
+// strongest, spanning the full 5%..95% range. This is distinct from the full set of raw scrim
+// primitives EMITTED (exports.js SCRIM_STEPS = 11 steps) — the export ramp carries more steps
+// than the 7 strengths bind to. outline + containers also resolve onto the 500 ramp (below).
+const SCRIM_STRENGTH_STEPS = [50, 100, 200, 400, 600, 800, 950];
 
 // Suffix per scrim level, weakest (index 0) -> strongest (index 6).
 const SCRIM_SUFFIXES = [
@@ -1022,9 +1026,9 @@ const SCRIM_KEYS = [
 /**
  * Normalise a ref for use in token names / CSS var() references.
  * - Solid stops are zero-padded to 3 digits: "50" -> "050", "550" -> "550".
- * - Scrim refs keep their "-{step}" suffix and pad the base stop: "500-175" -> "500-175",
+ * - Scrim refs keep their "-{step}" suffix and pad the base stop: "500-200" -> "500-200",
  *   "50-2" -> "050-2".
- * @param {string} ref e.g. "50", "550", "500-175"
+ * @param {string} ref e.g. "50", "550", "500-200"
  * @returns {string}
  */
 function refKey(ref) {
@@ -1070,18 +1074,18 @@ function semanticRoles(paletteName) {
   role('onSurfaceVariant', '-on-surface-variant', '750', '250');
 
   // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).
-  role('outline', '-outline', '500-550', '500-550');
+  role('outline', '-outline', '500-600', '500-600');
   role('outlineVariant', '-outline-variant', '500-400', '500-400');
 
   // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).
-  role('container', '-container', '500-175', '500-175');
+  role('container', '-container', '500-200', '500-200');
   role('containerLow', '-container-low', '500-100', '500-100');
-  role('containerHigh', '-container-high', '500-250', '500-250');
+  role('containerHigh', '-container-high', '500-300', '500-300');
 
   // 6. SCRIM — shared; 7 strengths, all on the 500 ramp at alpha% = step/10.
   //    Mode-independent: light === dark === `500-${step}`. Generated via loop.
-  for (let i = 0; i < SCRIM_STEPS.length; i++) {
-    const ref = `500-${SCRIM_STEPS[i]}`;
+  for (let i = 0; i < SCRIM_STRENGTH_STEPS.length; i++) {
+    const ref = `500-${SCRIM_STRENGTH_STEPS[i]}`;
     role(SCRIM_KEYS[i], SCRIM_SUFFIXES[i], ref, ref);
   }
 
@@ -1477,8 +1481,14 @@ const { semanticRoles, refKey, applyRoleOverrides } = __M.semantic;
 // ── Constants (from data/role-table.json) ─────────────────────────────────────
 // Scrims are a 500-based translucency ramp: a scrim primitive "{n}/500-{step}" is the
 // palette's 500 color at alpha% = step/10. Only the referenced steps are emitted.
+// The EMITTED raw scrim ramp: a clean 11-step translucency set over the 500 color,
+// alpha% = step/10 → 5,10,20,30,40,50,60,70,80,90,95%. This is the set of raw scrim
+// primitives every format emits; the 7 SEMANTIC scrim-strength roles bind to a 7-step
+// SUBSET of these (see semantic.js SCRIM_STRENGTH_STEPS), so some emitted steps are
+// available as raw primitives without a strength role. Exported so model.tokenCount can
+// derive the count instead of hard-coding it (was the stale `3 * 7`).
 const SCRIM_BASES = [500];
-const SCRIM_STEPS = [100, 175, 250, 300, 400, 450, 550]; // alpha% = step/10 (10,17.5,25,30,40,45,55)
+const SCRIM_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
 // ── Small hand-rolled helpers ─────────────────────────────────────────────────
 
@@ -1576,7 +1586,7 @@ function enabledPalettes(state) {
 }
 
 // derivePalette — everything an emitter needs for one palette, computed once:
-//   slug, the 25 solid stops keyed by pad3, a stop->rgb lookup, the 21 scrims,
+//   slug, the 25 solid stops keyed by pad3, a stop->rgb lookup, the 11 scrims,
 //   the 37 resolved semantic roles, and a ref->rgb resolver shared by all formats.
 function derivePalette(palette, controls, overrides) {
   const n = slug(palette.name);
@@ -1611,13 +1621,13 @@ function derivePalette(palette, controls, overrides) {
     const rgb = byStop.get(base);
     scrims[base] = {};
     for (const step of SCRIM_STEPS) {
-      const alphaPct = step / 10; // 100 -> 10%, 175 -> 17.5%, 550 -> 55%
+      const alphaPct = step / 10; // 50 -> 5%, 100 -> 10%, 950 -> 95%
       const frac = step / 1000;
       scrims[base][step] = { rgb, alphaPct, frac, hex: hex8(rgb, frac) };
     }
   }
 
-  // resolveRef — a role ref ("550" solid, or "500-175" scrim) -> { rgb, frac }.
+  // resolveRef — a role ref ("550" solid, or "500-200" scrim) -> { rgb, frac }.
   // frac === 1 for a solid; for a scrim "{base}-{step}" it's step/1000 (rgb is the base's solid).
   const resolveRef = (ref) => {
     const s = String(ref);
@@ -1738,7 +1748,7 @@ function exportJSON(state) {
     const stops = {};
     for (const key of Object.keys(p.stops)) stops[key] = p.stops[key].hex;
 
-    // scrims: { "500-175": {hex, alpha}, ... } — "500-{step}", alpha% = step/10.
+    // scrims: { "500-200": {hex, alpha}, ... } — "500-{step}", alpha% = step/10.
     const scrims = {};
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
@@ -1762,7 +1772,7 @@ function exportJSON(state) {
 // ──────────────────────────────────────────────────────────────────────────────
 // 4. Figma DTCG — exactly the 3 named files
 // ──────────────────────────────────────────────────────────────────────────────
-// palette.tokens.json  -> RAW collection (mode Value): 25 solids + 21 scrims per palette.
+// palette.tokens.json  -> RAW collection (mode Value): 25 solids + 11 scrims per palette.
 // Light_tokens.json    -> SEMANTIC (mode Light): 37 roles RESOLVED to the LIGHT ref's color.
 // Dark_tokens.json     -> SEMANTIC (mode Dark):  37 roles RESOLVED to the DARK  ref's color.
 //
@@ -1879,7 +1889,7 @@ function exportAll(state, opts) {
   };
 }
 
-return { exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3, exportAll };
+return { SCRIM_BASES, SCRIM_STEPS, exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3, exportAll };
 })();
 __M.figmaPlugin = (function(){
 // GENERATED by gen-figma-assets.mjs from figma/binder/figma-semantic-binder/ — DO NOT EDIT.
@@ -1889,7 +1899,7 @@ __M.figmaPlugin = (function(){
 const FIGMA_PLUGIN = {
   name: "HCT Semantic Binder",
   manifest: "{\n  \"name\": \"HCT Semantic Binder\",\n  \"id\": \"hct-semantic-binder\",\n  \"api\": \"1.0.0\",\n  \"main\": \"code.js\",\n  \"editorType\": [\n    \"figma\"\n  ],\n  \"documentAccess\": \"dynamic-page\",\n  \"networkAccess\": \"none\"\n}\n",
-  code: "// figma-semantic-binder/code.js — the HCT cascade binder runtime.\n//\n// Runs inside Figma (uses the `figma` global). It gives the live raw->semantic cascade that\n// native JSON import cannot (knowledge-05 §1): each semantic role is aliased to the REAL raw\n// Variable object via figma.variables.createVariableAlias, so editing a raw color propagates\n// to every semantic role that aliases it.\n//\n// OFFLINE (ADR-010 / AC-P3): no network I/O. No fetch / XMLHttpRequest / WebSocket / dynamic\n// import() of a remote URL / figma.showUI to a remote origin. manifest.networkAccess === \"none\".\n//\n// PARITY: the binding loop below MIRRORS ../bind-plan.mjs (bindingPlan / bindingTargets) — the\n// same role table, the same refKey normaliser, the same \"{n}/{refKey(ref)}\" target grammar.\n// bind-plan.mjs is the pure, harness-tested source of truth; this file replicates it verbatim\n// because Figma plugin code runs in a non-module sandbox and cannot import the .mjs at run time.\n// Both derive from the validated capability.system.semantic-mapping role table. Because every\n// target is refKey() of a ref from that table (solid stop -> pad3 \"050\"; scrim base 250/500/750\n// with alpha% = step/10 -> \"{base}-{step}\" verbatim), every emitted \"{n}/{refKey}\" is a member of\n// the canonical raw-colors name set — no unpadded \"{n}/50\", no out-of-range \"{n}/500-999\".\n\nconst RAW_COLLECTION = \"raw-colors\";\nconst SEMANTIC_COLLECTION = \"Semantic\";\n\n// The 8 default palettes (knowledge-05 §3; defaults[].name in data/role-table.json).\nconst PALETTES = [\n  \"neutral\",\n  \"primary\",\n  \"secondary\",\n  \"tertiary\",\n  \"info\",\n  \"success\",\n  \"danger\",\n  \"warning\",\n];\n\n// refKey: mirror of semantic.js / bind-plan.mjs. Solid stops zero-pad to 3 digits\n// (\"50\" -> \"050\"); scrim refs (\"500-175\") keep the \"-step\" suffix and pad the base stop.\nfunction refKey(ref) {\n  const s = String(ref);\n  const dash = s.indexOf(\"-\");\n  if (dash === -1) return s.padStart(3, \"0\");\n  return s.slice(0, dash).padStart(3, \"0\") + s.slice(dash);\n}\n\n// roleTable(n) — the 37 roles for a palette, name-substituted exactly as semantic.js /\n// bind-plan.mjs produce them: accent + on-accent keys carry the palette name; shared roles do\n// not. Refs are the canonical values from data/role-table.json (validated semantic-mapping).\n// `key` is the semantic variable name part (\"{n}/{key}\"); `light`/`dark` feed targetName.\nfunction roleTable(n) {\n  const N = n.charAt(0).toUpperCase() + n.slice(1);\n  return [\n    // 1. ACCENT — name-prefixed; prime role has empty suffix.\n    { key: n, suffix: \"\", light: \"550\", dark: \"450\" },\n    { key: n + \"Dim\", suffix: \"-dim\", light: \"650\", dark: \"700\" },\n    { key: n + \"Bright\", suffix: \"-bright\", light: \"350\", dark: \"400\" },\n    { key: n + \"Low\", suffix: \"-low\", light: \"350\", dark: \"700\" },\n    { key: n + \"High\", suffix: \"-high\", light: \"650\", dark: \"400\" },\n\n    // 2. ON-ACCENT — name-prefixed; fixed to the light end in BOTH modes (OD-001).\n    { key: \"on\" + N, suffix: \"-on-\" + n, light: \"50\", dark: \"50\" },\n    { key: \"on\" + N + \"Variant\", suffix: \"-on-\" + n + \"-variant\", light: \"200\", dark: \"200\" },\n\n    // 3. ON-SURFACE — shared.\n    { key: \"onSurface\", suffix: \"-on-surface\", light: \"950\", dark: \"50\" },\n    { key: \"onSurfaceVariant\", suffix: \"-on-surface-variant\", light: \"750\", dark: \"250\" },\n\n    // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).\n    { key: \"outline\", suffix: \"-outline\", light: \"500-550\", dark: \"500-550\" },\n    { key: \"outlineVariant\", suffix: \"-outline-variant\", light: \"500-400\", dark: \"500-400\" },\n\n    // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).\n    { key: \"container\", suffix: \"-container\", light: \"500-175\", dark: \"500-175\" },\n    { key: \"containerLow\", suffix: \"-container-low\", light: \"500-100\", dark: \"500-100\" },\n    { key: \"containerHigh\", suffix: \"-container-high\", light: \"500-250\", dark: \"500-250\" },\n\n    // 6. SCRIM — shared; 7 strengths on the 500 ramp (alpha% = step/10), mode-independent.\n    { key: \"scrimWeakest\", suffix: \"-scrim-weakest\", light: \"500-100\", dark: \"500-100\" },\n    { key: \"scrimWeaker\", suffix: \"-scrim-weaker\", light: \"500-175\", dark: \"500-175\" },\n    { key: \"scrimWeak\", suffix: \"-scrim-weak\", light: \"500-250\", dark: \"500-250\" },\n    { key: \"scrim\", suffix: \"-scrim\", light: \"500-300\", dark: \"500-300\" },\n    { key: \"scrimStrong\", suffix: \"-scrim-strong\", light: \"500-400\", dark: \"500-400\" },\n    { key: \"scrimStronger\", suffix: \"-scrim-stronger\", light: \"500-450\", dark: \"500-450\" },\n    { key: \"scrimStrongest\", suffix: \"-scrim-strongest\", light: \"500-550\", dark: \"500-550\" },\n\n    // 7. INVERSE — shared.\n    { key: \"inverseSurface\", suffix: \"-inverse-surface\", light: \"900\", dark: \"100\" },\n    { key: \"inverseOnSurface\", suffix: \"-inverse-on-surface\", light: \"50\", dark: \"950\" },\n\n    // 8. SURFACE — shared base surfaces.\n    { key: \"background\", suffix: \"-background\", light: \"100\", dark: \"900\" },\n    { key: \"surface\", suffix: \"-surface\", light: \"125\", dark: \"875\" },\n\n    // 9. SURFACE DIM/BRIGHT — shared; non-mirror.\n    { key: \"surfaceDimmest\", suffix: \"-surface-dimmest\", light: \"200\", dark: \"950\" },\n    { key: \"surfaceDimmer\", suffix: \"-surface-dimmer\", light: \"175\", dark: \"925\" },\n    { key: \"surfaceDim\", suffix: \"-surface-dim\", light: \"150\", dark: \"900\" },\n    { key: \"surfaceBright\", suffix: \"-surface-bright\", light: \"100\", dark: \"850\" },\n    { key: \"surfaceBrighter\", suffix: \"-surface-brighter\", light: \"75\", dark: \"825\" },\n    { key: \"surfaceBrightest\", suffix: \"-surface-brightest\", light: \"50\", dark: \"800\" },\n\n    // 10. SURFACE LOW/HIGH — shared; mirror (sum 1000).\n    { key: \"surfaceLowest\", suffix: \"-surface-lowest\", light: \"50\", dark: \"950\" },\n    { key: \"surfaceLower\", suffix: \"-surface-lower\", light: \"75\", dark: \"925\" },\n    { key: \"surfaceLow\", suffix: \"-surface-low\", light: \"100\", dark: \"900\" },\n    { key: \"surfaceHigh\", suffix: \"-surface-high\", light: \"150\", dark: \"850\" },\n    { key: \"surfaceHigher\", suffix: \"-surface-higher\", light: \"175\", dark: \"825\" },\n    { key: \"surfaceHighest\", suffix: \"-surface-highest\", light: \"200\", dark: \"800\" },\n  ];\n}\n\n// The raw-colors target a ref resolves to: \"{n}/{refKey(ref)}\" — the load-bearing grammar.\n// Identical to bind-plan.mjs targetName; guarantees membership in the canonical raw name set.\nfunction targetName(paletteName, ref) {\n  return paletteName + \"/\" + refKey(ref);\n}\n\nasync function main() {\n  const collections = await figma.variables.getLocalVariableCollectionsAsync();\n  const rawColl = collections.find((c) => c.name === RAW_COLLECTION);\n  if (!rawColl) {\n    figma.notify(\"Raw collection not found: \" + RAW_COLLECTION);\n    figma.closePlugin();\n    return;\n  }\n\n  // 1. Index raw-colors variables by name.\n  const allVars = await figma.variables.getLocalVariablesAsync();\n  const rawVars = {};\n  for (const v of allVars) {\n    if (v.variableCollectionId === rawColl.id) rawVars[v.name] = v;\n  }\n\n  // 2. Create/find the Semantic collection with Light + Dark modes.\n  let sem = collections.find((c) => c.name === SEMANTIC_COLLECTION);\n  if (!sem) sem = figma.variables.createVariableCollection(SEMANTIC_COLLECTION);\n  const lightMode = sem.modes[0].modeId;\n  const darkMode = (sem.modes[1] && sem.modes[1].modeId) || sem.addMode(\"Dark\");\n\n  // 3. For each palette and role, resolve lt/dt = rawVars[\"{n}/{refKey(...)}\"] and alias both\n  //    modes by reference (the cascade). Mirrors bind-plan.mjs.bindingPlan.\n  let bound = 0;\n  const missing = [];\n  for (const n of PALETTES) {\n    for (const r of roleTable(n)) {\n      const ltName = targetName(n, r.light);\n      const dtName = targetName(n, r.dark);\n      const lt = rawVars[ltName];\n      const dt = rawVars[dtName];\n      if (!lt) { missing.push(ltName); continue; }\n      if (!dt) { missing.push(dtName); continue; }\n\n      const semName = n + \"/\" + r.key;\n      const refreshed = await figma.variables.getLocalVariablesAsync();\n      const semVar =\n        refreshed.find((v) => v.variableCollectionId === sem.id && v.name === semName) ||\n        figma.variables.createVariable(semName, sem, \"COLOR\");\n\n      semVar.setValueForMode(lightMode, figma.variables.createVariableAlias(lt));\n      semVar.setValueForMode(darkMode, figma.variables.createVariableAlias(dt));\n      bound++;\n    }\n  }\n\n  figma.notify(\n    \"Bound \" + bound + \" roles\" + (missing.length ? (\", missing raw target: \" + missing[0]) : \"\")\n  );\n  figma.closePlugin();\n}\n\nmain();\n",
+  code: "// figma-semantic-binder/code.js — the HCT cascade binder runtime.\n//\n// Runs inside Figma (uses the `figma` global). It gives the live raw->semantic cascade that\n// native JSON import cannot (knowledge-05 §1): each semantic role is aliased to the REAL raw\n// Variable object via figma.variables.createVariableAlias, so editing a raw color propagates\n// to every semantic role that aliases it.\n//\n// OFFLINE (ADR-010 / AC-P3): no network I/O. No fetch / XMLHttpRequest / WebSocket / dynamic\n// import() of a remote URL / figma.showUI to a remote origin. manifest.networkAccess === \"none\".\n//\n// PARITY: the binding loop below MIRRORS ../bind-plan.mjs (bindingPlan / bindingTargets) — the\n// same role table, the same refKey normaliser, the same \"{n}/{refKey(ref)}\" target grammar.\n// bind-plan.mjs is the pure, harness-tested source of truth; this file replicates it verbatim\n// because Figma plugin code runs in a non-module sandbox and cannot import the .mjs at run time.\n// Both derive from the validated capability.system.semantic-mapping role table. Because every\n// target is refKey() of a ref from that table (solid stop -> pad3 \"050\"; scrim base 250/500/750\n// with alpha% = step/10 -> \"{base}-{step}\" verbatim), every emitted \"{n}/{refKey}\" is a member of\n// the canonical raw-colors name set — no unpadded \"{n}/50\", no out-of-range \"{n}/500-999\".\n\nconst RAW_COLLECTION = \"raw-colors\";\nconst SEMANTIC_COLLECTION = \"Semantic\";\n\n// The 8 default palettes (knowledge-05 §3; defaults[].name in data/role-table.json).\nconst PALETTES = [\n  \"neutral\",\n  \"primary\",\n  \"secondary\",\n  \"tertiary\",\n  \"info\",\n  \"success\",\n  \"danger\",\n  \"warning\",\n];\n\n// refKey: mirror of semantic.js / bind-plan.mjs. Solid stops zero-pad to 3 digits\n// (\"50\" -> \"050\"); scrim refs (\"500-200\") keep the \"-step\" suffix and pad the base stop.\nfunction refKey(ref) {\n  const s = String(ref);\n  const dash = s.indexOf(\"-\");\n  if (dash === -1) return s.padStart(3, \"0\");\n  return s.slice(0, dash).padStart(3, \"0\") + s.slice(dash);\n}\n\n// roleTable(n) — the 37 roles for a palette, name-substituted exactly as semantic.js /\n// bind-plan.mjs produce them: accent + on-accent keys carry the palette name; shared roles do\n// not. Refs are the canonical values from data/role-table.json (validated semantic-mapping).\n// `key` is the semantic variable name part (\"{n}/{key}\"); `light`/`dark` feed targetName.\nfunction roleTable(n) {\n  const N = n.charAt(0).toUpperCase() + n.slice(1);\n  return [\n    // 1. ACCENT — name-prefixed; prime role has empty suffix.\n    { key: n, suffix: \"\", light: \"550\", dark: \"450\" },\n    { key: n + \"Dim\", suffix: \"-dim\", light: \"650\", dark: \"700\" },\n    { key: n + \"Bright\", suffix: \"-bright\", light: \"350\", dark: \"400\" },\n    { key: n + \"Low\", suffix: \"-low\", light: \"350\", dark: \"700\" },\n    { key: n + \"High\", suffix: \"-high\", light: \"650\", dark: \"400\" },\n\n    // 2. ON-ACCENT — name-prefixed; fixed to the light end in BOTH modes (OD-001).\n    { key: \"on\" + N, suffix: \"-on-\" + n, light: \"50\", dark: \"50\" },\n    { key: \"on\" + N + \"Variant\", suffix: \"-on-\" + n + \"-variant\", light: \"200\", dark: \"200\" },\n\n    // 3. ON-SURFACE — shared.\n    { key: \"onSurface\", suffix: \"-on-surface\", light: \"950\", dark: \"50\" },\n    { key: \"onSurfaceVariant\", suffix: \"-on-surface-variant\", light: \"750\", dark: \"250\" },\n\n    // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).\n    { key: \"outline\", suffix: \"-outline\", light: \"500-600\", dark: \"500-600\" },\n    { key: \"outlineVariant\", suffix: \"-outline-variant\", light: \"500-400\", dark: \"500-400\" },\n\n    // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).\n    { key: \"container\", suffix: \"-container\", light: \"500-200\", dark: \"500-200\" },\n    { key: \"containerLow\", suffix: \"-container-low\", light: \"500-100\", dark: \"500-100\" },\n    { key: \"containerHigh\", suffix: \"-container-high\", light: \"500-300\", dark: \"500-300\" },\n\n    // 6. SCRIM — shared; 7 strengths on the 500 ramp (alpha% = step/10), mode-independent.\n    //    Full-range 5–95%: weakest..strongest = 50/100/200/400/600/800/950.\n    { key: \"scrimWeakest\", suffix: \"-scrim-weakest\", light: \"500-50\", dark: \"500-50\" },\n    { key: \"scrimWeaker\", suffix: \"-scrim-weaker\", light: \"500-100\", dark: \"500-100\" },\n    { key: \"scrimWeak\", suffix: \"-scrim-weak\", light: \"500-200\", dark: \"500-200\" },\n    { key: \"scrim\", suffix: \"-scrim\", light: \"500-400\", dark: \"500-400\" },\n    { key: \"scrimStrong\", suffix: \"-scrim-strong\", light: \"500-600\", dark: \"500-600\" },\n    { key: \"scrimStronger\", suffix: \"-scrim-stronger\", light: \"500-800\", dark: \"500-800\" },\n    { key: \"scrimStrongest\", suffix: \"-scrim-strongest\", light: \"500-950\", dark: \"500-950\" },\n\n    // 7. INVERSE — shared.\n    { key: \"inverseSurface\", suffix: \"-inverse-surface\", light: \"900\", dark: \"100\" },\n    { key: \"inverseOnSurface\", suffix: \"-inverse-on-surface\", light: \"50\", dark: \"950\" },\n\n    // 8. SURFACE — shared base surfaces.\n    { key: \"background\", suffix: \"-background\", light: \"100\", dark: \"900\" },\n    { key: \"surface\", suffix: \"-surface\", light: \"125\", dark: \"875\" },\n\n    // 9. SURFACE DIM/BRIGHT — shared; non-mirror.\n    { key: \"surfaceDimmest\", suffix: \"-surface-dimmest\", light: \"200\", dark: \"950\" },\n    { key: \"surfaceDimmer\", suffix: \"-surface-dimmer\", light: \"175\", dark: \"925\" },\n    { key: \"surfaceDim\", suffix: \"-surface-dim\", light: \"150\", dark: \"900\" },\n    { key: \"surfaceBright\", suffix: \"-surface-bright\", light: \"100\", dark: \"850\" },\n    { key: \"surfaceBrighter\", suffix: \"-surface-brighter\", light: \"75\", dark: \"825\" },\n    { key: \"surfaceBrightest\", suffix: \"-surface-brightest\", light: \"50\", dark: \"800\" },\n\n    // 10. SURFACE LOW/HIGH — shared; mirror (sum 1000).\n    { key: \"surfaceLowest\", suffix: \"-surface-lowest\", light: \"50\", dark: \"950\" },\n    { key: \"surfaceLower\", suffix: \"-surface-lower\", light: \"75\", dark: \"925\" },\n    { key: \"surfaceLow\", suffix: \"-surface-low\", light: \"100\", dark: \"900\" },\n    { key: \"surfaceHigh\", suffix: \"-surface-high\", light: \"150\", dark: \"850\" },\n    { key: \"surfaceHigher\", suffix: \"-surface-higher\", light: \"175\", dark: \"825\" },\n    { key: \"surfaceHighest\", suffix: \"-surface-highest\", light: \"200\", dark: \"800\" },\n  ];\n}\n\n// The raw-colors target a ref resolves to: \"{n}/{refKey(ref)}\" — the load-bearing grammar.\n// Identical to bind-plan.mjs targetName; guarantees membership in the canonical raw name set.\nfunction targetName(paletteName, ref) {\n  return paletteName + \"/\" + refKey(ref);\n}\n\nasync function main() {\n  const collections = await figma.variables.getLocalVariableCollectionsAsync();\n  const rawColl = collections.find((c) => c.name === RAW_COLLECTION);\n  if (!rawColl) {\n    figma.notify(\"Raw collection not found: \" + RAW_COLLECTION);\n    figma.closePlugin();\n    return;\n  }\n\n  // 1. Index raw-colors variables by name.\n  const allVars = await figma.variables.getLocalVariablesAsync();\n  const rawVars = {};\n  for (const v of allVars) {\n    if (v.variableCollectionId === rawColl.id) rawVars[v.name] = v;\n  }\n\n  // 2. Create/find the Semantic collection with Light + Dark modes.\n  let sem = collections.find((c) => c.name === SEMANTIC_COLLECTION);\n  if (!sem) sem = figma.variables.createVariableCollection(SEMANTIC_COLLECTION);\n  const lightMode = sem.modes[0].modeId;\n  const darkMode = (sem.modes[1] && sem.modes[1].modeId) || sem.addMode(\"Dark\");\n\n  // 3. For each palette and role, resolve lt/dt = rawVars[\"{n}/{refKey(...)}\"] and alias both\n  //    modes by reference (the cascade). Mirrors bind-plan.mjs.bindingPlan.\n  let bound = 0;\n  const missing = [];\n  for (const n of PALETTES) {\n    for (const r of roleTable(n)) {\n      const ltName = targetName(n, r.light);\n      const dtName = targetName(n, r.dark);\n      const lt = rawVars[ltName];\n      const dt = rawVars[dtName];\n      if (!lt) { missing.push(ltName); continue; }\n      if (!dt) { missing.push(dtName); continue; }\n\n      const semName = n + \"/\" + r.key;\n      const refreshed = await figma.variables.getLocalVariablesAsync();\n      const semVar =\n        refreshed.find((v) => v.variableCollectionId === sem.id && v.name === semName) ||\n        figma.variables.createVariable(semName, sem, \"COLOR\");\n\n      semVar.setValueForMode(lightMode, figma.variables.createVariableAlias(lt));\n      semVar.setValueForMode(darkMode, figma.variables.createVariableAlias(dt));\n      bound++;\n    }\n  }\n\n  figma.notify(\n    \"Bound \" + bound + \" roles\" + (missing.length ? (\", missing raw target: \" + missing[0]) : \"\")\n  );\n  figma.closePlugin();\n}\n\nmain();\n",
 };
 
 return { FIGMA_PLUGIN };
@@ -2007,7 +2017,7 @@ __M.model = (function(){
 const { hctToRgb, lstarFromRgb, cam16FromRgb } = __M.hct;
 const { paletteStops, STOPS, EXPORT_STOPS, DEFAULT_CONTROLS } = __M.tonal;
 const { semanticRoles, refKey, applyRoleOverrides } = __M.semantic;
-const { exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3 } = __M.exports;
+const { exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3, SCRIM_BASES, SCRIM_STEPS } = __M.exports;
 
 // The eight seed palettes (data/role-table.json `defaults`). Inlined so the
 // pure core has no file I/O and runs identically in node and the browser.
@@ -2158,7 +2168,7 @@ function rampByStop(ramp) {
   return m;
 }
 
-// resolveRoleHex — a role ref ("550" solid | "500-175" scrim) -> a display hex
+// resolveRoleHex — a role ref ("550" solid | "500-200" scrim) -> a display hex
 // for the given mode side, resolved against this palette's own ramp.
 function resolveRoleHex(ref, byStop) {
   const str = String(ref);
@@ -2168,7 +2178,7 @@ function resolveRoleHex(ref, byStop) {
     return hit ? hit.hex : "#000000";
   }
   // scrim "{base}-{step}": the base stop's solid color at alpha% = step/10
-  // (e.g. "500-175" = the 500 color at 17.5%). base is 500 for the current ramp.
+  // (e.g. "500-200" = the 500 color at 20%). base is 500 for the current ramp.
   const base = Number(str.slice(0, dash));
   const step = Number(str.slice(dash + 1));
   const hit = byStop.get(base);
@@ -2307,8 +2317,9 @@ function appThemeCSS() {
 // app-footer "{tokens} tokens" readout). Counts only enabled palettes.
 function tokenCount(doc) {
   const enabled = (doc.palettes ?? []).filter((p) => p.on !== false).length;
-  // per palette: 25 solids + 21 scrims + 37 semantic --c-* = 83.
-  return enabled * (EXPORT_STOPS.length + 3 * 7 + 37);
+  // per palette: 25 solids (EXPORT_STOPS) + scrims (SCRIM_BASES × SCRIM_STEPS) + 37 semantic --c-*.
+  // Derived from the engine constants so it can't drift (the old hard-coded 3 * 7 was stale).
+  return enabled * (EXPORT_STOPS.length + SCRIM_BASES.length * SCRIM_STEPS.length + 37);
 }
 
 // Re-exports the app needs from the core (so app.js imports one module).

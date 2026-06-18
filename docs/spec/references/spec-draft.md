@@ -124,7 +124,7 @@ interface State {
   selected: number;
 }
 interface Palette { name: string; hue: number; chroma: number; skew: number; lift: number; hueShift: number /* -60..60 edge hue rotation */; hueSameDir: boolean /* both ends same direction (|s|) vs opposite (s) */; on: boolean; }
-interface Role { key: string; suffix: string; light: Ref; dark: Ref; }  // Ref = "550" | "500-175"
+interface Role { key: string; suffix: string; light: Ref; dark: Ref; }  // Ref = "550" | "500-200"
 interface TokenLeaf { $type:'color'; $value:{colorSpace:'srgb'; components:[number,number,number]; alpha:number; hex:string}; $extensions:object; }
 ```
 Field-table convention and clamp ranges: `knowledge-02` §2 and `hydrate()` validation.

@@ -22,7 +22,7 @@
 | **`dampBias`** | Light(−)↔dark(+) asymmetry of the damping (−100..100, default 0); `+dampBias` damps the dark half more, via a mirror-symmetric per-side weight. |
 | **Skew** | Gamma warp of the tone distribution; positive lightens mid-tones (peak drifts light). |
 | **Lift** | Cosine-weighted additive L\* bump centered on stop 500. |
-| **Scrim primitive** | A *raw* semi-transparent overlay token: the palette's 500 color at alpha% = step/10, named `{base}-{step}` (e.g. `500-175` = 500 @ 17.5%). A valid **ref target**, like a solid stop. |
+| **Scrim primitive** | A *raw* semi-transparent overlay token: the palette's 500 color at alpha% = step/10, named `{base}-{step}` (e.g. `500-200` = 500 @ 20%). A valid **ref target**, like a solid stop. |
 | **Scrim role** | A *semantic role* (`scrimWeakest…scrimStrongest`, 7 per palette) whose ref points at a **scrim primitive** on the 500 ramp. NOT itself a ref target — only scrim *primitives* are. Do not conflate with *scrim primitive*. |
 | **On-color** | Foreground (text/icon) color meant to sit on a fill. `on{N}` → the 50 stop and `on{N}Variant` → the 200 stop, fixed in both modes (ADR-003). |
 | **Role** | A named semantic token (e.g. `surfaceDim`, `outline`). 37 roles per palette. |
@@ -30,8 +30,8 @@
 | **Semantic / `--c-*`** | A role token that carries the light/dark flip via `light-dark()`, aliasing two primitives. |
 | **Mode** | Light or Dark. The flip lives only in the semantic layer. |
 | **Mirror** | A light/dark mapping whose stops sum toward 1000 (e.g. `50/950`). Low/High surfaces mirror; Dim/Bright do not. |
-| **Ref** | A role's light/dark target: a solid stop `"550"` or a **scrim primitive** `"500-175"` — always a *primitive*, never another role. |
-| **`refKey`** | Normalizes a ref to padded form for names/vars (`"50"→"050"`, `"500-175"→"500-175"`). |
+| **Ref** | A role's light/dark target: a solid stop `"550"` or a **scrim primitive** `"500-200"` — always a *primitive*, never another role. |
+| **`refKey`** | Normalizes a ref to padded form for names/vars (`"50"→"050"`, `"500-200"→"500-200"`). |
 | **DTCG** | Design Tokens Community Group format (`$type`/`$value`); Figma's native import shape. |
 | **VC (viewing conditions)** | Fixed CAM16 parameters derived once at load (`makeVC`); not user-controllable. |
 | **Prime fill** | The `{n}` (prime) role's color: stop 550 in light, 450 in dark. On-colors are evaluated against it. |

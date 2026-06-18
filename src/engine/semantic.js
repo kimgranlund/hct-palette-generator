@@ -2,7 +2,7 @@
 //
 // Two-layer model: raw primitives are mode-independent; the light/dark FLIP
 // lives only here in the semantic layer. Each role declares a `light` ref and a
-// `dark` ref (a solid stop like "550" or a scrim like "500-175"). Token names and
+// `dark` ref (a solid stop like "550" or a scrim like "500-200"). Token names and
 // CSS var() references use refKey() to normalise those refs.
 //
 // `paletteName` is lowercase (e.g. "primary", "success"). Two substitutions:
@@ -17,9 +17,13 @@
 
 // Scrim ramp: the palette's 500 color at alpha% = step/10 — a translucency sub-variant of
 // the palette (so it tracks the 500 stop as hue/chroma/skew/lift change). A scrim ref is
-// "500-{step}" (e.g. "500-175" = 500 @ 17.5%). The 7 semantic scrim strengths map to these
-// stops, weakest -> strongest; outline + containers also resolve onto this 500 ramp.
-const SCRIM_STEPS = [100, 175, 250, 300, 400, 450, 550];
+// "500-{step}" (e.g. "500-200" = 500 @ 20%).
+//
+// The 7 semantic scrim STRENGTHS map onto a 7-step subset of the emitted ramp, weakest ->
+// strongest, spanning the full 5%..95% range. This is distinct from the full set of raw scrim
+// primitives EMITTED (exports.js SCRIM_STEPS = 11 steps) — the export ramp carries more steps
+// than the 7 strengths bind to. outline + containers also resolve onto the 500 ramp (below).
+const SCRIM_STRENGTH_STEPS = [50, 100, 200, 400, 600, 800, 950];
 
 // Suffix per scrim level, weakest (index 0) -> strongest (index 6).
 const SCRIM_SUFFIXES = [
@@ -46,9 +50,9 @@ const SCRIM_KEYS = [
 /**
  * Normalise a ref for use in token names / CSS var() references.
  * - Solid stops are zero-padded to 3 digits: "50" -> "050", "550" -> "550".
- * - Scrim refs keep their "-{step}" suffix and pad the base stop: "500-175" -> "500-175",
+ * - Scrim refs keep their "-{step}" suffix and pad the base stop: "500-200" -> "500-200",
  *   "50-2" -> "050-2".
- * @param {string} ref e.g. "50", "550", "500-175"
+ * @param {string} ref e.g. "50", "550", "500-200"
  * @returns {string}
  */
 export function refKey(ref) {
@@ -94,18 +98,18 @@ export function semanticRoles(paletteName) {
   role('onSurfaceVariant', '-on-surface-variant', '750', '250');
 
   // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).
-  role('outline', '-outline', '500-550', '500-550');
+  role('outline', '-outline', '500-600', '500-600');
   role('outlineVariant', '-outline-variant', '500-400', '500-400');
 
   // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).
-  role('container', '-container', '500-175', '500-175');
+  role('container', '-container', '500-200', '500-200');
   role('containerLow', '-container-low', '500-100', '500-100');
-  role('containerHigh', '-container-high', '500-250', '500-250');
+  role('containerHigh', '-container-high', '500-300', '500-300');
 
   // 6. SCRIM — shared; 7 strengths, all on the 500 ramp at alpha% = step/10.
   //    Mode-independent: light === dark === `500-${step}`. Generated via loop.
-  for (let i = 0; i < SCRIM_STEPS.length; i++) {
-    const ref = `500-${SCRIM_STEPS[i]}`;
+  for (let i = 0; i < SCRIM_STRENGTH_STEPS.length; i++) {
+    const ref = `500-${SCRIM_STRENGTH_STEPS[i]}`;
     role(SCRIM_KEYS[i], SCRIM_SUFFIXES[i], ref, ref);
   }
 

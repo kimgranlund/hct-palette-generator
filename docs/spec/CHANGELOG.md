@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 1.0 — 2026-06-18 — scrim ramp → 11 even steps (5–95%); strengths span the full range (CONTRACT change)
+
+The scrim translucency ramp changed from 7 clustered steps (`100/175/250/300/400/450/550` = 10/17.5/25/30/40/45/55%)
+to a clean **11-step even ramp**: `SCRIM_STEPS = [50,100,200,300,400,500,600,700,800,900,950]` = the 500 color at
+**5/10/20/30/40/50/60/70/80/90/95%**. This DECOUPLES two things the code conflated:
+
+- **Emitted raw scrim primitives** (`exports.js` `SCRIM_STEPS`, `role-table.json` constants) — now all **11** steps.
+- **The 7 semantic scrim STRENGTH roles** (`semantic.js` `SCRIM_STRENGTH_STEPS`) — bind to a 7-step **subset**
+  spanning the full range: weakest→strongest = `50/100/200/400/600/800/950` (5→95%). Steps `500/700/900` are
+  emitted as raw primitives but carry no strength role.
+
+Role remaps (visible tokens): the 4 disappearing steps (175/250/450/550) forced remapping the 12 scrim-using roles —
+`outline 550→600`, `container 175→200`, `containerHigh 250→300`, and the strengths as above; `outlineVariant 400`,
+`containerLow 100`, `scrim 400`… resolved to valid emitted steps. (`outlineVariant`/`containerLow` unchanged.)
+
+Folded in lockstep: `data/role-table.json` (constants `SCRIM_STEPS` + the 10 changed role refs), `src/engine/exports.js`
+(emitted set + the constants are now exported), `src/engine/semantic.js` (the strength loop now uses
+`SCRIM_STRENGTH_STEPS`; outline/container literals), `src/ui/model.mjs` (`tokenCount` now derives the scrim count from
+the engine constants — the stale `3 * 7` is gone), and the prose (`knowledge-03/04`, `glossary`, the `hpg-export-padding`
+contract example). The verifiers read `SCRIM_STEPS` from `role-table.json`, so the contract change propagates.
+
+Gate: `npm test` green (9 verifiers + headless boot). No criterion text changed — `hpg-semantic-roles` (still exactly 7
+strengths), `hpg-semantic-refs-canonical` (every ref still resolves; all role steps ∈ EXPORT_STOPS), and
+`hpg-export-padding` still hold.
+
 ## 0.9 — 2026-06-17 — OD-004 spike: the aliased-export SHAPE is gated (no behavior change)
 
 The `rawColl` opt-in already emitted the full documented name+collection alias shape

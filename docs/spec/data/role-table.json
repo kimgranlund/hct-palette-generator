@@ -63,13 +63,17 @@
       500
     ],
     "SCRIM_STEPS": [
+      50,
       100,
-      175,
-      250,
+      200,
       300,
       400,
-      450,
-      550
+      500,
+      600,
+      700,
+      800,
+      900,
+      950
     ]
   },
   "rolesPerPalette": 37,
@@ -131,8 +135,8 @@
     {
       "key": "outline",
       "suffix": "-outline",
-      "light": "500-550",
-      "dark": "500-550"
+      "light": "500-600",
+      "dark": "500-600"
     },
     {
       "key": "outlineVariant",
@@ -143,8 +147,8 @@
     {
       "key": "container",
       "suffix": "-container",
-      "light": "500-175",
-      "dark": "500-175"
+      "light": "500-200",
+      "dark": "500-200"
     },
     {
       "key": "containerLow",
@@ -155,50 +159,50 @@
     {
       "key": "containerHigh",
       "suffix": "-container-high",
-      "light": "500-250",
-      "dark": "500-250"
-    },
-    {
-      "key": "scrimWeakest",
-      "suffix": "-scrim-weakest",
-      "light": "500-100",
-      "dark": "500-100"
-    },
-    {
-      "key": "scrimWeaker",
-      "suffix": "-scrim-weaker",
-      "light": "500-175",
-      "dark": "500-175"
-    },
-    {
-      "key": "scrimWeak",
-      "suffix": "-scrim-weak",
-      "light": "500-250",
-      "dark": "500-250"
-    },
-    {
-      "key": "scrim",
-      "suffix": "-scrim",
       "light": "500-300",
       "dark": "500-300"
     },
     {
-      "key": "scrimStrong",
-      "suffix": "-scrim-strong",
+      "key": "scrimWeakest",
+      "suffix": "-scrim-weakest",
+      "light": "500-50",
+      "dark": "500-50"
+    },
+    {
+      "key": "scrimWeaker",
+      "suffix": "-scrim-weaker",
+      "light": "500-100",
+      "dark": "500-100"
+    },
+    {
+      "key": "scrimWeak",
+      "suffix": "-scrim-weak",
+      "light": "500-200",
+      "dark": "500-200"
+    },
+    {
+      "key": "scrim",
+      "suffix": "-scrim",
       "light": "500-400",
       "dark": "500-400"
     },
     {
+      "key": "scrimStrong",
+      "suffix": "-scrim-strong",
+      "light": "500-600",
+      "dark": "500-600"
+    },
+    {
       "key": "scrimStronger",
       "suffix": "-scrim-stronger",
-      "light": "500-450",
-      "dark": "500-450"
+      "light": "500-800",
+      "dark": "500-800"
     },
     {
       "key": "scrimStrongest",
       "suffix": "-scrim-strongest",
-      "light": "500-550",
-      "dark": "500-550"
+      "light": "500-950",
+      "dark": "500-950"
     },
     {
       "key": "inverseSurface",

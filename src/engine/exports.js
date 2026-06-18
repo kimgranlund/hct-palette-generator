@@ -23,8 +23,14 @@ import { semanticRoles, refKey, applyRoleOverrides } from "./semantic.js";
 // ── Constants (from data/role-table.json) ─────────────────────────────────────
 // Scrims are a 500-based translucency ramp: a scrim primitive "{n}/500-{step}" is the
 // palette's 500 color at alpha% = step/10. Only the referenced steps are emitted.
-const SCRIM_BASES = [500];
-const SCRIM_STEPS = [100, 175, 250, 300, 400, 450, 550]; // alpha% = step/10 (10,17.5,25,30,40,45,55)
+// The EMITTED raw scrim ramp: a clean 11-step translucency set over the 500 color,
+// alpha% = step/10 → 5,10,20,30,40,50,60,70,80,90,95%. This is the set of raw scrim
+// primitives every format emits; the 7 SEMANTIC scrim-strength roles bind to a 7-step
+// SUBSET of these (see semantic.js SCRIM_STRENGTH_STEPS), so some emitted steps are
+// available as raw primitives without a strength role. Exported so model.tokenCount can
+// derive the count instead of hard-coding it (was the stale `3 * 7`).
+export const SCRIM_BASES = [500];
+export const SCRIM_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
 // ── Small hand-rolled helpers ─────────────────────────────────────────────────
 
@@ -122,7 +128,7 @@ function enabledPalettes(state) {
 }
 
 // derivePalette — everything an emitter needs for one palette, computed once:
-//   slug, the 25 solid stops keyed by pad3, a stop->rgb lookup, the 21 scrims,
+//   slug, the 25 solid stops keyed by pad3, a stop->rgb lookup, the 11 scrims,
 //   the 37 resolved semantic roles, and a ref->rgb resolver shared by all formats.
 function derivePalette(palette, controls, overrides) {
   const n = slug(palette.name);
@@ -157,13 +163,13 @@ function derivePalette(palette, controls, overrides) {
     const rgb = byStop.get(base);
     scrims[base] = {};
     for (const step of SCRIM_STEPS) {
-      const alphaPct = step / 10; // 100 -> 10%, 175 -> 17.5%, 550 -> 55%
+      const alphaPct = step / 10; // 50 -> 5%, 100 -> 10%, 950 -> 95%
       const frac = step / 1000;
       scrims[base][step] = { rgb, alphaPct, frac, hex: hex8(rgb, frac) };
     }
   }
 
-  // resolveRef — a role ref ("550" solid, or "500-175" scrim) -> { rgb, frac }.
+  // resolveRef — a role ref ("550" solid, or "500-200" scrim) -> { rgb, frac }.
   // frac === 1 for a solid; for a scrim "{base}-{step}" it's step/1000 (rgb is the base's solid).
   const resolveRef = (ref) => {
     const s = String(ref);
@@ -284,7 +290,7 @@ export function exportJSON(state) {
     const stops = {};
     for (const key of Object.keys(p.stops)) stops[key] = p.stops[key].hex;
 
-    // scrims: { "500-175": {hex, alpha}, ... } — "500-{step}", alpha% = step/10.
+    // scrims: { "500-200": {hex, alpha}, ... } — "500-{step}", alpha% = step/10.
     const scrims = {};
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
@@ -308,7 +314,7 @@ export function exportJSON(state) {
 // ──────────────────────────────────────────────────────────────────────────────
 // 4. Figma DTCG — exactly the 3 named files
 // ──────────────────────────────────────────────────────────────────────────────
-// palette.tokens.json  -> RAW collection (mode Value): 25 solids + 21 scrims per palette.
+// palette.tokens.json  -> RAW collection (mode Value): 25 solids + 11 scrims per palette.
 // Light_tokens.json    -> SEMANTIC (mode Light): 37 roles RESOLVED to the LIGHT ref's color.
 // Dark_tokens.json     -> SEMANTIC (mode Dark):  37 roles RESOLVED to the DARK  ref's color.
 //

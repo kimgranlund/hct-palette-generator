@@ -46,7 +46,7 @@ const dtcgA = X.exportDTCG(C(ALL), { rawColl: "raw-colors" });
 const sa = semLeaves(dtcgA);
 const aliasOf = (l) => l.$extensions && l.$extensions["com.figma.aliasData"];
 // rawColl set → every leaf carries the FULL documented name+collection alias shape:
-// targetVariableName "{n}/{refKey}" (e.g. neutral/550, neutral/500-175) AND targetVariableSetName
+// targetVariableName "{n}/{refKey}" (e.g. neutral/550, neutral/500-200) AND targetVariableSetName
 // === the raw-colors collection. That is the shape Figma's documented aliasData fallback hierarchy
 // resolves on NATIVE import when the raw-colors collection pre-exists in the file (OD-004 spike;
 // ADR-002 re-verify 2026-06-15). The native-import cascade itself is validated end-to-end in Figma,

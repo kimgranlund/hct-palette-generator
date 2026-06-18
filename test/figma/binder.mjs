@@ -40,8 +40,22 @@ try {
   execSync(`node --check "${join(HERE, "figma-semantic-binder/code.js")}"`, { stdio: "pipe" });
 } catch (e) { FAIL("offline", `code.js failed node --check: ${String(e.stderr || e).slice(0, 120)}`); }
 
+// ── PARITY GUARD: the runtime code.js HARDCODES roleTable() (the Figma sandbox can't import the
+//    .mjs), so it's a second copy of the validated role table that node --check can't catch drifting.
+//    Load it (without running main()) and assert its derived targets EQUAL bind-plan's canonical set,
+//    so a ref can't go stale silently. (Real incident 2026-06-18: the scrim refs drifted here.) ──
+try {
+  const src = readFileSync(join(HERE, "figma-semantic-binder/code.js"), "utf8").replace(/\bmain\(\);\s*$/, "");
+  const { roleTable, refKey: rk } = new Function(src + "\nreturn { roleTable, refKey };")();
+  const runtime = new Set();
+  for (const n of NAMES) for (const r of roleTable(n)) { runtime.add(`${n}/${rk(r.light)}`); runtime.add(`${n}/${rk(r.dark)}`); }
+  const canon = new Set(P.bindingTargets(NAMES));
+  const drift = [...runtime].filter((t) => !canon.has(t)).concat([...canon].filter((t) => !runtime.has(t)));
+  if (drift.length) FAIL("parity", `runtime code.js roleTable drifted from canonical (e.g. ${drift.slice(0, 3).join(", ")})`);
+} catch (e) { FAIL("parity", `could not load/compare runtime roleTable: ${e.message}`); }
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-for (const g of ["bindings", "offline"]) {
+for (const g of ["bindings", "offline", "parity"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }

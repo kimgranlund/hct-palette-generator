@@ -5,7 +5,7 @@
 //
 // Module ESM contract (./semantic.js):
 //   semanticRoles(paletteName) -> [{ key, suffix, light, dark }]   (37 rows)
-//   refKey(ref) -> padded ref ("50"->"050", "500-175"->"500-175")
+//   refKey(ref) -> padded ref ("50"->"050", "500-200"->"500-200")
 import { readFileSync } from "node:fs";
 import * as S from "../../src/engine/semantic.js";
 
@@ -57,7 +57,7 @@ for (const k of ["surfaceDimmest", "surfaceDimmer", "surfaceDim", "surfaceBright
   if (mirror(k)) FAIL("surface-mode", `${k} must NOT mirror: ${byKey[k] && byKey[k].light}/${byKey[k] && byKey[k].dark}`);
 
 // ── refKey + palette-name substitution (success palette substitutes name, shared roles unchanged) ─
-if (S.refKey("50") !== "050" || S.refKey("500-175") !== "500-175") FAIL("refs-canonical", `refKey wrong: ${S.refKey("50")}, ${S.refKey("500-175")}`);
+if (S.refKey("50") !== "050" || S.refKey("500-200") !== "500-200") FAIL("refs-canonical", `refKey wrong: ${S.refKey("50")}, ${S.refKey("500-200")}`);
 const succ = S.semanticRoles("success");
 if (!succ.some((r) => r.key === "onSuccess") || !succ.some((r) => r.key === "successDim") || !succ.some((r) => r.key === "surfaceDim"))
   FAIL("roles", "palette-name substitution wrong for 'success' (expect onSuccess, successDim, shared surfaceDim)");

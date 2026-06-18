@@ -16,7 +16,7 @@
 //     (data/role-table.json: "{n}/{pad3(stop)}" UNION "{n}/{base}-{step}"). No string is hand-
 //     built — refKey is the single normaliser shared with the semantic layer, so padding and
 //     scrim grammar cannot drift ("50"->"050", never the dangling "50"; a scrim is
-//     "500-{step}" with step an EXPORT_STOP, e.g. "500-175").
+//     "500-{step}" with step an EXPORT_STOP, e.g. "500-200").
 //
 //   bindingPlan(paletteNames) -> [{ semanticVar, lightTarget, darkTarget }, ...]
 //     One entry per (palette, role) in role order, no de-dup: the explicit Light/Dark alias
@@ -31,7 +31,7 @@ import { semanticRoles, refKey } from "../../src/engine/semantic.js";
  * The raw-colors target a single ref resolves to for a palette: "{n}/{refKey(ref)}".
  * Centralised so light and dark targets are normalised identically.
  * @param {string} paletteName lowercase palette name (e.g. "primary")
- * @param {string} ref a role ref: a solid stop ("550") or a scrim ("500-175")
+ * @param {string} ref a role ref: a solid stop ("550") or a scrim ("500-200")
  * @returns {string}
  */
 function targetName(paletteName, ref) {

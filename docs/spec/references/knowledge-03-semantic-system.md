@@ -41,11 +41,11 @@ RAW / PRIMITIVES  (mode-independent)         SEMANTIC  (--c-* / role keys)
 A role's `light` / `dark` field is a **ref**, one of:
 
 - **Solid stop**: `"550"` → the palette's stop-550 color (opaque).
-- **Scrim**: `"500-175"` → the palette's 500 color at alpha% = step/10 (here 17.5%). A scrim
+- **Scrim**: `"500-200"` → the palette's 500 color at alpha% = step/10 (here 20%). A scrim
   is a translucency sub-variant of the 500 stop.
 
 `refKey(ref)` pads to 3 digits and preserves the scrim suffix: `"50"→"050"`,
-`"500-175"→"500-175"`. Used for token names and CSS `var()` references everywhere.
+`"500-200"→"500-200"`. Used for token names and CSS `var()` references everywhere.
 
 ## 3. The 37 roles (groups)
 
@@ -56,8 +56,8 @@ Full table with exact `light`/`dark` refs: `data/role-table.json` → `roleTable
 | Accent | `{n}` (prime), `{n}Dim`, `{n}Bright`, `{n}Low`, `{n}High` | prime = 550 light / 450 dark |
 | On-accent | `on{N}`, `on{N}Variant` | fixed light; see §4 |
 | On-surface | `onSurface`, `onSurfaceVariant` | 950/50 and 750/250 |
-| Outline | `outline`, `outlineVariant` | on the 500 scrim ramp (500-550, 500-400) |
-| Container | `container`, `containerLow`, `containerHigh` | on the 500 scrim ramp (500-175/100/250) |
+| Outline | `outline`, `outlineVariant` | on the 500 scrim ramp (500-600, 500-400) |
+| Container | `container`, `containerLow`, `containerHigh` | on the 500 scrim ramp (500-200/100/300) |
 | Scrim | `scrimWeakest` … `scrimStrongest` (7) | on the 500 ramp; see §5 |
 | Inverse | `inverseSurface`, `inverseOnSurface` | 900/100, 50/950 |
 | Surface | `background`, `surface` | 100/900, 125/875 |
@@ -87,11 +87,12 @@ Both are fixed to the light end in *both* modes, for *all* palettes.
 ## 5. Scrims
 
 - **Scrim ramp**: a single **500-based** translucency ramp. A scrim primitive is `500-{step}`
-  = the palette's 500 color at **alpha% = step/10** (so `500-175` = 500 @ 17.5%). `SCRIM_BASES = [500]`,
-  `SCRIM_STEPS = [100, 175, 250, 300, 400, 450, 550]` (the referenced steps; alpha 10–55%).
+  = the palette's 500 color at **alpha% = step/10** (so `500-200` = 500 @ 20%). `SCRIM_BASES = [500]`,
+  `SCRIM_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]` — the 11 **emitted** steps
+  (alpha 5–95%). The 7 strength roles bind to a 7-step subset; some emitted steps carry no role.
 - **All 12 scrim-using roles** resolve onto this ramp, mode-independent (light === dark): the 7
-  `scrim*` strengths (weakest→strongest = steps 100/175/250/300/400/450/550), plus `outline` (550),
-  `outlineVariant` (400), and `container/Low/High` (175/100/250).
+  `scrim*` strengths (weakest→strongest = steps 50/100/200/400/600/800/950, the full 5–95% range),
+  plus `outline` (600), `outlineVariant` (400), and `container/Low/High` (200/100/300).
 
 > **A scrim is a sub-variant of the palette** — based on the 500 stop, it tracks the palette as
 > hue/chroma/skew/lift change. This 500-ramp revision **supersedes** the former 3-base model

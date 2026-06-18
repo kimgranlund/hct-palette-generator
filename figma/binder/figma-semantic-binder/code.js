@@ -33,7 +33,7 @@ const PALETTES = [
 ];
 
 // refKey: mirror of semantic.js / bind-plan.mjs. Solid stops zero-pad to 3 digits
-// ("50" -> "050"); scrim refs ("500-175") keep the "-step" suffix and pad the base stop.
+// ("50" -> "050"); scrim refs ("500-200") keep the "-step" suffix and pad the base stop.
 function refKey(ref) {
   const s = String(ref);
   const dash = s.indexOf("-");
@@ -64,22 +64,23 @@ function roleTable(n) {
     { key: "onSurfaceVariant", suffix: "-on-surface-variant", light: "750", dark: "250" },
 
     // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).
-    { key: "outline", suffix: "-outline", light: "500-550", dark: "500-550" },
+    { key: "outline", suffix: "-outline", light: "500-600", dark: "500-600" },
     { key: "outlineVariant", suffix: "-outline-variant", light: "500-400", dark: "500-400" },
 
     // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).
-    { key: "container", suffix: "-container", light: "500-175", dark: "500-175" },
+    { key: "container", suffix: "-container", light: "500-200", dark: "500-200" },
     { key: "containerLow", suffix: "-container-low", light: "500-100", dark: "500-100" },
-    { key: "containerHigh", suffix: "-container-high", light: "500-250", dark: "500-250" },
+    { key: "containerHigh", suffix: "-container-high", light: "500-300", dark: "500-300" },
 
     // 6. SCRIM — shared; 7 strengths on the 500 ramp (alpha% = step/10), mode-independent.
-    { key: "scrimWeakest", suffix: "-scrim-weakest", light: "500-100", dark: "500-100" },
-    { key: "scrimWeaker", suffix: "-scrim-weaker", light: "500-175", dark: "500-175" },
-    { key: "scrimWeak", suffix: "-scrim-weak", light: "500-250", dark: "500-250" },
-    { key: "scrim", suffix: "-scrim", light: "500-300", dark: "500-300" },
-    { key: "scrimStrong", suffix: "-scrim-strong", light: "500-400", dark: "500-400" },
-    { key: "scrimStronger", suffix: "-scrim-stronger", light: "500-450", dark: "500-450" },
-    { key: "scrimStrongest", suffix: "-scrim-strongest", light: "500-550", dark: "500-550" },
+    //    Full-range 5–95%: weakest..strongest = 50/100/200/400/600/800/950.
+    { key: "scrimWeakest", suffix: "-scrim-weakest", light: "500-50", dark: "500-50" },
+    { key: "scrimWeaker", suffix: "-scrim-weaker", light: "500-100", dark: "500-100" },
+    { key: "scrimWeak", suffix: "-scrim-weak", light: "500-200", dark: "500-200" },
+    { key: "scrim", suffix: "-scrim", light: "500-400", dark: "500-400" },
+    { key: "scrimStrong", suffix: "-scrim-strong", light: "500-600", dark: "500-600" },
+    { key: "scrimStronger", suffix: "-scrim-stronger", light: "500-800", dark: "500-800" },
+    { key: "scrimStrongest", suffix: "-scrim-strongest", light: "500-950", dark: "500-950" },
 
     // 7. INVERSE — shared.
     { key: "inverseSurface", suffix: "-inverse-surface", light: "900", dark: "100" },

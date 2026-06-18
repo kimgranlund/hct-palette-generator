@@ -35,7 +35,7 @@ All formats operate over **enabled** palettes (`palette.on`) and **export stops*
   /* {Name} — cam16 hue {h}°; flat mode-independent RAW primitives (--c_ underscore) */
   --c_{n}-050: {hex};            ... --c_{n}-950: {hex};
   /* scrims (the 500 ramp; alpha% = step/10) */
-  --c_{n}-500-100: {hex8};  ...  --c_{n}-500-550: {hex8};
+  --c_{n}-500-50: {hex8};  ...  --c_{n}-500-950: {hex8};
   /* SEMANTIC roles (--c- hyphen) -> light-dark of two raw primitives */
   --c-{n}{suffix}: light-dark(var(--c_{n}-{refKey(light)}), var(--c_{n}-{refKey(dark)}));
 }
@@ -69,7 +69,7 @@ and both resolved hexes.
 
 `download()` emits `figma-tokens.zip` containing:
 
-- `palette.tokens.json` — **raw** collection, mode `Value`. Solid stops + 21 scrims per
+- `palette.tokens.json` — **raw** collection, mode `Value`. Solid stops + 11 scrims per
   palette as resolved `colorLeaf`s.
 - `Light_tokens.json` — **semantic**, mode `Light`. Every role resolved to a `colorLeaf`.
 - `Dark_tokens.json` — **semantic**, mode `Dark`.

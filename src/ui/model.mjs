@@ -29,6 +29,8 @@ import {
   exportJSON,
   exportDTCG,
   exportUI3,
+  SCRIM_BASES,
+  SCRIM_STEPS,
 } from "../engine/exports.js";
 
 // The eight seed palettes (data/role-table.json `defaults`). Inlined so the
@@ -180,7 +182,7 @@ function rampByStop(ramp) {
   return m;
 }
 
-// resolveRoleHex — a role ref ("550" solid | "500-175" scrim) -> a display hex
+// resolveRoleHex — a role ref ("550" solid | "500-200" scrim) -> a display hex
 // for the given mode side, resolved against this palette's own ramp.
 function resolveRoleHex(ref, byStop) {
   const str = String(ref);
@@ -190,7 +192,7 @@ function resolveRoleHex(ref, byStop) {
     return hit ? hit.hex : "#000000";
   }
   // scrim "{base}-{step}": the base stop's solid color at alpha% = step/10
-  // (e.g. "500-175" = the 500 color at 17.5%). base is 500 for the current ramp.
+  // (e.g. "500-200" = the 500 color at 20%). base is 500 for the current ramp.
   const base = Number(str.slice(0, dash));
   const step = Number(str.slice(dash + 1));
   const hit = byStop.get(base);
@@ -329,8 +331,9 @@ export function appThemeCSS() {
 // app-footer "{tokens} tokens" readout). Counts only enabled palettes.
 export function tokenCount(doc) {
   const enabled = (doc.palettes ?? []).filter((p) => p.on !== false).length;
-  // per palette: 25 solids + 21 scrims + 37 semantic --c-* = 83.
-  return enabled * (EXPORT_STOPS.length + 3 * 7 + 37);
+  // per palette: 25 solids (EXPORT_STOPS) + scrims (SCRIM_BASES × SCRIM_STEPS) + 37 semantic --c-*.
+  // Derived from the engine constants so it can't drift (the old hard-coded 3 * 7 was stale).
+  return enabled * (EXPORT_STOPS.length + SCRIM_BASES.length * SCRIM_STEPS.length + 37);
 }
 
 // Re-exports the app needs from the core (so app.js imports one module).
