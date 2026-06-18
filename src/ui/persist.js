@@ -38,9 +38,12 @@ export const DOMAINS = {
   // top-level State
   curve: { kind: "enum", values: ["linear", "sine", "cubic", "logistic", "exp"], default: "logistic" },
   tension: { kind: "number", min: 0, max: 100 },
-  lmin: { kind: "number", min: 0, max: 40 },
-  lmax: { kind: "number", min: 60, max: 100 },
-  damp: { kind: "number", min: 0, max: 100 },
+  // defaults so an ABSENT field hydrates to the sensible value, NOT the domain floor: a config that
+  // omits these (e.g. a hand-authored or partial import) otherwise gets lmax 60 / lmin 0 / damp 0 —
+  // which caps the whole ramp dark. (Present in-domain values still round-trip exactly; ?? only fills null.)
+  lmin: { kind: "number", min: 0, max: 40, default: 5 },
+  lmax: { kind: "number", min: 60, max: 100, default: 100 },
+  damp: { kind: "number", min: 0, max: 100, default: 80 },
   // differential damping curve — defaults reproduce the legacy edge damp, and a
   // doc that predates these fields hydrates to the default (not the floor).
   dampCurve: { kind: "number", min: 0.5, max: 4, default: 1.5 },
@@ -150,9 +153,9 @@ export function hydrate(snapshot) {
   return {
     curve: clampEnum(s.curve, DOMAINS.curve.values, DOMAINS.curve.default),
     tension: clampNumber(s.tension, DOMAINS.tension.min, DOMAINS.tension.max),
-    lmin: clampNumber(s.lmin, DOMAINS.lmin.min, DOMAINS.lmin.max),
-    lmax: clampNumber(s.lmax, DOMAINS.lmax.min, DOMAINS.lmax.max),
-    damp: clampNumber(s.damp, DOMAINS.damp.min, DOMAINS.damp.max),
+    lmin: clampNumber(s.lmin ?? DOMAINS.lmin.default, DOMAINS.lmin.min, DOMAINS.lmin.max),
+    lmax: clampNumber(s.lmax ?? DOMAINS.lmax.default, DOMAINS.lmax.min, DOMAINS.lmax.max),
+    damp: clampNumber(s.damp ?? DOMAINS.damp.default, DOMAINS.damp.min, DOMAINS.damp.max),
     dampCurve: clampNumber(s.dampCurve ?? DOMAINS.dampCurve.default, DOMAINS.dampCurve.min, DOMAINS.dampCurve.max),
     dampAmp: clampNumber(s.dampAmp ?? DOMAINS.dampAmp.default, DOMAINS.dampAmp.min, DOMAINS.dampAmp.max),
     dampBias: clampNumber(s.dampBias ?? DOMAINS.dampBias.default, DOMAINS.dampBias.min, DOMAINS.dampBias.max),

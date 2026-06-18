@@ -56,6 +56,14 @@ if (!deepEq(hyd2.palettes[0].chroma, base.palettes[0].chroma)) FAIL("clamp", "cl
   // and the whole hydrated doc is byte-identical to hydrating the explicit-defaults doc
   if (!deepEq(h, U.hydrate(U.serialize(canon))))
     FAIL("field-default", "pre-0.6 doc did not hydrate byte-identically to the explicit-defaults doc");
+
+  // a config OMITTING lmin/lmax/damp (e.g. a hand-authored / partial import) hydrates to their sensible
+  // DEFAULTS (5/100/80), NOT the domain floors (0/60/0) which would cap the ramp dark.
+  const partial = U.serialize(inDomainState());
+  delete partial.lmin; delete partial.lmax; delete partial.damp;
+  const hp = U.hydrate(partial);
+  if (hp.lmin !== 5 || hp.lmax !== 100 || hp.damp !== 80)
+    FAIL("field-default", `absent lmin/lmax/damp hydrated to ${hp.lmin}/${hp.lmax}/${hp.damp}, want 5/100/80 (not the domain floors)`);
 }
 
 // ── hpg-export-theme-invariant: exporters ignore state.theme ──────────────────────────────
