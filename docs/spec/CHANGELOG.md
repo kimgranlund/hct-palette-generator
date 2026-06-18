@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.10 — 2026-06-18 — gallery: "Your Palettes" updated-time becomes a preview tag
+
+The relative updated-time (`ago(rec.updated)`) on your own gallery tiles moves out of the meta row
+into the preview overlay — the same bottom-right slot a preset tile uses for its `preset` badge
+(reusing `.tile-tag.tile-preset`). Count stays bottom-left, delete stays top-right (no collision),
+and the meta row keeps just the name, matching the preset tiles' layout. Renders uppercase
+(`2H AGO`) like the other tile tags. UI-only — `src/ui/app.js` (`buildTiles`).
+
 ## 1.9 — 2026-06-18 — branding: "Color Tokens by NONOUN" + NONOUN favicon / logo mark
 
 The running app is now branded **Color Tokens by NONOUN** (the codebase / spec keep the internal

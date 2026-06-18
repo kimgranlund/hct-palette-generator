@@ -3086,9 +3086,9 @@ class HctApp extends HTMLElement {
       const tile = h(
         "button",
         { class: "set-tile", onclick: () => this.openSet(rec.id) },
-        // the palette-count rides the preview as a tag (bottom-left); the delete button overlays
-        // the preview top-right (it keeps pointer-events + stopPropagation so it still deletes
-        // rather than opening the set). The meta row below keeps the name + timestamp.
+        // tags ride the preview: count bottom-left, the updated-time bottom-right (the slot a preset
+        // tile uses for its "preset" badge), and the delete button top-right (it keeps pointer-events
+        // + stopPropagation so it still deletes rather than opening the set). The meta row keeps the name.
         h(
           "div",
           { class: "set-thumb" },
@@ -3106,12 +3106,12 @@ class HctApp extends HTMLElement {
             icon("trash", { size: 13 }),
           ),
           h("span", { class: "tile-tag tile-count" }, `${enabled.length} ${enabled.length === 1 ? "palette" : "palettes"}`),
+          h("span", { class: "tile-tag tile-preset" }, ago(rec.updated)),
         ),
         h(
           "div",
           { class: "set-meta" },
           h("div", { class: "nm" }, rec.name),
-          h("div", { class: "sub" }, ago(rec.updated)),
         ),
       );
       return tile;
