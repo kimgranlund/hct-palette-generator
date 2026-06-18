@@ -1,6 +1,6 @@
 name: Deploy demo to GitHub Pages
 
-# Publishes the dependency-free single-file build (dist/hct-palette-generator.html)
+# Publishes the dependency-free single-file build (dist/nonoun-color-tokens.html)
 # as the site root, so the public repo has a one-click live demo.
 
 on:
@@ -37,7 +37,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp dist/hct-palette-generator.html _site/index.html
+          cp dist/nonoun-color-tokens.html _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

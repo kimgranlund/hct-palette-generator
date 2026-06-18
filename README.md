@@ -1,9 +1,9 @@
-# HCT Palette Generator
+# Color Tokens by NONOUN
 
-[![CI](https://github.com/kimgranlund/hct-palette-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/kimgranlund/hct-palette-generator/actions/workflows/ci.yml)
-[![Live demo](https://img.shields.io/badge/demo-live-2b8a3e)](https://kimgranlund.github.io/hct-palette-generator/)
+[![CI](https://github.com/kimgranlund/nonoun-color-tokens/actions/workflows/ci.yml/badge.svg)](https://github.com/kimgranlund/nonoun-color-tokens/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-2b8a3e)](https://kimgranlund.github.io/nonoun-color-tokens/)
 
-**▶ [Try it live](https://kimgranlund.github.io/hct-palette-generator/)** — the dependency-free,
+**▶ [Try it live](https://kimgranlund.github.io/nonoun-color-tokens/)** — the dependency-free,
 single-file build, served straight from GitHub Pages. (It's the very same `.html` you get from a
 local build; download it and it runs offline from `file://`.)
 
@@ -38,8 +38,8 @@ npm run preview    # serve the built dist/
 
 `npm run build` produces:
 - `dist/` — the Vite-built web app.
-- `dist/hct-palette-generator.html` — a dependency-free **offline single-file** build (open it
-  directly). This is the artifact published to the [live demo](https://kimgranlund.github.io/hct-palette-generator/).
+- `dist/nonoun-color-tokens.html` — a dependency-free **offline single-file** build (open it
+  directly). This is the artifact published to the [live demo](https://kimgranlund.github.io/nonoun-color-tokens/).
 - `figma/plugin/ui.html` — the Figma plugin UI (the bundled app + a postMessage bridge).
 
 ## Test

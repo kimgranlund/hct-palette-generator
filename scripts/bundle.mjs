@@ -55,5 +55,5 @@ const html = `<!doctype html>
 <script type="module">
 ${out}</script></body></html>`;
 mkdirSync(`${ROOT}/dist`, { recursive: true });
-writeFileSync(`${ROOT}/dist/hct-palette-generator.html`, html);
-console.log("wrote dist/hct-palette-generator.html", (html.length / 1024).toFixed(1) + " KB");
+writeFileSync(`${ROOT}/dist/nonoun-color-tokens.html`, html);
+console.log("wrote dist/nonoun-color-tokens.html", (html.length / 1024).toFixed(1) + " KB");

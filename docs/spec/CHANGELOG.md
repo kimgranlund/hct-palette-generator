@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 1.11 — 2026-06-18 — rename product identifiers + git repo → nonoun-color-tokens
+
+Aligns the build/package/repo identifiers with the product name and the renamed folder:
+
+- `package.json` `name` → `nonoun-color-tokens` (+ description).
+- Figma plugin `manifest.json` `id` → `nonoun-color-tokens` (note: Figma keys a plugin by `id`, so a
+  prior dev import registers as a separate plugin; re-import is harmless).
+- Build artifact `dist/hct-palette-generator.html` → `dist/nonoun-color-tokens.html`, lockstep across
+  `bundle.mjs`, `gen-figma-ui.mjs` (reads the bundle), `pages.yml` (publishes it), and the doc refs
+  (decision-records, parity-checklist).
+- README title → "Color Tokens by NONOUN"; CI/demo badge + Pages URLs → the renamed repo.
+- **GitHub repo** renamed `hct-palette-generator` → `nonoun-color-tokens` (GitHub keeps a redirect from
+  the old URL; the local remote was updated).
+
+**Deliberately NOT renamed** (each has a real reason — flagged for a follow-up call):
+- `STORAGE_KEY = "hct-palette-state-v1"` (+ its `-sets` / `-project` derivatives) — renaming orphans
+  every saved palette in users' localStorage. Keep, or rename WITH a one-time migration.
+- The spec-cell id `spec.system.hct-palette-generator-spec` (SKILL `name:`, decomposition, the TDD doc)
+  — the engine/methodology identity; "HCT" is the color model the engine is built on.
+- The Figma binder sub-plugin (`hct-semantic-binder` / "HCT Semantic Binder") — a separate tool.
+- The HCT engine symbols (`hctToRgb`, …) and the `<hct-app>` custom element — "HCT" names the color
+  space; renaming the element would churn CSS/DOM/tests for no product benefit.
+
+No engine/token/role/export behavior change.
+
 ## 1.10 — 2026-06-18 — gallery: "Your Palettes" updated-time becomes a preview tag
 
 The relative updated-time (`ago(rec.updated)`) on your own gallery tiles moves out of the meta row

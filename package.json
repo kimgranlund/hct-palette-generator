@@ -1,7 +1,7 @@
 {
-  "name": "hct-palette-generator",
+  "name": "nonoun-color-tokens",
   "version": "1.0.0",
-  "description": "Perceptually-even HCT color-palette generator — pure engine, <hct-app> web component, and Figma plugin.",
+  "description": "Color Tokens by NONOUN — a perceptually-even color-palette + semantic-token generator built on the HCT color space (pure engine, web component, Figma plugin).",
   "type": "module",
   "license": "MIT",
   "scripts": {
