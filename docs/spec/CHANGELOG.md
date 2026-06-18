@@ -13,9 +13,14 @@ so exactly one exists per side): while its pane is OPEN it hugs that pane's own 
 canvas-header (left edge / right edge) so there's always a visible affordance to bring the pane
 back. `aria-pressed` + `.on` track "pane shown".
 
+A collapsed pane now clips to a TRUE 0 width: the panes are grid items, whose default
+`min-width: auto` (= content min-content) kept a collapsed pane from shrinking below its cards'
+width, so they overflowed the 0 track and bled into the canvas. Fixed with `min-width: 0` on the
+panes + a collapse-state `padding/border` reset (border-box can't compress those into a 0 width).
+
 UI-only — no State field, no persistence, no token/role/collection change. `src/ui/app.js` +
-`styles.css` (`.pane-toggle`, `.pane-head`); headless-boot `(ii)` covers the toggles, their
-header↔canvas-header placement per state, the keys, and the type-target guard.
+`styles.css` (`.pane-toggle`, `.pane-head`, the collapse clip); headless-boot `(ii)` covers the
+toggles, their header↔canvas-header placement per state, the keys, and the type-target guard.
 
 ## 1.2 — 2026-06-18 — scrim STRENGTH ladder → sequential 5–60% (was full-range 5–95%)
 
