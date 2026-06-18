@@ -3821,17 +3821,20 @@ class HctApp extends HTMLElement {
     this.paintCanvasFooter();
   }
 
-  // canvasBg — the canvas backdrop neutral, driven by the GLOBAL tonal range:
-  // light preview sits at L*=lmax (the light end of every ramp), dark preview at
-  // L*=lmin (the dark end), so the backdrop tracks the extremes the ramps are
-  // generated to. chroma 0 -> the engine's gray branch -> a [v,v,v] neutral.
+  // canvasBg — the canvas backdrop = the SELECTED palette's EDGE color: its light end (the 050 stop)
+  // in light preview, its dark end (the 950 stop) in dark preview. So the backdrop carries that
+  // palette's own hue at the extreme (vs. the old neutral gray), and follows BOTH palette selection
+  // (selectPalette → render) and lmin/lmax (which set the edge tones). At lmax=100 the 050 stop is
+  // pure white by the white-endpoint guarantee, so the light backdrop reads white until lmax is lowered.
+  // Falls back to a neutral gray at the tonal extreme if no palette/ramp is available yet.
   canvasBg() {
-    const L = this.canvasTheme === "dark"
-      ? (this.doc.lmin ?? 5)
-      : (this.doc.lmax ?? 100);
-    const v = hctToRgb(0, 0, L).rgb[0];
-    const hx = v.toString(16).padStart(2, "0").toUpperCase();
-    return "#" + hx + hx + hx;
+    const v = this._view || projectView(this.doc);
+    const pal = v && v.palettes[this.selectedIndex()];
+    const stop = pal && pal.ramp.find((s) => s.stop === (this.canvasTheme === "dark" ? 950 : 50));
+    if (stop) return stop.hex;
+    const L = this.canvasTheme === "dark" ? (this.doc.lmin ?? 5) : (this.doc.lmax ?? 100);
+    const g = hctToRgb(0, 0, L).rgb[0].toString(16).padStart(2, "0").toUpperCase();
+    return "#" + g + g + g;
   }
 
   // The canvas IS the 2D pannable space; the ramp rows ARE the palette navigator. The Mapping
