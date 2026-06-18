@@ -190,16 +190,23 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   font-variant-numeric: tabular-nums;
 }
+/* both tags sit along the bottom of the preview: count bottom-left, preset bottom-right. */
 .tile-tag.tile-count { left: 8px; bottom: 8px; }
-.tile-tag.tile-preset { right: 8px; top: 8px; }
+.tile-tag.tile-preset { right: 8px; bottom: 8px; }
+/* the delete button overlays the preview top-right (same scrim language as the tags, but
+   interactive — it carries its own click + stopPropagation, so it stays pointer-events:auto). */
+.set-thumb .del {
+  position: absolute; top: 6px; right: 6px;
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 999px;
+  font-size: 12px; line-height: 1; cursor: pointer;
+  background: rgba(0, 0, 0, .55); color: #fff;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.set-thumb .del:hover { background: var(--danger); }
 .set-meta { padding: 10px 12px; border-top: 1px solid var(--line-2); }
 .set-meta .nm { font-weight: 600; }
 .set-meta .sub { color: var(--ink-dim); font-size: 11.5px; margin-top: 2px; display: flex; gap: 6px; align-items: center; }
-.set-meta .del {
-  float: right; color: var(--ink-faint); padding: 0 4px; border-radius: 4px;
-  font-size: 13px;
-}
-.set-meta .del:hover { color: var(--danger); background: var(--line-2); }
 
 /* Travel-presets shelf: read-only tiles (no delete); reuse .set-tile. The "preset" tag now rides the preview. */
 .gallery-title .title-count { color: var(--ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }

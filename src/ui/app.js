@@ -575,18 +575,13 @@ class HctApp extends HTMLElement {
       const tile = h(
         "button",
         { class: "set-tile", onclick: () => this.openSet(rec.id) },
-        // the palette-count rides the preview as a tag (overlaid bottom-left); the meta row
-        // below keeps the name + timestamp. tile-tags are pointer-events:none so the tile
-        // button still receives the click.
+        // the palette-count rides the preview as a tag (bottom-left); the delete button overlays
+        // the preview top-right (it keeps pointer-events + stopPropagation so it still deletes
+        // rather than opening the set). The meta row below keeps the name + timestamp.
         h(
           "div",
           { class: "set-thumb" },
           strip,
-          h("span", { class: "tile-tag tile-count" }, `${enabled.length} ${enabled.length === 1 ? "palette" : "palettes"}`),
-        ),
-        h(
-          "div",
-          { class: "set-meta" },
           h(
             "span",
             {
@@ -599,6 +594,11 @@ class HctApp extends HTMLElement {
             },
             "🗑",
           ),
+          h("span", { class: "tile-tag tile-count" }, `${enabled.length} ${enabled.length === 1 ? "palette" : "palettes"}`),
+        ),
+        h(
+          "div",
+          { class: "set-meta" },
           h("div", { class: "nm" }, rec.name),
           h("div", { class: "sub" }, ago(rec.updated)),
         ),
@@ -645,7 +645,7 @@ class HctApp extends HTMLElement {
       return h(
         "button",
         { class: "set-tile preset", title: `Open a copy of “${preset.name}”`, onclick: () => this.openConfigAsSet(preset, `Opened “${preset.name}”`) },
-        // both the "preset" tag (top-right) and the palette-count (bottom-left) ride the preview;
+        // both the "preset" tag (bottom-right) and the palette-count (bottom-left) ride the preview;
         // the meta row below carries just the name.
         h(
           "div",

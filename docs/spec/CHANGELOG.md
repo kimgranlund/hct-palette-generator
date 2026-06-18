@@ -5,10 +5,12 @@
 The gallery tile's palette count (`N palettes`) and the presets shelf's `preset` badge now ride
 the preview strip as **tags** (overlaid pills) instead of sitting in the meta row below. The count
 gets the same pill treatment as the preset badge — a shared `.tile-tag` (translucent dark scrim +
-white text, `pointer-events:none` so the tile button still takes the click): count bottom-left,
-`preset` top-right. The meta row keeps the name (+ timestamp/delete on your own sets). UI-only —
-no data/export change; the `.set-tile.preset` class is unchanged so the `(hh)` preset tests still
-key off it. `src/ui/app.js` (`buildTiles`/`buildPresetTiles`) + `styles.css` (`.tile-tag`).
+white text, `pointer-events:none` so the tile button still takes the click), both **bottom-justified**:
+count bottom-left, `preset` bottom-right. The delete button (your own sets) moves out of the meta row
+to **overlay the preview top-right** as a scrim circle (interactive — keeps its click + stopPropagation;
+turns `--danger` on hover). The meta row keeps the name (+ timestamp). UI-only — no data/export change;
+the `.set-tile.preset` class is unchanged so the `(hh)` preset tests still key off it.
+`src/ui/app.js` (`buildTiles`/`buildPresetTiles`) + `styles.css` (`.tile-tag`, `.set-thumb .del`).
 
 ## 1.4 — 2026-06-18 — canvas backdrop uses the 100 / 900 near-edge stop (was 050 / 950)
 
