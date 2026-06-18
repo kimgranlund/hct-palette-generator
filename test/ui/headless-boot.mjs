@@ -421,6 +421,29 @@ ok(app.canvasBg() === edgeHex("dark"), `(j4) dark canvas bg = the selected palet
 // a LIVE drag of lmin repaints the backdrop via liveRefresh (no full render), still from the palette's 900.
 app.doc.lmin = 20; app.liveRefresh(); flushRaf();
 ok(app.querySelector(".canvas-area").style.getPropertyValue("--canvas-bg") === edgeHex("dark"), `(j5) liveRefresh repaints --canvas-bg from the palette's 900 stop (got ${app.querySelector(".canvas-area").style.getPropertyValue("--canvas-bg")})`);
+// (j6) a click on EMPTY canvas (not a ramp-row) clears the selection → backdrop reverts to neutral gray.
+app.canvasTheme = "light"; app.doc.lmax = 90; app.canvasView = "palettes"; app.selectPalette(0); app.render(); flushRaf();
+const _selBg = app.canvasBg();
+const _areaJ = app.querySelector(".canvas-area");
+_areaJ.dispatch("click", { target: _areaJ });            // target = the area itself = empty canvas
+ok(app.sel.kind === "none", "(j6) clicking empty canvas clears the palette selection (kind:none)");
+const _deBg = app.canvasBg();
+ok(/^#([0-9A-F]{2})\1\1$/.test(_deBg) && _deBg !== _selBg, `(j6b) deselected → default neutral gray backdrop (got ${_deBg}, was ${_selBg})`);
+// (j7) selecting a palette again restores its near-edge backdrop.
+app.selectPalette(0); app.render(); flushRaf();
+ok(app.canvasBg() === edgeHex("light"), `(j7) re-selecting restores the palette near-edge backdrop (got ${app.canvasBg()})`);
+// (j8) each palette ROW container is tinted with that palette's OWN near-edge stop — 150 in light
+//      canvas preview, 850 in dark (symmetric, so the var(--ink) name text stays readable on it).
+app.canvasTheme = "light"; app.render(); flushRaf();
+const _stopHex = (pi, stop) => _pvJ(app.doc).palettes[pi].ramp.find((s) => s.stop === stop).hex;
+const _row0 = app.querySelectorAll(".ramp-row[data-pi]")[0];
+const _c150 = _stopHex(Number(_row0.dataset.pi), 150);
+ok((_row0.getAttribute("style") || "").includes(_c150), `(j8) light preview: container row painted with the palette's 150 stop (${_c150}; got "${_row0.getAttribute("style")}")`);
+app.canvasTheme = "dark"; app.render(); flushRaf();
+const _row0d = app.querySelectorAll(".ramp-row[data-pi]")[0];
+const _c850 = _stopHex(Number(_row0d.dataset.pi), 850);
+ok((_row0d.getAttribute("style") || "").includes(_c850), `(j8b) dark preview: container row painted with the palette's 850 stop, not 150 (${_c850}; got "${_row0d.getAttribute("style")}")`);
+app.canvasTheme = "light"; app.render(); flushRaf();
 
 // ── (k) live example card present on ALL 3 tabs, painted from selected roles ──────────
 const { projectView: _pv } = await import("../../src/ui/model.mjs");

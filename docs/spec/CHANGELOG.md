@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 1.7 — 2026-06-18 — editor: palette-container tint (150/850) + click-empty-canvas to deselect
+
+Two canvas-navigator tweaks (`app.js`, UI-only — no token/export/persistence change):
+
+- **Container tint.** Each palette ROW (`.ramp-row`, both the Palettes and Scrims scenes) is now
+  washed with that palette's OWN near-edge tone via `containerBg(vp)` — its **150** stop in light
+  canvas preview, **850** in dark (symmetric, mirroring `canvasBg`'s 100/900). Tracking `canvasTheme`
+  matters: the row name is `var(--ink)`, which resolves per the canvas-area's `color-scheme`, so a
+  fixed light 150 in dark preview would put light text on a light card. Returns `""` if the stop is
+  absent, so the theme-aware CSS default holds.
+- **Click empty canvas → deselect.** A plain click on the empty canvas (not a `.ramp-row`, not a
+  pan-drag) calls `_deselect()` (`kind:"none"`). `canvasBg()` now guards on `sel.kind === "palette"`,
+  so with nothing selected the backdrop reverts to the DEFAULT neutral gray instead of a palette
+  near-edge color. Re-selecting restores the near-edge backdrop.
+
+headless-boot `(j)` extended: `(j6/j6b)` empty-canvas click → `kind:none` + neutral backdrop, `(j7)`
+re-select restores the near-edge, `(j8/j8b)` the row tint = the palette's 150 (light) / 850 (dark) stop.
+
 ## 1.6 — 2026-06-18 — UI icons → a central SVG registry (Phosphor, inlined offline)
 
 Replaced the ad-hoc emoji/Unicode glyph "icons" (↶ ↷ ⇪ ⊹ ▌ ▐ ◐ 🗑 ↺ ↻ ⇄ ⧉ ⚙ ◳ ⬇ ⬆ ⚑ ✕
