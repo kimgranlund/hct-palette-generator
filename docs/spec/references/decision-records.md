@@ -141,7 +141,7 @@ Format: Context → Decision → Rationale → Consequences → Status.
 - **Status.** DECIDED.
 - **Re-framed 2026-06-15 (from the build).** "Single-file" is the **distribution** format, not an
   authoring constraint. The reference build authors **modular ES modules** (engine · tonal · semantic ·
-  export · persist) and **bundles** them to one offline HTML (`hct-palette-generator.html`, ~111 KB,
+  export · persist) and **bundles** them to one offline HTML (`nonoun-color-tokens.html`, ~111 KB,
   opens via `file://`). Authoring modular *and* distributing single-file are both satisfied — the
   "no build step" line means *no toolchain is required to run it*, not *the source must be one file*.
 

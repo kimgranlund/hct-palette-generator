@@ -7,7 +7,7 @@
 ## The three implementations
 | Impl | File | Carries |
 |------|------|---------|
-| Artifact (the tool) | `hct-palette-generator.html` (inline `<script>`) | engine + `semanticRoles` + exporters + UI |
+| Artifact (the tool) | `nonoun-color-tokens.html` (inline `<script>`) | engine + `semanticRoles` + exporters + UI |
 | Reference generator | `gen.js` (+ `hct.js`) | engine + `semanticRoles` + DTCG emit (produces the standalone JSON) |
 | Figma plugin | `figma-semantic-binder/code.js` | `semanticRoles` + alias binding (engine math not needed) |
 

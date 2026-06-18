@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const BUNDLE = `${HERE}/../dist/hct-palette-generator.html`;
+const BUNDLE = `${HERE}/../dist/nonoun-color-tokens.html`;
 
 // The bridge is injected just before </body>. It uses Figma's UI⇄code postMessage contract:
 //   code.js → UI:  figma.ui.postMessage(x)        → window 'message' event, e.data.pluginMessage = x

@@ -1,6 +1,6 @@
 {
   "name": "Color Tokens by NONOUN",
-  "id": "hct-palette-generator",
+  "id": "nonoun-color-tokens",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
