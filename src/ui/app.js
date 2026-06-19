@@ -122,16 +122,6 @@ const h = (tag, attrs = {}, ...kids) => {
   return el;
 };
 const fmt = (x, d = 0) => Number(x).toFixed(d);
-// keyStop — a ramp's "key color": its most CHROMATIC stop (the cusp), i.e. the palette's most
-// saturated, characteristic color. Used for gallery preview swatches — far more distinctive than a
-// fixed mid stop, especially in perceptual mode where stop 550 is mid-lightness for every palette,
-// so a row of 550s reads as near-identical mid-tones. Mode-agnostic (reads measured chroma). A
-// (near-)neutral ramp has no chromatic peak, so it falls back to its mid stop (a representative gray).
-const keyStop = (ramp) => {
-  const best = ramp.reduce((a, s) => (s.chroma > a.chroma ? s : a), ramp[0]);
-  if (best.chroma >= 8) return best;
-  return ramp.find((s) => s.stop === 550) || ramp[Math.floor(ramp.length / 2)];
-};
 const ago = (ts) => {
   const s = (Date.now() - ts) / 1000;
   if (s < 60) return "just now";
@@ -592,10 +582,7 @@ class HctApp extends HTMLElement {
       const strip = h(
         "div",
         { class: "strip" },
-        ...enabled.slice(0, 8).map((p) => {
-          const key = keyStop(p.ramp); // each palette's most chromatic ("key") color, not a flat 550
-          return h("i", { style: `background:${key.hex}` });
-        }),
+        ...enabled.slice(0, 8).map((p) => h("i", { style: `background:${p.key}` })), // p.key = vivid identity color
       );
       const tile = h(
         "button",
@@ -663,10 +650,7 @@ class HctApp extends HTMLElement {
       const strip = h(
         "div",
         { class: "strip" },
-        ...enabled.slice(0, 6).map((p, i) => {
-          const key = keyStop(p.ramp);
-          return h("i", { style: `background:${key.hex};flex:${SAMPLED_W[i] || 1}` });
-        }),
+        ...enabled.slice(0, 6).map((p, i) => h("i", { style: `background:${p.key};flex:${SAMPLED_W[i] || 1}` })),
       );
       return h(
         "button",

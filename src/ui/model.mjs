@@ -15,9 +15,11 @@ import {
   hctToRgb,
   lstarFromRgb,
   cam16FromRgb,
+  peakC,
 } from "../engine/hct.js";
 import {
   paletteStops,
+  effHue,
   STOPS,
   EXPORT_STOPS,
   DEFAULT_CONTROLS,
@@ -256,8 +258,16 @@ export function projectView(doc) {
       darkHex: resolveRoleHex(r.dark, byStop),
     }));
 
+    // key = the palette's VIVID identity color: the cusp (peak-chroma) hue at the palette's intended
+    // chroma, computed straight from hue+chroma so it stays vivid regardless of toneMode (the perceptual
+    // ramp damps mid-stop chroma, so a ramp stop reads muted; this is what the gallery tile should show).
+    const baseHue = effHue(p.hue, controls.hueSpace);
+    const pk = peakC(baseHue);
+    const keyHex = "#" + hctToRgb(baseHue, ((p.chroma ?? 0) / 100) * pk.c, pk.tone).rgb
+      .map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+
     // ramp = 19 core display stops; fullRamp = all 25 EXPORT_STOPS (the extended view).
-    palettes.push({ name: p.name, on: p.on !== false, ramp, fullRamp: fullStops, roles });
+    palettes.push({ name: p.name, on: p.on !== false, key: keyHex, ramp, fullRamp: fullStops, roles });
 
     plot.push({
       palette: p.name,
