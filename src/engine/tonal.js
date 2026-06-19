@@ -10,7 +10,8 @@
 //   hctToRgb(hue, chroma, tone) -> { rgb:[r,g,b] (0-255 ints), inGamut, lstar }
 //   maxChromaInGamut(hue, tone) -> number   peakC(hue) -> { c, tone }
 //   oklchToCam16Hue(h)          -> CAM16 hue (degrees)
-import { hctToRgb, maxChromaInGamut, peakC, oklchToCam16Hue } from "./hct.js";
+import { hctToRgb, maxChromaInGamut, peakC, oklchToCam16Hue, lstarFromRgb, cam16FromRgb } from "./hct.js";
+import { okhslToRgb, rgbToOkhsl } from "./okhsl.js";
 
 // ── Stop sets ────────────────────────────────────────────────────────────────
 // Display ramp: 050..950 step 50 (19 stops). Light at 050, dark at 950.
@@ -43,6 +44,17 @@ export const DEFAULT_CONTROLS = {
   // palettes harmonize across hue regardless of the hue picked (see paletteStops). A cheap stand-in
   // for OKHSL-style perceptual-saturation normalization.
   relChroma: false,
+  // Ramp distribution mode (how stops map to lightness):
+  //   "even"       — the classic CIELAB-L* curve below (toneAt): per-stop tone is the SAME L* for every
+  //                  hue, so palettes stay tone-aligned. The curve/skew/lift/damp/relChroma controls all
+  //                  apply here. Can leave a near-white "dead zone" at the light end of LOW-chroma ramps.
+  //   "perceptual" — even steps in OKHSL lightness (perceptually uniform) + gamut-proportional chroma, so
+  //                  every stop is distinct (no dead zone), at the cost of per-hue tone alignment.
+  //   "peak"       — like perceptual but the hue's CUSP (peak chroma) is anchored at stop 500 and each
+  //                  half spreads from there (Tailwind-style "the color is 500"). Vivid/centered.
+  // perceptual/peak go through the OKHSL path (okhslStops); lmin/lmax/damp still bound/shape it, but the
+  // CIELAB-only controls (curve/skew/lift/relChroma) and the L*-fidelity guarantees apply to "even" only.
+  toneMode: "perceptual",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,6 +113,8 @@ export function toneAt(stop, skew, lift, { curve, lmin, lmax, tension }) {
 // palette: { hue, chroma, skew, lift }; controls: DEFAULT_CONTROLS-shaped.
 // Returns [{ stop, tone, chroma, maxc, rgb, hex, inGamut }] for each stop.
 export function paletteStops(palette, controls, stops) {
+  const mode = controls.toneMode || "even";
+  if (mode === "perceptual" || mode === "peak") return okhslStops(palette, controls, stops, mode);
   // Resolve the BASE hue once. The per-stop hue may be EDGE-ROTATED below (hueShift);
   // when hueShift=0 every stop uses baseHue (the flat-hue, hue-stability default).
   const baseHue = effHue(palette.hue, controls.hueSpace);
@@ -153,5 +167,49 @@ export function paletteStops(palette, controls, stops) {
       "#" +
       out.rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
     return { stop, tone, chroma, maxc, rgb: out.rgb, hex, inGamut: out.inGamut };
+  });
+}
+
+// ── OKHSL distribution path (toneMode "perceptual" | "peak") ──────────────────────────────────────
+// Steps lightness evenly in OKHSL's perceptually-uniform l — or, for "peak", with the hue's CUSP
+// anchored at stop 500 and each half spread from there — with chroma as a gamut-proportional OKHSL
+// saturation. Every emitted color is in gamut by OKHSL's construction. l is keyed off the STOP NUMBER
+// (not the array index) so a stop has the same color in the 19-stop display ramp and the 25-stop export ramp.
+const _okL = new Map(); // L* -> OKHSL lightness (via a neutral gray at that L*); memoized
+function okhslLAt(lstar) {
+  const k = lstar.toFixed(2);
+  let v = _okL.get(k);
+  if (v === undefined) { v = rgbToOkhsl(hctToRgb(0, 0, lstar).rgb).l; _okL.set(k, v); }
+  return v;
+}
+
+function okhslStops(palette, controls, stops, mode) {
+  const baseHue = effHue(palette.hue, controls.hueSpace);
+  const pk = peakC(baseHue);                                       // { c, tone } — the cusp
+  const hOk = rgbToOkhsl(hctToRgb(baseHue, pk.c, pk.tone).rgb).h;  // the palette's hue in OKHSL space
+  const shift = palette.hueShift ?? 0;
+  const sameDir = palette.hueSameDir === true;
+  const lLight = okhslLAt(controls.lmax ?? 100);                   // light end (l≈1 at lmax=100 → 050 white)
+  const lDark = okhslLAt(controls.lmin ?? 5);                      // dark end
+  const cuspL = okhslLAt(pk.tone);                                 // OKHSL lightness of the cusp (peak pivot)
+  return stops.map((stop) => {
+    // lightness per stop — STOP-based so the display(19) and export(25) ramps agree at a given stop.
+    const l = mode === "peak"
+      ? (stop <= 500 ? lerp(lLight, cuspL, (stop - 50) / 450) : lerp(cuspL, lDark, (stop - 500) / 450))
+      : lerp(lLight, lDark, (stop - 50) / 900);
+    // saturation = chroma% of the gamut, shaped by the SAME damping multiplier m as the even path (so
+    // damp/dampCurve/dampAmp/dampBias stay meaningful here), clamped to OKHSL's [0,1].
+    const sp = (stop - 500) / 450;
+    const dir = sameDir ? -Math.abs(sp) : sp;
+    const hue = (((hOk + shift * dir) % 360) + 360) % 360;
+    const uG = Math.abs(sp) ** (controls.dampCurve ?? 1.5);
+    const sideW = Math.max(0, 1 + ((controls.dampBias ?? 0) / 100) * Math.sign(sp));
+    const m = Math.max(0, 1 + ((controls.dampAmp ?? 0) / 100) * (1 - uG) - (controls.damp / 100) * sideW * uG);
+    const s = Math.min(1, Math.max(0, (palette.chroma / 100) * m));
+    const rgb = okhslToRgb(hue, s, l);
+    const tone = lstarFromRgb(rgb);                                 // report ACTUAL L* (for graphs / roles)
+    const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+    // chroma/maxc reported (measured) for the analysis graphs; OKHSL is in-gamut by construction.
+    return { stop, tone, chroma: cam16FromRgb(rgb).chroma, maxc: maxChromaInGamut(baseHue, tone), rgb, hex, inGamut: true };
   });
 }

@@ -51,6 +51,8 @@ export const DOMAINS = {
   dampAmp: { kind: "number", min: 0, max: 100, default: 0 },
   dampBias: { kind: "number", min: -100, max: 100, default: 0 },
   hueSpace: { kind: "enum", values: ["cam16", "oklch"], default: "cam16" },
+  // ramp distribution mode (see tonal.js DEFAULT_CONTROLS.toneMode). Default "perceptual".
+  toneMode: { kind: "enum", values: ["even", "perceptual", "peak"], default: "perceptual" },
   theme: { kind: "enum", values: ["auto", "light", "dark"], default: "auto" },
   // `selected` is an integer in [0, palettes.length-1] — a relational bound, so its
   // upper limit depends on the hydrated palette count (see hydrate()).
@@ -162,6 +164,7 @@ export function hydrate(snapshot) {
     dampBias: clampNumber(s.dampBias ?? DOMAINS.dampBias.default, DOMAINS.dampBias.min, DOMAINS.dampBias.max),
     hueSpace: clampEnum(s.hueSpace, DOMAINS.hueSpace.values, DOMAINS.hueSpace.default),
     relChroma: s.relChroma === true, // boolean chroma-basis flag; absent/non-true -> false (legacy default)
+    toneMode: clampEnum(s.toneMode, DOMAINS.toneMode.values, DOMAINS.toneMode.default),
     theme: clampEnum(s.theme, DOMAINS.theme.values, DOMAINS.theme.default),
     selected,
     roleOverrides: clampOverrides(s.roleOverrides),

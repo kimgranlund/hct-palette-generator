@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 1.18 — 2026-06-18 — ramp distribution modes (even / perceptual / peak); default → perceptual
+
+A new global control **`toneMode`** picks how stops map to lightness, fixing the near-white "dead zone"
+that low-chroma/light-cusp ramps showed at the light end:
+
+- **even** — the classic CIELAB-L\* curve (`toneAt`). Per-stop tone is the same L\* for every hue; the
+  Curve/Tension/skew/lift/relChroma controls and the L\*-fidelity guarantees apply here. (Old default.)
+- **perceptual** *(new default)* — even steps in OKHSL's perceptually-uniform lightness + gamut-proportional
+  chroma, via the OKHSL module (now wired in). Every stop is distinct (no dead zone) AND — because the
+  lightness step is the same for all hues — stop-N stays tone-aligned across palettes, so the semantic
+  layer is unaffected.
+- **peak** — like perceptual but the hue's CUSP (peak chroma) is anchored at stop 500, each half spread
+  from there (Tailwind-style "the color is 500"). Vivid/centered; this is the only mode that trades away
+  cross-palette tone alignment, by design.
+
+Engine: `okhslStops` in `tonal.js` (lightness keyed off the STOP NUMBER so the 19-stop display and 25-stop
+export ramps agree; lmin/lmax bound the range, damp/dampCurve/dampAmp/dampBias still shape chroma; 050 stays
+pure white at lmax=100). Threaded through `controlsOf`/`stateOf`/`defaultDocument` (model.mjs), persisted
+(`persist.js` enum, default perceptual), UI select in Global → "Distribution" (Curve greys out off `even`).
+`okhsl.js` registered in the bundler.
+
+Because the default flipped, ALL default palettes, the 48 travel presets, and the embedded theme re-render to
+the perceptual distribution (presets' `lift`-anchoring is an even-mode feature and is now inert for them).
+Tests: `tonal.mjs` CIELAB gates pinned to `even`, new `okhsl-modes` gate (in-gamut, all-distinct, monotone,
+white/black ends, display/export stop-consistency, peak-centered); persist roundtrip + headless-boot `(hh)`
+updated.
+
 ## 1.17 — 2026-06-18 — remove the duplicate Contrast panel from the right-pane Inspector
 
 The Inspector's "Contrast (prime fill 550)" panel duplicated the left-pane analysis card

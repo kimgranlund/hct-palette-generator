@@ -813,8 +813,13 @@ ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 80), "(hh) prese
 const { projectView: _pvHH } = await import("../../src/ui/model.mjs");
 const { hydrate: _hydHH } = await import("../../src/ui/persist.js");
 const _sj = TP.find((p) => /St\. John/.test(p.name));
-const _sjPrime = _pvHH(_hydHH(_sj)).palettes[0].ramp.find((s) => s.stop === 550);
-ok(_sjPrime.tone > 72, `(hh) lift anchors the prime to the source lightness — St John's fog-cream dominant opens LIGHT (550 L*=${_sjPrime.tone.toFixed(0)}, was ~46 before)`);
+// lift-anchoring is an EVEN-mode (CIELAB) feature; the default is now "perceptual" (even-lightness,
+// ignores per-palette lift), so verify the anchoring by rendering the preset in "even".
+const _sjPrime = _pvHH(_hydHH({ ..._sj, toneMode: "even" })).palettes[0].ramp.find((s) => s.stop === 550);
+ok(_sjPrime.tone > 72, `(hh) [even] lift anchors the prime to source lightness — St John's fog-cream opens LIGHT (550 L*=${_sjPrime.tone.toFixed(0)})`);
+// and in the DEFAULT perceptual mode the preset still renders cleanly — every stop distinct (no dead zone).
+const _sjPerc = _pvHH(_hydHH(_sj)).palettes[0].ramp;
+ok(new Set(_sjPerc.map((s) => s.hex)).size === _sjPerc.length, "(hh) [perceptual default] the preset's prime ramp has no duplicate (dead-zone) stops");
 app.toGallery(); flushRaf();
 ok(app.querySelectorAll(".preset").length === 48, `(hh) the gallery renders a read-only preset tile per preset (got ${app.querySelectorAll(".preset").length})`);
 const presetNames = new Set(TP.map((p) => p.name));

@@ -22,7 +22,7 @@ const inDomainState = () => {
     if (rnd() > 0.5) roleOverrides[k] = v;
   return { curve: pick(["linear", "sine", "cubic", "logistic", "exp"]), tension: rnd() * 100, lmin: rnd() * 40, lmax: 60 + rnd() * 40,
     damp: rnd() * 100, dampCurve: 0.5 + rnd() * 3.5, dampAmp: rnd() * 100, dampBias: -100 + rnd() * 200,
-    hueSpace: pick(["cam16", "oklch"]), relChroma: rnd() > 0.5, theme: pick(["auto", "light", "dark"]), selected: Math.floor(rnd() * n), roleOverrides, palettes };
+    hueSpace: pick(["cam16", "oklch"]), relChroma: rnd() > 0.5, toneMode: pick(["even", "perceptual", "peak"]), theme: pick(["auto", "light", "dark"]), selected: Math.floor(rnd() * n), roleOverrides, palettes };
 };
 
 // ── hpg-persistence-roundtrip: in-domain identity ─────────────────────────────────────────

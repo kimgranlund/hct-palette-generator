@@ -2373,6 +2373,17 @@ class HctApp extends HTMLElement {
       h(
         "div",
         { class: "field" },
+        h("label", { title: "perceptual: even OKHSL-lightness steps + gamut chroma (no near-white dead zone). even: the classic CIELAB curve (tone-aligned across hues; Curve/Tension/Chroma-basis apply). peak: cusp anchored at stop 500." }, "Distribution"),
+        h(
+          "select",
+          { onchange: (e) => this.commit((doc) => (doc.toneMode = e.target.value)) },
+          ...["perceptual", "even", "peak"].map((m) => h("option", { value: m, selected: d.toneMode === m }, m)),
+        ),
+      ),
+      // Curve/Tension/relChroma shape the CIELAB "even" path only; greyed-out hint when not in "even".
+      h(
+        "div",
+        { class: "field" + (d.toneMode === "even" ? "" : " is-muted"), title: d.toneMode === "even" ? "" : "Curve applies only to the 'even' distribution" },
         h("label", {}, "Curve"),
         h(
           "select",

@@ -15,7 +15,9 @@ import * as E from "../../src/engine/hct.js";
 const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json", import.meta.url), "utf8"));
 const DEFAULTS = RT.defaults;                       // 8 palettes {name,hue,chroma,skew,lift,on}
 const STOPS = T.EXPORT_STOPS;
-const CTL = T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16" };
+// The gates below validate the CIELAB "even" path (curve/skew/lift/damp/relChroma + L*-fidelity), so
+// pin toneMode:"even" — the default is now "perceptual" (OKHSL), which has its own gates further down.
+const CTL = { ...(T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16" }), toneMode: "even" };
 const CURVES = ["linear", "sine", "cubic", "logistic", "exp"];
 const SKEWS = [-100, -50, 0, 50, 100];
 
@@ -229,8 +231,36 @@ for (const p of DEFAULTS) {
   if (!changed) FAIL("rel-chroma", `relChroma:true did not change ${p.name}'s output (no-op toggle)`);
 }
 
+// ── hpg-tonal-okhsl-modes: the perceptual & peak distributions (OKHSL path) — in-gamut, every stop
+//    DISTINCT (no near-white dead zone), tone monotone, white/black ends, and stop-consistency between
+//    the 19-stop display ramp and the 25-stop export ramp (the stop-vs-index trap). ─────────────────
+for (const mode of ["perceptual", "peak"]) {
+  const c = { ...CTL, toneMode: mode };
+  const probes = [...DEFAULTS, { name: "muted", hue: 75, chroma: 18, skew: 0, lift: 0 }]; // muted = the dead-zone case
+  for (const p of probes) {
+    const args = { hue: p.hue, chroma: p.chroma, skew: p.skew || 0, lift: p.lift || 0 };
+    const rows = T.paletteStops(args, c, STOPS);
+    if (!rows.every((r) => r.inGamut && r.rgb.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)))
+      FAIL("okhsl-modes", `${mode} ${p.name}: out-of-gamut / non-byte rgb`);
+    const distinct = new Set(rows.map((r) => r.hex)).size;
+    if (distinct < STOPS.length) FAIL("okhsl-modes", `${mode} ${p.name}: ${distinct}/${STOPS.length} distinct stops (dead zone)`);
+    for (let k = 1; k < rows.length; k++) if (rows[k].tone > rows[k - 1].tone + 0.5) FAIL("okhsl-modes", `${mode} ${p.name}: tone rose at stop ${rows[k].stop}`);
+    if (rows.find((r) => r.stop === 50).hex !== "#FFFFFF") FAIL("okhsl-modes", `${mode} ${p.name}: 050 not white at lmax=100`);
+    const r25 = T.paletteStops(args, c, T.EXPORT_STOPS);
+    if (rows.find((r) => r.stop === 500).hex !== r25.find((r) => r.stop === 500).hex)
+      FAIL("okhsl-modes", `${mode} ${p.name}: stop 500 differs between display(19) and export(25) ramps`);
+  }
+}
+// peak mode centers the cusp at 500: stop-500 chroma exceeds the light (100) and dark (900) ends.
+{
+  const p = DEFAULTS.find((d) => d.chroma >= 80) || DEFAULTS[0];
+  const rows = T.paletteStops({ hue: p.hue, chroma: p.chroma, skew: 0, lift: 0 }, { ...CTL, toneMode: "peak" }, STOPS);
+  const at = (s) => rows.find((r) => r.stop === s).chroma;
+  if (!(at(500) > at(100) + 2 && at(500) > at(900) + 2)) FAIL("okhsl-modes", `peak: chroma not centered at 500 (100:${at(100).toFixed(0)} 500:${at(500).toFixed(0)} 900:${at(900).toFixed(0)})`);
+}
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-for (const g of ["ingamut", "monotonic", "white-endpoint", "chroma-target", "curve-fidelity", "hue-stability", "damping-curve", "edge-hue", "rel-chroma"]) {
+for (const g of ["ingamut", "monotonic", "white-endpoint", "chroma-target", "curve-fidelity", "hue-stability", "damping-curve", "edge-hue", "rel-chroma", "okhsl-modes"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }
