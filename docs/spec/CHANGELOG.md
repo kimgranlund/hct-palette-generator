@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 1.22 — 2026-06-18 — default back to "even" (vibrant) + a chroma floor that kills the dead zone
+
+Reverses 1.18's default flip: **`toneMode` default is `even` again**, restoring the original per-hue
+vibrancy (perceptual *harmonizes* saturation across hue, which read as muted). Perceptual/peak stay as
+opt-in modes. To keep even mode's one weakness — the near-white "dead zone" at the light end of LOW-chroma
+ramps (the #22 case that started this) — fixed without re-muting, this adds a new **`chromaFloor`** control
+(% of each stop's gamut, default **40**):
+
+- It lifts the damping-starved light/dark ends back toward the palette's INTENDED chroma, so a muted ramp
+  shows tints instead of collapsing to white.
+- Capped at `intended`, so it NEVER over-saturates a muted palette or tints a neutral, and it never binds on
+  saturated palettes (they already clamp to the gamut) — their vibrancy is untouched.
+
+So the default is now vibrant AND dead-zone-free — the best-of-both you asked for. Engine
+(`tonal.js` even-path), threaded through `model.mjs`/`persist.js`, UI slider in Global → "Chroma floor"
+(even-mode only). Default palettes / presets / theme re-render back to even (presets' lift-anchoring +
+Vivid-mids damping are active again). New tonal `chroma-floor` gate (lifts muted ends, no over-saturation,
+neutral + saturated untouched); CIELAB gates pinned to `chromaFloor:0`. `npm test` 10/10.
+
+Note: an extreme light palette (very high `lift` + near-zero chroma, e.g. a fog-cream preset) can still
+have a couple of pure-white stops at L*100 — no chroma fits there. That's a lift/lightness limit, not the floor.
+
 ## 1.21 — 2026-06-18 — gallery tiles show each palette's VIVID identity color (fix muted tiles)
 
 The gallery preview swatches read muted under the perceptual default: a ramp stop (550 or the cusp-scanning
