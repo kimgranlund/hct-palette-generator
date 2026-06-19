@@ -2276,12 +2276,15 @@ class HctApp extends HTMLElement {
     const p = this.doc.palettes[i];
     if (!p) return h("div", {}, "No palette selected");
     const vp = view.palettes[i];
+    // skew + lift shape the CIELAB tone curve (toneAt) — they have NO effect in the OKHSL distribution
+    // modes (perceptual/peak step lightness directly), so hide them there, matching the Global controls.
+    const isEven = this.doc.toneMode === "even";
 
     return h(
       "div",
       {},
       h("h3", { class: "insp-title" }, h("span", { class: "swatch-dot", style: `background:${(vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex};width:16px;height:16px` }), "Palette"),
-      h("div", { class: "insp-sub" }, "Tune hue · chroma · skew · lift — live"),
+      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
       // In the Scrims view, surface the sub-variant relationship at the top of the inspector.
       this.canvasView === "scrims" ? this.scrimContext(view) : false,
       h(
@@ -2318,8 +2321,8 @@ class HctApp extends HTMLElement {
       ),
       this.slider("Hue", p.hue, 0, 360, 1, (v) => fmt(v) + "°", (v) => this.editDrag((d) => (d.palettes[i].hue = v))),
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
-      this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))),
-      this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))),
+      isEven ? this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))) : false,
+      isEven ? this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))) : false,
       // Edge hue rotation — bipolar, centre 0. The readout shows the light/dark torsion:
       // left = light + / dark −, right = light − / dark + (the slider value = the dark edge).
       this.slider(

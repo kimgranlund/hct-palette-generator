@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.20 — 2026-06-18 — hide the per-palette Skew + Lift outside "even" mode
+
+Completes 1.19's "hide N/A controls": `skew` and `lift` shape the CIELAB tone curve (`toneAt`) and have
+NO effect in the OKHSL distribution modes (`perceptual`/`peak` step lightness directly), so the Palette
+inspector now hides both sliders when `toneMode !== "even"` — matching the Global Curve/Tension/Chroma-basis
+hiding — instead of showing them as inert. The inspector subtitle drops "skew · lift" accordingly.
+`hueShift` (edge rotation) and `hueSameDir` stay visible — `okhslStops` does use them. `src/ui/app.js`;
+headless-boot `(gc)` extended to cover the Skew/Lift visibility.
+
 ## 1.19 — 2026-06-18 — distribution-mode UX: hide N/A controls · Vivid-mids presets · key-color tiles
 
 Follow-ups to the distribution modes (1.18):
