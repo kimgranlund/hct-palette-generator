@@ -144,6 +144,98 @@ const DAMP_PRESETS = [
   { name: "Flat", damp: 35, dampCurve: 1, dampAmp: 0, dampBias: 0 },
 ];
 
+// ── primitive factories ─────────────────────────────────────────────────────────
+// Small, presentational builders shared across the render methods so a control's
+// contract (markup + a11y) lives in ONE place instead of being re-typed inline.
+// Pure builders take their handlers as arguments and live here; the one stateful,
+// focus-managing control (segmented) is a class method below (it needs `this` to
+// re-focus after a render). See docs/spec/references/component-inventory.md.
+
+// switchControl — an accessible on/off (or either/or) switch. Replaces the old
+// `<div class=toggle onclick>` which had no role, no tab focus, and no keyboard. A
+// real <button role=switch> gets :focus-visible + Enter/Space toggling from the
+// platform; aria-checked carries the state to assistive tech. `label` is the visible
+// value (Enabled / oklch / gamut …); `ariaLabel` is the stable purpose, since the
+// sibling <label> (when present) is not programmatically associated.
+const switchControl = ({ on, onToggle, label, ariaLabel }) =>
+  h(
+    "button",
+    {
+      type: "button",
+      class: "toggle" + (on ? " on" : ""),
+      role: "switch",
+      "aria-checked": on ? "true" : "false",
+      "aria-label": ariaLabel,
+      onclick: onToggle,
+    },
+    h("span", { class: "track", "aria-hidden": "true" }),
+    h("span", { class: "toggle-label" }, label),
+  );
+
+// swatch — a fixed-size color chip, the single source for the app's many little color
+// squares (inspector dot, role refs, …). `alpha:true` lays the fill over the shared
+// checkerboard (.swatch.alpha, defined once in CSS) so translucent colors read as
+// translucent. `size` drives the --sw custom property; decorative, so aria-hidden.
+const swatch = (hex, { size = 16, alpha = false, cls = "", title } = {}) =>
+  h(
+    "span",
+    {
+      class: "swatch" + (alpha ? " alpha" : "") + (cls ? " " + cls : ""),
+      style: `--sw:${size}px` + (alpha ? "" : `;background:${hex}`),
+      title,
+      "aria-hidden": "true",
+    },
+    alpha ? h("span", { class: "swatch-fill", style: `background:${hex}` }) : false,
+  );
+
+// btn — the app's button with a small, orthogonal variant vocabulary: ghost (default,
+// bordered), primary (accent fill), danger (ghost + danger hover), bare (no chrome — for
+// buttons that bring their own, e.g. copy-float / map-reset). Anything position- or
+// layout-specific (add-pal-btn, figma-plugin-btn, …) is an extra `cls`, NOT a variant —
+// that separation is the whole point (it un-pollutes the variant axis). Icon-only buttons
+// MUST pass `ariaLabel`. `children` is a node or an array of nodes.
+const BTN_VARIANT = { ghost: "ghost", primary: "primary", danger: "ghost danger", bare: "" };
+const btn = (children, { variant = "ghost", cls = "", title, ariaLabel, ariaPressed, onclick, type = "button", disabled } = {}) =>
+  h(
+    "button",
+    {
+      type,
+      class: [BTN_VARIANT[variant] ?? "ghost", cls].filter(Boolean).join(" "),
+      title,
+      "aria-label": ariaLabel,
+      "aria-pressed": ariaPressed,
+      disabled: disabled ? true : undefined,
+      onclick,
+    },
+    ...(Array.isArray(children) ? children : [children]),
+  );
+
+// chip — a small pill. mode "interactive" (a <button>, `on` = active/pressed) or "status"
+// (a non-interactive <span> badge, optional `tone`). Folds the in-flow pill stylings
+// (damp-presets, map-drift-sum) onto one .chip primitive. The absolutely-positioned
+// tile-tag overlay badge stays separate — it is an overlay, not an in-flow chip.
+const chip = (label, { mode = "status", on = false, tone = "", cls = "", title, onclick } = {}) => {
+  const klass = ["chip", on ? "on" : "", tone, cls].filter(Boolean).join(" ");
+  return mode === "interactive"
+    ? h("button", { type: "button", class: klass, "aria-pressed": on ? "true" : "false", title, onclick }, label)
+    : h("span", { class: klass, title }, label);
+};
+
+// field — a labeled control row. ASSOCIATES the <label> with the control (label[for] +
+// control[id]) so the visible label IS the control's accessible name and clicking it
+// focuses the control — the association the inline .field rows lacked (Name / Distribution
+// / Curve were screen-reader-nameless). The caller builds the control; field() stamps the
+// id and a fallback aria-label (left intact if the control already carries one, e.g. a
+// switchControl). NB: sliders carry their own label+readout, so they are not field()s.
+const field = (labelText, control, { labelTitle } = {}) => {
+  const id = "fld-" + String(labelText).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (control && control.setAttribute) {
+    control.setAttribute("id", id);
+    if (!control.getAttribute("aria-label")) control.setAttribute("aria-label", labelText);
+  }
+  return h("div", { class: "field" }, h("label", { for: id, title: labelTitle }, labelText), control);
+};
+
 class HctApp extends HTMLElement {
   connectedCallback() {
     ensureAppTheme(); // inject the generated --c-* design tokens once, globally
@@ -584,21 +676,37 @@ class HctApp extends HTMLElement {
         { class: "strip" },
         ...enabled.slice(0, 8).map((p) => h("i", { style: `background:${p.key}` })), // p.key = vivid identity color
       );
+      // A card with a PRIMARY action (open) + a SECONDARY action (delete). The tile is a
+      // role=button div — NOT a <button> — so the delete can be a real, keyboard-focusable
+      // <button> without nesting interactives. Enter/Space on the tile opens it.
       const tile = h(
-        "button",
-        { class: "set-tile", onclick: () => this.openSet(rec.id) },
+        "div",
+        {
+          class: "set-tile",
+          role: "button",
+          tabindex: "0",
+          "aria-label": `Open palette set ${rec.name}`,
+          onclick: () => this.openSet(rec.id),
+          onkeydown: (e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault();
+            this.openSet(rec.id);
+          },
+        },
         // tags ride the preview: count bottom-left, the updated-time bottom-right (the slot a preset
-        // tile uses for its "preset" badge), and the delete button top-right (it keeps pointer-events
-        // + stopPropagation so it still deletes rather than opening the set). The meta row keeps the name.
+        // tile uses for its "preset" badge), and the delete button top-right (it keeps stopPropagation
+        // so it deletes rather than opening the set). The meta row keeps the name.
         h(
           "div",
           { class: "set-thumb" },
           strip,
           h(
-            "span",
+            "button",
             {
+              type: "button",
               class: "del",
               title: "Delete set",
+              "aria-label": `Delete palette set ${rec.name}`,
               onclick: (e) => {
                 e.stopPropagation();
                 this.deleteSet(rec.id);
@@ -712,15 +820,15 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "gallery" },
-      this.toastEl || (this.toastEl = h("div", { class: "toast" })),
+      this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
       h(
         "header",
         { class: "gallery-header" },
         h("div", { class: "brand" }, brandMark(), "Color Tokens by NONOUN"),
         h("div", { class: "spacer" }),
-        h("button", { class: "ghost", onclick: () => this.loadFromProject(), title: this.inFigma ? "Load the config saved in this Figma file" : "Load the config saved to the project (Source of Truth)" }, icon("download"), "Project"),
-        h("button", { class: "ghost", onclick: () => this.importSet(), title: "Import a palette config (.json) exported from Export → Config" }, icon("upload"), "Import"),
-        h("button", { class: "ghost", onclick: () => this.createSet() }, "+ New"),
+        btn([icon("download"), "Project"], { onclick: () => this.loadFromProject(), title: this.inFigma ? "Load the config saved in this Figma file" : "Load the config saved to the project (Source of Truth)" }),
+        btn([icon("upload"), "Import"], { onclick: () => this.importSet(), title: "Import a palette config (.json) exported from Export → Config" }),
+        btn("+ New", { onclick: () => this.createSet() }),
         this.themeBtn(),
       ),
       h(
@@ -778,7 +886,7 @@ class HctApp extends HTMLElement {
           h("span", { class: "fir-sub" }, `${np} ${np === 1 ? "palette" : "palettes"} with full controls — opens exactly as saved.`),
         ),
         h("div", { class: "spacer" }),
-        h("button", { class: "primary", onclick: () => this.openConfigAsSet(this.fileConfig, "Opened the saved palette") }, "Open saved palette"),
+        btn("Open saved palette", { variant: "primary", onclick: () => this.openConfigAsSet(this.fileConfig, "Opened the saved palette") }),
       );
     }
     if (this.liveVarsFound) {
@@ -875,7 +983,7 @@ class HctApp extends HTMLElement {
       this.renderRightPane(view),
       this.renderAppFooter(),
       this.renderDrawer(view),
-      this.toastEl || (this.toastEl = h("div", { class: "toast" })),
+      this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
     );
   }
 
@@ -1186,22 +1294,18 @@ class HctApp extends HTMLElement {
       "div",
       { class: "damp-presets" },
       ...DAMP_PRESETS.map((p) =>
-        h(
-          "button",
-          {
-            class: "preset" + (active(p) ? " on" : ""),
-            "aria-pressed": active(p) ? "true" : "false",
-            title: `damp ${p.damp} · falloff ${p.dampCurve} · amplify ${p.dampAmp} · bias ${p.dampBias}`,
-            onclick: () =>
-              this.commit((doc) => {
-                doc.damp = p.damp;
-                doc.dampCurve = p.dampCurve;
-                doc.dampAmp = p.dampAmp;
-                doc.dampBias = p.dampBias;
-              }),
-          },
-          p.name,
-        ),
+        chip(p.name, {
+          mode: "interactive",
+          on: active(p),
+          title: `damp ${p.damp} · falloff ${p.dampCurve} · amplify ${p.dampAmp} · bias ${p.dampBias}`,
+          onclick: () =>
+            this.commit((doc) => {
+              doc.damp = p.damp;
+              doc.dampCurve = p.dampCurve;
+              doc.dampAmp = p.dampAmp;
+              doc.dampBias = p.dampBias;
+            }),
+        }),
       ),
     );
   }
@@ -1294,6 +1398,55 @@ class HctApp extends HTMLElement {
     this.render();
   }
 
+  // segmented — the one segmented control for the whole app: a row of buttons where
+  // exactly one is active. Bakes in the APG keyboard model the hand-rolled variants
+  // were missing — roving tabindex (only the active button is tab-focusable) + Arrow
+  // keys that move selection AND focus. role:"tablist" (tabs that switch a view —
+  // buttons get role=tab + aria-selected + aria-controls) or role:"group" (a
+  // single-select button group — buttons get aria-pressed). onSelect re-renders; we
+  // then re-focus the newly-active button by its stable id, because the fk-restore
+  // path (see _restoreFocus) would otherwise return focus to the OLD button.
+  segmented(items, value, onSelect, opts = {}) {
+    const { baseClass = "segmented", cls = "", ariaLabel, role = "tablist", controls, idPrefix = "seg" } = opts;
+    const tabs = role === "tablist";
+    const ids = items.map((it) => it.id);
+    const bid = (id) => idPrefix + "-" + id;
+    const mk = (it) => {
+      const on = it.id === value;
+      return h(
+        "button",
+        {
+          type: "button",
+          class: on ? "on" : "",
+          id: bid(it.id),
+          "data-fk": idPrefix + ":" + it.id,
+          role: tabs ? "tab" : undefined,
+          "aria-selected": tabs ? (on ? "true" : "false") : undefined,
+          "aria-pressed": tabs ? undefined : on ? "true" : "false",
+          "aria-controls": tabs ? controls : undefined,
+          tabindex: on ? "0" : "-1",
+          title: it.title,
+          onclick: () => onSelect(it.id),
+          onkeydown: (e) => {
+            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+            e.preventDefault();
+            const cur = ids.indexOf(value);
+            const next = ids[(cur + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
+            onSelect(next); // re-renders
+            const el = this.querySelector("#" + bid(next));
+            if (el && el.focus) el.focus();
+          },
+        },
+        it.label,
+      );
+    };
+    return h(
+      "div",
+      { class: (baseClass + " " + cls).trim(), role, "aria-label": ariaLabel },
+      ...items.map(mk),
+    );
+  }
+
   // setStopsMode — core (19 display stops) vs extended (25 EXPORT_STOPS) for the palette ramps.
   setStopsMode(v) {
     this.stopsMode = v;
@@ -1374,44 +1527,26 @@ class HctApp extends HTMLElement {
       // when the LEFT pane is collapsed its toggle pops here, at the canvas's left edge.
       !this.panesLeft ? this.paneToggle("left") : false,
       // canvas content toggle — palette ramps vs the scrim overlays.
-      h(
-        "div",
-        { class: "segmented canvas-seg", role: "tablist", "aria-label": "Canvas view" },
-        ...[["palettes", "Palettes"], ["scrims", "Scrims"], ["mapping", "Mapping"]].map(([id, label]) =>
-          h(
-            "button",
-            {
-              class: this.canvasView === id ? "on" : "",
-              role: "tab",
-              "aria-selected": this.canvasView === id ? "true" : "false",
-              title: {
-                scrims: "Scrims — the 7 translucent 500 overlays per palette, over a checkerboard",
-                mapping: "Semantic Mapping — each role's Light/Dark raw token, as a table",
-                palettes: "Palettes — the tonal ramps",
-              }[id],
-              onclick: () => this.setCanvasView(id),
-            },
-            label,
-          ),
-        ),
+      this.segmented(
+        [
+          { id: "palettes", label: "Palettes", title: "Palettes — the tonal ramps" },
+          { id: "scrims", label: "Scrims", title: "Scrims — the 7 translucent 500 overlays per palette, over a checkerboard" },
+          { id: "mapping", label: "Mapping", title: "Semantic Mapping — each role's Light/Dark raw token, as a table" },
+        ],
+        this.canvasView,
+        (id) => this.setCanvasView(id),
+        { cls: "canvas-seg", ariaLabel: "Canvas view", idPrefix: "cview" },
       ),
       // stops density (Palettes + Scrims ramps): 19 core stops vs the 25 extended set (half-steps).
       this.canvasView !== "mapping"
-        ? h(
-            "div",
-            { class: "segmented canvas-seg", role: "group", "aria-label": "Ramp stops" },
-            ...[["core", "Core", "19 stops · 050/100/150/200/…"], ["extended", "All", "25 stops · adds 075/125/175/825/875/925"]].map(([id, label, tip]) =>
-              h(
-                "button",
-                {
-                  class: this.stopsMode === id ? "on" : "",
-                  "aria-pressed": this.stopsMode === id ? "true" : "false",
-                  title: tip,
-                  onclick: () => this.setStopsMode(id),
-                },
-                label,
-              ),
-            ),
+        ? this.segmented(
+            [
+              { id: "core", label: "Core", title: "19 stops · 050/100/150/200/…" },
+              { id: "extended", label: "All", title: "25 stops · adds 075/125/175/825/875/925" },
+            ],
+            this.stopsMode,
+            (id) => this.setStopsMode(id),
+            { cls: "canvas-seg", ariaLabel: "Ramp stops", role: "group", idPrefix: "stops" },
           )
         : false,
       // canvas color-scheme — flips ONLY the canvas content's preview (light/dark),
@@ -1945,7 +2080,7 @@ class HctApp extends HTMLElement {
         h("small", {}, `${vp.name} · ${vp.roles.length} roles${ovCount ? " · " + ovCount + " re-pointed" : ""}`),
         h("div", { class: "spacer" }),
         // drift summary chip (after a live read) — does the file match what I'd generate now?
-        drift ? h("span", { class: "map-drift-sum " + (drift.drifted ? "has-drift" : "in-sync") }, drift.drifted ? `${drift.drifted} drifted` : "in sync") : false,
+        drift ? chip(drift.drifted ? `${drift.drifted} drifted` : "in sync", { tone: drift.drifted ? "has-drift" : "in-sync" }) : false,
         // read the live raw-colors variables from the file and diff (Figma only).
         this.inFigma ? h("button", { class: "ghost", title: "Read the live raw-colors variables from this file and compare (drift)", onclick: () => this.readLiveVariables() }, icon("arrows-clockwise"), "Read live") : false,
         ovCount ? h("button", { class: "ghost", title: "Revert all re-points to the canonical mapping", onclick: () => this.clearAllOverrides() }, "Reset " + ovCount) : false,
@@ -2114,32 +2249,6 @@ class HctApp extends HTMLElement {
   // [ Palette | Global | Roles ] — three panels over the SELECTED palette. The
   // selection lives in ui-session state (this.segment); default is Palette.
   renderRightPane(view) {
-    const ids = ["palette", "global", "roles"];
-    const seg = (id, label) =>
-      h(
-        "button",
-        {
-          class: this.segment === id ? "on" : "",
-          // WAI-ARIA tabs: roving tabindex (only the selected tab is tab-focusable),
-          // arrow keys move between tabs, the panel below is the tabpanel.
-          role: "tab",
-          id: "tab-" + id,
-          "aria-controls": "seg-panel",
-          "aria-selected": this.segment === id ? "true" : "false",
-          tabindex: this.segment === id ? "0" : "-1",
-          onclick: () => this.setSegment(id),
-          onkeydown: (e) => {
-            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-            e.preventDefault();
-            const cur = ids.indexOf(this.segment);
-            const next = ids[(cur + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
-            this.setSegment(next); // re-render then focus the new tab (preserved by data-fk path)
-            const el = this.querySelector("#tab-" + next);
-            if (el && el.focus) el.focus();
-          },
-        },
-        label,
-      );
     let body;
     if (this.segment === "global") body = this.renderGlobalInspector();
     else if (this.segment === "roles") body = this.renderRolesInspector(view);
@@ -2151,7 +2260,12 @@ class HctApp extends HTMLElement {
       // the Inspector tabs; once collapsed it is rendered in the canvas-header instead.
       h("div", { class: "pane-head" },
         this.panesRight ? this.paneToggle("right") : false,
-        h("div", { class: "segmented", role: "tablist", "aria-label": "Inspector" }, seg("palette", "Palette"), seg("global", "Global"), seg("roles", "Roles"))),
+        this.segmented(
+          [{ id: "palette", label: "Palette" }, { id: "global", label: "Global" }, { id: "roles", label: "Roles" }],
+          this.segment,
+          (id) => this.setSegment(id),
+          { ariaLabel: "Inspector", idPrefix: "tab", controls: "seg-panel" },
+        )),
       h("div", { class: "seg-body", "data-scroll": "seg-body", role: "tabpanel", id: "seg-panel", "aria-labelledby": "tab-" + this.segment }, body),
       // Pinned below the panel on EVERY tab: a live component preview wired to the
       // selected palette's roles (surface / onSurface / onSurfaceVariant + primary).
@@ -2267,14 +2381,12 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       {},
-      h("h3", { class: "insp-title" }, h("span", { class: "swatch-dot", style: `background:${(vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex};width:16px;height:16px` }), "Palette"),
+      h("h3", { class: "insp-title" }, swatch((vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex, { size: 16 }), "Palette"),
       h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
       // In the Scrims view, surface the sub-variant relationship at the top of the inspector.
       this.canvasView === "scrims" ? this.scrimContext(view) : false,
-      h(
-        "div",
-        { class: "field" },
-        h("label", {}, "Name"),
+      field(
+        "Name",
         h("input", {
           type: "text",
           "data-fk": "pname",
@@ -2293,15 +2405,12 @@ class HctApp extends HTMLElement {
       h(
         "div",
         { class: "field" },
-        h(
-          "div",
-          {
-            class: "toggle" + (p.on !== false ? " on" : ""),
-            onclick: () => this.commit((d) => (d.palettes[i].on = !(d.palettes[i].on !== false))),
-          },
-          h("span", { class: "track" }),
-          h("span", {}, p.on !== false ? "Enabled" : "Disabled"),
-        ),
+        switchControl({
+          on: p.on !== false,
+          ariaLabel: "Palette enabled",
+          label: p.on !== false ? "Enabled" : "Disabled",
+          onToggle: () => this.commit((d) => (d.palettes[i].on = !(d.palettes[i].on !== false))),
+        }),
       ),
       this.slider("Hue", p.hue, 0, 360, 1, (v) => fmt(v) + "°", (v) => this.editDrag((d) => (d.palettes[i].hue = v))),
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
@@ -2338,8 +2447,8 @@ class HctApp extends HTMLElement {
       h(
         "div",
         { class: "insp-actions" },
-        h("button", { class: "ghost", onclick: () => this.duplicatePalette(i) }, icon("copy"), "Duplicate"),
-        h("button", { class: "ghost danger", onclick: () => this.deletePalette(i) }, icon("trash"), "Delete"),
+        btn([icon("copy"), "Duplicate"], { onclick: () => this.duplicatePalette(i) }),
+        btn([icon("trash"), "Delete"], { variant: "danger", onclick: () => this.deletePalette(i) }),
       ),
     );
   }
@@ -2368,22 +2477,19 @@ class HctApp extends HTMLElement {
       {},
       h("h3", { class: "insp-title" }, icon("gear"), "Global controls"),
       h("div", { class: "insp-sub" }, "Tone curve shared by every palette"),
-      h(
-        "div",
-        { class: "field" },
-        h("label", { title: "perceptual: even OKHSL-lightness steps + gamut chroma (no near-white dead zone). even: the classic CIELAB curve (tone-aligned across hues; Curve/Tension/Chroma-basis apply). peak: cusp anchored at stop 500." }, "Distribution"),
+      field(
+        "Distribution",
         h(
           "select",
           { onchange: (e) => this.commit((doc) => (doc.toneMode = e.target.value)) },
           ...["perceptual", "even", "peak"].map((m) => h("option", { value: m, selected: d.toneMode === m }, m)),
         ),
+        { labelTitle: "perceptual: even OKHSL-lightness steps + gamut chroma (no near-white dead zone). even: the classic CIELAB curve (tone-aligned across hues; Curve/Tension/Chroma-basis apply). peak: cusp anchored at stop 500." },
       ),
       // Curve · Tension · Chroma-basis shape the CIELAB "even" path ONLY — hide them in the OKHSL modes.
       d.toneMode === "even"
-        ? h(
-            "div",
-            { class: "field" },
-            h("label", {}, "Curve"),
+        ? field(
+            "Curve",
             h(
               "select",
               { onchange: (e) => this.commit((doc) => (doc.curve = e.target.value)) },
@@ -2417,34 +2523,25 @@ class HctApp extends HTMLElement {
         (v) => this.editDrag((doc) => (doc.dampBias = v)),
       ),
       h("div", { class: "damp-graph" }, this.graphDamping(d)),
-      h(
-        "div",
-        { class: "field" },
-        h("label", {}, "Hue space"),
-        h(
-          "div",
-          {
-            class: "toggle" + (d.hueSpace === "oklch" ? " on" : ""),
-            onclick: () => this.commit((doc) => (doc.hueSpace = doc.hueSpace === "oklch" ? "cam16" : "oklch")),
-          },
-          h("span", { class: "track" }),
-          h("span", {}, d.hueSpace),
-        ),
+      field(
+        "Hue space",
+        switchControl({
+          on: d.hueSpace === "oklch",
+          ariaLabel: "Hue space — OKLCH when on, CAM16 when off",
+          label: d.hueSpace,
+          onToggle: () => this.commit((doc) => (doc.hueSpace = doc.hueSpace === "oklch" ? "cam16" : "oklch")),
+        }),
       ),
       d.toneMode === "even"
-        ? h(
-            "div",
-            { class: "field" },
-            h("label", { title: "peak: chroma is % of each hue's own peak. gamut: % of every stop's gamut ceiling — palettes harmonize across hue." }, "Chroma basis"),
-            h(
-              "div",
-              {
-                class: "toggle" + (d.relChroma ? " on" : ""),
-                onclick: () => this.commit((doc) => (doc.relChroma = !doc.relChroma)),
-              },
-              h("span", { class: "track" }),
-              h("span", {}, d.relChroma ? "gamut" : "peak"),
-            ),
+        ? field(
+            "Chroma basis",
+            switchControl({
+              on: d.relChroma,
+              ariaLabel: "Chroma basis — gamut when on, peak when off",
+              label: d.relChroma ? "gamut" : "peak",
+              onToggle: () => this.commit((doc) => (doc.relChroma = !doc.relChroma)),
+            }),
+            { labelTitle: "peak: chroma is % of each hue's own peak. gamut: % of every stop's gamut ceiling — palettes harmonize across hue." },
           )
         : false,
     );
@@ -2484,8 +2581,8 @@ class HctApp extends HTMLElement {
                 h(
                   "span",
                   { class: "sw-pair" },
-                  h("span", { class: "sw", title: "light ref " + r.lightHex, style: `background:${r.lightHex}` }),
-                  h("span", { class: "sw", title: "dark ref " + r.darkHex, style: `background:${r.darkHex}` }),
+                  swatch(r.lightHex, { size: 16, title: "light ref " + r.lightHex }),
+                  swatch(r.darkHex, { size: 16, title: "dark ref " + r.darkHex }),
                 ),
               ),
             )
@@ -2581,7 +2678,14 @@ class HctApp extends HTMLElement {
       h("div", { class: "drawer-scrim" + (this.exportOpen ? " open" : ""), onclick: () => this.toggleDrawer(false) }),
       h(
         "div",
-        { class: "drawer" + (this.exportOpen ? " open" : "") },
+        // a modal dialog: role + aria-modal name it to assistive tech; Esc already closes it
+        // (see the keydown handler) and the scrim click closes it too.
+        {
+          class: "drawer" + (this.exportOpen ? " open" : ""),
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": "Export",
+        },
         h(
           "div",
           { class: "drawer-head" },
@@ -2589,22 +2693,14 @@ class HctApp extends HTMLElement {
           h("div", { class: "spacer" }),
           h("button", { class: "ghost", onclick: () => this.toggleDrawer(false) }, icon("x")),
         ),
-        h(
-          "div",
-          { class: "drawer-tabs" },
-          ...tabs.map(([id, label]) =>
-            h(
-              "button",
-              {
-                class: this.exportTab === id ? "on" : "",
-                onclick: () => {
-                  this.exportTab = id;
-                  this.render();
-                },
-              },
-              label,
-            ),
-          ),
+        this.segmented(
+          tabs.map(([id, label]) => ({ id, label })),
+          this.exportTab,
+          (id) => {
+            this.exportTab = id;
+            this.render();
+          },
+          { baseClass: "drawer-tabs", ariaLabel: "Export format", idPrefix: "xtab", controls: "export-panel" },
         ),
         // Figma sub-bar: the import note on its own row, then [mode-file segmented | Binder plugin].
         isFigma
@@ -2615,32 +2711,20 @@ class HctApp extends HTMLElement {
               h(
                 "div",
                 { class: "figma-bar-row" },
-                h(
-                  "div",
-                  { class: "figma-files" },
-                  ...FIGMA.map(([id, label]) =>
-                    h(
-                      "button",
-                      {
-                        class: this.figmaFile === id ? "on" : "",
-                        onclick: () => {
-                          this.figmaFile = id;
-                          this.render();
-                        },
-                      },
-                      label,
-                    ),
-                  ),
-                ),
-                h(
-                  "button",
-                  {
-                    class: "ghost figma-plugin-btn",
-                    title: "Download the HCT Semantic Binder plugin (manifest.json + code.js). In Figma: Plugins → Development → Import plugin from manifest — it aliases each semantic role to its raw variable so editing a raw color cascades.",
-                    onclick: () => this.downloadFigmaPlugin(),
+                this.segmented(
+                  FIGMA.map(([id, label]) => ({ id, label })),
+                  this.figmaFile,
+                  (id) => {
+                    this.figmaFile = id;
+                    this.render();
                   },
-                  icon("download"), "Binder plugin",
+                  { baseClass: "figma-files", ariaLabel: "Figma mode file", role: "group", idPrefix: "ffile" },
                 ),
+                btn([icon("download"), "Binder plugin"], {
+                  cls: "figma-plugin-btn",
+                  title: "Download the HCT Semantic Binder plugin (manifest.json + code.js). In Figma: Plugins → Development → Import plugin from manifest — it aliases each semantic role to its raw variable so editing a raw color cascades.",
+                  onclick: () => this.downloadFigmaPlugin(),
+                }),
               ),
             )
           : false,
@@ -2658,7 +2742,8 @@ class HctApp extends HTMLElement {
         // single download action instead of a row of competing buttons.
         h(
           "div",
-          { class: "drawer-code" },
+          // tabpanel for the .drawer-tabs export-format tablist above (aria-labelledby the active tab).
+          { class: "drawer-code", id: "export-panel", role: "tabpanel", "aria-labelledby": "xtab-" + this.exportTab },
           h("button", { class: "copy-float", title: "Copy to clipboard", "aria-label": "Copy", onclick: () => this.copy(code) }, icon("copy"), "Copy"),
           h("pre", { class: "drawer-pre" }, code),
         ),
@@ -2674,18 +2759,15 @@ class HctApp extends HTMLElement {
             { class: "foot-actions" },
             // Inside Figma, applying variables directly is the point — primary action, on the LEFT.
             this.inFigma
-              ? h(
-                  "button",
-                  {
-                    class: "primary figma-apply",
-                    title: "Create/update the raw-colors + Light/Dark variable collections directly in this Figma file",
-                    onclick: () => this.applyToFigma(),
-                  },
-                  icon("flag"), "Apply Variables",
-                )
+              ? btn([icon("flag"), "Apply Variables"], {
+                  variant: "primary",
+                  cls: "figma-apply",
+                  title: "Create/update the raw-colors + Light/Dark variable collections directly in this Figma file",
+                  onclick: () => this.applyToFigma(),
+                })
               : false,
             // ONE download action — every format in its own folder + the config, as a single .zip.
-            h("button", { class: "primary", title: "Download every format (css-hex, css-oklch, json, dtcg, figma, ui3) in its own folder + the config, as one .zip", onclick: () => this.downloadAllZip(view) }, icon("download"), "Download All"),
+            btn([icon("download"), "Download All"], { variant: "primary", title: "Download every format (css-hex, css-oklch, json, dtcg, figma, ui3) in its own folder + the config, as one .zip", onclick: () => this.downloadAllZip(view) }),
           ),
         ),
       ),

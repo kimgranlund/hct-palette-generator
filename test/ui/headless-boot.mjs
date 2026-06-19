@@ -567,7 +567,8 @@ ok(cDefault.exports.css.length > 0, "(q5) default differential params produce a 
 
 // ── (r) damping presets: one click sets all four knobs + highlights the active chip ───
 app.openSet(app.sets[0].id); flushRaf(); app.setSegment("global"); flushRaf();
-const presets = app.querySelectorAll(".preset");
+// damping presets are now the shared chip() primitive (.chip) — the Global tab's only chips.
+const presets = app.querySelectorAll(".chip");
 ok(presets.length >= 5, `(r1) the Global tab shows damping preset chips (got ${presets.length})`);
 // click "Vivid mids" (amp 55) — find it by its title carrying amplify 55
 const vivid = presets.find((b) => (b.getAttribute("title") || "").includes("amplify 55"));
@@ -578,7 +579,7 @@ ok(app.doc.dampAmp === 55 && app.doc.damp === 70 && app.doc.dampBias === 0, `(r3
 ok(app.history.length - presetHist === 1, "(r4) a preset is ONE undo step");
 // the now-matching chip is marked active
 app.setSegment("global"); flushRaf();
-const onChip = app.querySelectorAll(".preset").filter((b) => b.classList.contains("on"));
+const onChip = app.querySelectorAll(".chip").filter((b) => b.classList.contains("on"));
 ok(onChip.length === 1 && (onChip[0].getAttribute("title") || "").includes("amplify 55"), `(r5) exactly the matching preset chip is highlighted (got ${onChip.length})`);
 
 // ── (s) Figma Light/Dark export — separate per-mode files + drawer tab ────────────────
@@ -946,6 +947,43 @@ ok(/Skew/.test(gcText()) && /Lift/.test(gcText()), "(gc) 'even' mode shows the p
 app.doc.toneMode = "perceptual"; app.render(); flushRaf();
 const _gcp = gcText();
 ok(/Hue/.test(_gcp) && !/Skew/.test(_gcp) && !/Lift/.test(_gcp), "(gc) the OKHSL modes HIDE Skew + Lift (Hue/Chroma stay)");
+
+// ── (px) primitive a11y contracts — the refactor's guarantees (component-inventory.md) ──
+app.openSet(app.sets[0].id); app.commit((doc) => (doc.toneMode = "even")); app.setSegment("global"); flushRaf();
+
+// switchControl: a real <button role=switch> with aria-checked — the old .toggle was a
+// <div onclick> (no role, no focus, no keyboard).
+const switches = app.querySelectorAll(".toggle");
+ok(switches.length >= 1, `(px1) the global tab renders switch controls (got ${switches.length})`);
+ok(switches.every((s) => s.tagName === "BUTTON" && s.getAttribute("role") === "switch" &&
+     (s.getAttribute("aria-checked") === "true" || s.getAttribute("aria-checked") === "false")),
+   "(px2) every switch is a <button role=switch> with aria-checked (focusable + keyboard, not a div)");
+
+// field(): <label for> matches the control id → the control gets an accessible name
+// (Distribution / Curve / Hue space / Chroma basis were screen-reader-nameless before).
+const fields = app.querySelectorAll(".field");
+const associated = fields.filter((f) => {
+  const label = f.children.find((c) => c.tagName === "LABEL");
+  const lf = label && label.getAttribute("for");
+  return lf && f.children.some((c) => c.getAttribute && c.getAttribute("id") === lf);
+});
+ok(associated.length >= 3, `(px3) labeled fields associate <label for> with the control id (got ${associated.length})`);
+
+// segmented(): roving tabindex — exactly one tab-focusable button per group.
+const segGroups = app.querySelectorAll(".segmented");
+ok(segGroups.length >= 1, "(px4) the segmented control is present");
+ok(segGroups.every((g) => g.children.filter((b) => b.getAttribute && b.getAttribute("tabindex") === "0").length === 1),
+   "(px5) every segmented group has exactly one tabindex=0 button — roving tabindex");
+
+// set-tile: a role=button card whose delete is a REAL <button> (no interactive nested in a <button>).
+app.toGallery(); flushRaf();
+const tiles = app.querySelectorAll(".set-tile");
+ok(tiles.length >= 1, `(px6) the gallery renders set tiles (got ${tiles.length})`);
+const realTile = tiles.find((t) => !t.classList.contains("preset")); // the editable set tile carries the .del
+ok(realTile && realTile.tagName === "DIV" && realTile.getAttribute("role") === "button" && realTile.getAttribute("tabindex") === "0",
+   "(px7) the set tile is a role=button div (so its delete can be a real button)");
+const del = app.querySelectorAll(".del").find(Boolean);
+ok(del && del.tagName === "BUTTON", "(px8) the tile delete affordance is a real, focusable <button>");
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {

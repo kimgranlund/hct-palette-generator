@@ -203,6 +203,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .set-thumb .del {
   position: absolute; top: 6px; right: 6px;
   display: flex; align-items: center; justify-content: center;
+  padding: 0; border: none; /* a real <button> now — drop the base button chrome */
   width: 22px; height: 22px; border-radius: 999px;
   font-size: 12px; line-height: 1; cursor: pointer;
   background: rgba(0, 0, 0, .55); color: #fff;
@@ -453,12 +454,7 @@ nonoun-color-tokens.reordering .ramp-row { transition: transform .08s ease; }
    checkerboard (the universal "this is translucent" indicator) so the alpha reads clearly. */
 .scrim-strip { display: flex; box-shadow: var(--shadow); border-radius: 6px; overflow: hidden; width: fit-content; }
 .scrim-cell {
-  width: 26px; height: 40px; display: block; position: relative;
-  background-color: #ffffff;
-  background-image:
-    linear-gradient(45deg, #c9ced6 25%, transparent 25%, transparent 75%, #c9ced6 75%),
-    linear-gradient(45deg, #c9ced6 25%, transparent 25%, transparent 75%, #c9ced6 75%);
-  background-size: 14px 14px; background-position: 0 0, 7px 7px;
+  width: 26px; height: 40px; display: block; position: relative; --checker: 14px;
 }
 .scrim-fill { position: absolute; inset: 0; display: block; }
 .scrim-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 2; }
@@ -482,13 +478,28 @@ nonoun-color-tokens.reordering .ramp-row { transition: transform .08s ease; }
 .map-table td.map-sw, .map-table th.map-sw { width: 30px; }
 .map-swatch {
   position: relative; display: inline-block; width: 22px; height: 22px; border-radius: 5px;
-  border: 1px solid var(--line); overflow: hidden; vertical-align: middle; background-color: #fff;
+  border: 1px solid var(--line); overflow: hidden; vertical-align: middle;
+}
+.map-swatch-fill { position: absolute; inset: 0; display: block; }
+
+/* ── primitive: swatch (one color chip) ───────────────────────────────────────────
+   A fixed-size color square (size via --sw). `.alpha` lays the fill over the shared
+   checkerboard, which is defined ONCE here and reused by the composite cells
+   (.scrim-cell, .map-swatch) that used to each copy it. */
+.swatch {
+  position: relative; display: inline-block; flex: none; vertical-align: middle;
+  width: var(--sw, 16px); height: var(--sw, 16px);
+  border-radius: 3px; border: 1px solid var(--line); overflow: hidden;
+}
+.swatch-fill { position: absolute; inset: 0; display: block; }
+.swatch.alpha, .scrim-cell, .map-swatch {
+  background-color: #fff;
   background-image:
     linear-gradient(45deg, #c9ced6 25%, transparent 25%, transparent 75%, #c9ced6 75%),
     linear-gradient(45deg, #c9ced6 25%, transparent 25%, transparent 75%, #c9ced6 75%);
-  background-size: 10px 10px; background-position: 0 0, 5px 5px;
+  background-size: var(--checker, 10px) var(--checker, 10px);
+  background-position: 0 0, calc(var(--checker, 10px) / 2) calc(var(--checker, 10px) / 2);
 }
-.map-swatch-fill { position: absolute; inset: 0; display: block; }
 .map-table code { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
 .map-sem code { color: var(--accent); font-weight: 600; }
 /* the editable raw-token cell — a select menu, or a free text input (⇄ toggle in the head). */
@@ -510,9 +521,19 @@ nonoun-color-tokens.reordering .ramp-row { transition: transform .08s ease; }
 .map-drift-match { color: #2e9e5b; }
 .map-drift-drift { color: #d9534f; }
 .map-drift-absent, .map-drift-none { color: var(--ink-faint); font-weight: 400; }
-.map-drift-sum { font-size: 12px; padding: 2px 9px; border-radius: 10px; font-weight: 600; }
-.map-drift-sum.in-sync { background: color-mix(in srgb, #2e9e5b 16%, transparent); color: #2e9e5b; }
-.map-drift-sum.has-drift { background: color-mix(in srgb, #d9534f 16%, transparent); color: #d9534f; }
+/* ── primitive: chip (one in-flow pill) ───────────────────────────────────────────
+   Status badge (<span>, optional tone) or interactive toggle (<button>, .on). Replaces
+   the old .map-drift-sum and .damp-presets .preset pill stylings. */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid transparent;
+  font-size: 11px; font-weight: 600; line-height: 1.4; color: var(--ink-dim);
+}
+button.chip { background: var(--panel-2); border-color: var(--line); cursor: pointer; }
+button.chip:hover { background: var(--line-2); color: var(--ink); }
+.chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: var(--shadow); }
+.chip.in-sync { background: color-mix(in srgb, #2e9e5b 16%, transparent); color: #2e9e5b; }
+.chip.has-drift { background: color-mix(in srgb, #d9534f 16%, transparent); color: #d9534f; }
 .scrim-context { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin-bottom: 12px; background: var(--panel-2); }
 .scrim-ctx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .scrim-ctx-head small { color: var(--ink-dim); font-weight: 400; }
@@ -528,12 +549,7 @@ nonoun-color-tokens.reordering .ramp-row { transition: transform .08s ease; }
 .mini-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-dim); margin: -2px 0 10px; cursor: pointer; }
 .mini-check input { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
 .damp-presets { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px; }
-.damp-presets .preset {
-  padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px;
-  font-size: 10.5px; font-weight: 550; color: var(--ink-dim); background: var(--panel-2);
-}
-.damp-presets .preset:hover { background: var(--line-2); color: var(--ink); }
-.damp-presets .preset.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: var(--shadow); }
+/* the preset buttons are chips (.chip.on) — see the chip primitive above. */
 .damp-graph { margin-top: 6px; padding: 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); }
 .dg-unity { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 2 2; }
 
@@ -630,9 +646,15 @@ input[type="range"]::-moz-range-thumb {
   background: var(--accent); border: 2px solid var(--panel); cursor: pointer;
 }
 
+/* switchControl() — a <button role=switch>. Neutralise the base button chrome
+   (padding/border/hover bg) so only the track + label show; the platform gives it
+   :focus-visible and Enter/Space toggling for free. */
 .toggle {
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 0; border: none; border-radius: 0; background: none;
+  color: var(--ink); font: inherit; line-height: 1;
 }
+.toggle:hover { background: none; }
 .toggle .track {
   width: 34px; height: 19px; border-radius: 999px; background: var(--line);
   position: relative; transition: background .12s;
@@ -738,3 +760,28 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── forced-colors / Windows High Contrast ─────────────────────────────────────────
+   The custom-painted controls (switch track, active segment/tab, slider thumb, chips)
+   lose their var(--accent) fills when the OS substitutes its own palette — background
+   colors are forced to Canvas unless they are SYSTEM color keywords. Re-assert on/off +
+   active state with Highlight / ButtonText so the controls stay legible in High Contrast
+   (the native-parity affordance the inventory found missing everywhere). */
+@media (forced-colors: active) {
+  /* switch — border the track, fill the thumb; Highlight marks ON. */
+  .toggle .track { border: 1px solid ButtonText; }
+  .toggle .track::after { background: ButtonText; }
+  .toggle.on .track { background: Highlight; }
+  .toggle.on .track::after { background: HighlightText; }
+  /* segmented control, tabs, and the active chip — Highlight-filled when selected. */
+  .segmented button.on, .canvas-seg button.on, .drawer-tabs button.on,
+  .figma-files button.on, .chip.on {
+    background: Highlight; color: HighlightText;
+  }
+  /* status chips keep a border so the tinted pill still reads as a bounded badge. */
+  .chip { border-color: ButtonText; }
+  /* range slider — a visible track and a Highlight thumb (appearance:none drops the native one). */
+  input[type="range"] { background: ButtonText; }
+  input[type="range"]::-webkit-slider-thumb { background: Highlight; border: 1px solid ButtonText; }
+  input[type="range"]::-moz-range-thumb { background: Highlight; border: 1px solid ButtonText; }
+}
