@@ -364,7 +364,6 @@ for (let v = tStart + 1; v <= tStart + 6 && v <= 100; v++) {
 ok(gSame, "(g) the global slider <input> is the SAME node throughout the drag");
 ok(app.doc.tension !== tStart, `(g) doc.tension updated during the drag (${app.doc.tension})`);
 ok(app.querySelector(".canvas-scene") === sceneG0, "(g) .canvas-scene element preserved during the global drag");
-app.doc.toneMode = "perceptual"; // restore the default after the even-mode Tension drag (no undo step)
 tensionInput.dispatch("change", {});
 ok(app.history.length - tHistPre === 1, `(g) the global drag is ONE undo step (got ${app.history.length - tHistPre})`);
 
@@ -809,7 +808,7 @@ ok(TP.every((p) => JSON.stringify(p.palettes.map((x) => x.name)) === JSON.string
 ok(!TP.some((p) => /^[IVXLC]+·\d/.test(p.name)), "(hh) preset names drop the vol·index prefix (just the place)");
 // presets carry the full controls (a config that OMITS them hydrates to the DARK domain-min, lmax 60,
 // which made every preset render muddy) AND use the "Vivid mids" damping by default (damp 70 / amp 55).
-ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 70 && p.dampAmp === 55), "(hh) presets carry controls + the 'Vivid mids' damping (damp 70, amp 55)");
+ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 70 && p.dampAmp === 55 && p.chromaFloor === 40), "(hh) presets carry controls + 'Vivid mids' damping (damp 70, amp 55) + the chroma floor (40)");
 // lift-anchoring: a LIGHT dominant (St John's fog cream, src L*≈85) must open LIGHT, not the old mid-dark
 // L*≈46 grey. This is the "colors look really wrong" fix (lift + controls together).
 const { projectView: _pvHH } = await import("../../src/ui/model.mjs");
@@ -819,9 +818,6 @@ const _sj = TP.find((p) => /St\. John/.test(p.name));
 // ignores per-palette lift), so verify the anchoring by rendering the preset in "even".
 const _sjPrime = _pvHH(_hydHH({ ..._sj, toneMode: "even" })).palettes[0].ramp.find((s) => s.stop === 550);
 ok(_sjPrime.tone > 72, `(hh) [even] lift anchors the prime to source lightness — St John's fog-cream opens LIGHT (550 L*=${_sjPrime.tone.toFixed(0)})`);
-// and in the DEFAULT perceptual mode the preset still renders cleanly — every stop distinct (no dead zone).
-const _sjPerc = _pvHH(_hydHH(_sj)).palettes[0].ramp;
-ok(new Set(_sjPerc.map((s) => s.hex)).size === _sjPerc.length, "(hh) [perceptual default] the preset's prime ramp has no duplicate (dead-zone) stops");
 app.toGallery(); flushRaf();
 ok(app.querySelectorAll(".preset").length === 48, `(hh) the gallery renders a read-only preset tile per preset (got ${app.querySelectorAll(".preset").length})`);
 const presetNames = new Set(TP.map((p) => p.name));

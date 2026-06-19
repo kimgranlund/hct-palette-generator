@@ -2397,6 +2397,11 @@ class HctApp extends HTMLElement {
       this.slider("L* min", d.lmin, 0, 40, 1, (v) => fmt(v), (v) => this.editDrag((doc) => (doc.lmin = v))),
       this.slider("L* max", d.lmax, 60, 100, 1, (v) => fmt(v), (v) => this.editDrag((doc) => (doc.lmax = v))),
       this.slider("Damp", d.damp, 0, 100, 1, (v) => fmt(v), (v) => this.editDrag((doc) => (doc.damp = v))),
+      // chroma floor (even mode only): lifts the damped light/dark ends back toward the palette's
+      // intended chroma so low-chroma ramps don't dead-zone to near-white; never over-saturates.
+      d.toneMode === "even"
+        ? this.slider("Chroma floor", d.chromaFloor, 0, 100, 1, (v) => fmt(v), (v) => this.editDrag((doc) => (doc.chromaFloor = v)))
+        : false,
       // differential damping curve — falloff (shape) · amplify (mid boost) · bias (L↔D)
       h("div", { class: "sub-head" }, "Differential curve"),
       this.dampPresets(),

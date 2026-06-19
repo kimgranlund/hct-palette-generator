@@ -103,6 +103,7 @@ export function defaultDocument() {
     dampBias: DEFAULT_CONTROLS.dampBias,
     hueSpace: DEFAULT_CONTROLS.hueSpace,
     relChroma: DEFAULT_CONTROLS.relChroma,
+    chromaFloor: DEFAULT_CONTROLS.chromaFloor,
     toneMode: DEFAULT_CONTROLS.toneMode,
     theme: "auto",
     selected: 0,
@@ -123,6 +124,7 @@ function controlsOf(doc) {
     dampBias: doc.dampBias ?? DEFAULT_CONTROLS.dampBias,
     hueSpace: doc.hueSpace ?? DEFAULT_CONTROLS.hueSpace,
     relChroma: doc.relChroma ?? DEFAULT_CONTROLS.relChroma,
+    chromaFloor: doc.chromaFloor ?? DEFAULT_CONTROLS.chromaFloor,
     toneMode: doc.toneMode ?? DEFAULT_CONTROLS.toneMode,
   };
 }
@@ -145,6 +147,7 @@ function stateOf(doc) {
     dampBias: c.dampBias,
     hueSpace: c.hueSpace,
     relChroma: c.relChroma,
+    chromaFloor: c.chromaFloor,
     toneMode: c.toneMode,
   };
 }

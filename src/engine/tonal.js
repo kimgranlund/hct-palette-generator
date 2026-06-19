@@ -44,17 +44,21 @@ export const DEFAULT_CONTROLS = {
   // palettes harmonize across hue regardless of the hue picked (see paletteStops). A cheap stand-in
   // for OKHSL-style perceptual-saturation normalization.
   relChroma: false,
+  // Light/dark-end chroma floor (% of each stop's gamut ceiling) for the "even" path — lifts the
+  // damping-starved ends back toward the palette's intended chroma so LOW-chroma ramps don't collapse
+  // to a near-white "dead zone", WITHOUT muting saturated palettes (see paletteStops). Default on.
+  chromaFloor: 40,
   // Ramp distribution mode (how stops map to lightness):
-  //   "even"       — the classic CIELAB-L* curve below (toneAt): per-stop tone is the SAME L* for every
-  //                  hue, so palettes stay tone-aligned. The curve/skew/lift/damp/relChroma controls all
-  //                  apply here. Can leave a near-white "dead zone" at the light end of LOW-chroma ramps.
-  //   "perceptual" — even steps in OKHSL lightness (perceptually uniform) + gamut-proportional chroma, so
-  //                  every stop is distinct (no dead zone), at the cost of per-hue tone alignment.
+  //   "even" (default) — the classic CIELAB-L* curve below (toneAt): per-stop tone is the SAME L* for
+  //                  every hue, so palettes stay tone-aligned AND keep their full per-hue vibrancy. The
+  //                  curve/skew/lift/damp/relChroma/chromaFloor controls all apply here.
+  //   "perceptual" — even steps in OKHSL lightness (perceptually uniform) + gamut-proportional chroma —
+  //                  harmonizes saturation across hue (softer/more uniform look).
   //   "peak"       — like perceptual but the hue's CUSP (peak chroma) is anchored at stop 500 and each
   //                  half spreads from there (Tailwind-style "the color is 500"). Vivid/centered.
   // perceptual/peak go through the OKHSL path (okhslStops); lmin/lmax/damp still bound/shape it, but the
-  // CIELAB-only controls (curve/skew/lift/relChroma) and the L*-fidelity guarantees apply to "even" only.
-  toneMode: "perceptual",
+  // CIELAB-only controls (curve/skew/lift/relChroma/chromaFloor) apply to "even" only.
+  toneMode: "even",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,9 +161,15 @@ export function paletteStops(palette, controls, stops) {
     // Relative mode scales EACH stop by its OWN gamut ceiling, so every hue fills the same fraction of
     // its gamut envelope and palettes read as equally saturated regardless of hue. min(·, maxc) keeps
     // it in-gamut either way (m can exceed 1 via dampAmp).
-    const chroma = controls.relChroma
-      ? Math.min((palette.chroma / 100) * maxc * m, maxc)
-      : Math.min(target * m, maxc);
+    const intended = controls.relChroma ? (palette.chroma / 100) * maxc : target; // un-damped chroma for this stop
+    const damped = Math.min(intended * m, maxc);
+    // Chroma FLOOR: the edge damping starves the light/dark ends — for a LOW-chroma palette the light
+    // stops collapse to near-white (the "dead zone"). The floor lifts each stop back toward its INTENDED
+    // chroma, up to chromaFloor% of the stop's gamut, but NEVER above `intended` — so a muted palette
+    // stays muted (doesn't over-saturate) and a neutral (intended≈0) stays neutral. Saturated palettes
+    // already clamp at/near maxc, so the floor never binds — their vibrancy is untouched.
+    const floorC = Math.min(((controls.chromaFloor ?? 0) / 100) * maxc, intended);
+    const chroma = Math.min(maxc, Math.max(damped, floorC));
     // Emit via the engine at the per-stop (hue, chroma, tone): in-gamut, hits the
     // tone, holds the SPECIFIED hue (constant when hueShift=0, else edge-rotated).
     const out = hctToRgb(hue, chroma, tone);

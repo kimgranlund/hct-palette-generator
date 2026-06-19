@@ -15,9 +15,9 @@ import * as E from "../../src/engine/hct.js";
 const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json", import.meta.url), "utf8"));
 const DEFAULTS = RT.defaults;                       // 8 palettes {name,hue,chroma,skew,lift,on}
 const STOPS = T.EXPORT_STOPS;
-// The gates below validate the CIELAB "even" path (curve/skew/lift/damp/relChroma + L*-fidelity), so
-// pin toneMode:"even" — the default is now "perceptual" (OKHSL), which has its own gates further down.
-const CTL = { ...(T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16" }), toneMode: "even" };
+// The gates below validate the CIELAB "even" path (curve/skew/lift/damp/relChroma + L*-fidelity). Pin
+// toneMode:"even" and chromaFloor:0 — the perceptual/peak paths and the chroma floor have their own gates.
+const CTL = { ...(T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16" }), toneMode: "even", chromaFloor: 0 };
 const CURVES = ["linear", "sine", "cubic", "logistic", "exp"];
 const SKEWS = [-100, -50, 0, 50, 100];
 
@@ -259,8 +259,28 @@ for (const mode of ["perceptual", "peak"]) {
   if (!(at(500) > at(100) + 2 && at(500) > at(900) + 2)) FAIL("okhsl-modes", `peak: chroma not centered at 500 (100:${at(100).toFixed(0)} 500:${at(500).toFixed(0)} 900:${at(900).toFixed(0)})`);
 }
 
+// ── hpg-tonal-chroma-floor: the even-mode chroma floor lifts the damping-starved ends of LOW-chroma
+//    ramps (kills the near-white dead zone) WITHOUT muting saturated ramps or tinting true neutrals. ──
+{
+  const ramp = (hue, chroma, floor) => T.paletteStops({ hue, chroma, skew: 0, lift: 0 }, { ...CTL, chromaFloor: floor }, STOPS);
+  // (a) MUTED: a light stop carries MORE chroma with the floor than without (the dead zone is lifted).
+  const c0 = ramp(165, 18, 0).find((r) => r.stop === 150).chroma;
+  const cF = ramp(165, 18, 40).find((r) => r.stop === 150).chroma;
+  if (!(cF > c0 + 2)) FAIL("chroma-floor", `muted light stop 150: floor didn't lift chroma (0%:${c0.toFixed(1)} 40%:${cF.toFixed(1)})`);
+  // (b) NEVER over-saturates: no floored stop exceeds the intended mid (stop 500, where m≈1 ≈ target).
+  const muted = ramp(165, 18, 40);
+  const cMid = muted.find((r) => r.stop === 500).chroma;
+  for (const r of muted) if (r.chroma > cMid + 1) FAIL("chroma-floor", `muted stop ${r.stop} chroma ${r.chroma.toFixed(1)} exceeds intended mid ${cMid.toFixed(1)}`);
+  // (c) TRUE NEUTRAL (chroma 0) is untouched — the floor caps at intended(=0), so it cannot tint.
+  const n0 = ramp(267, 0, 0), nF = ramp(267, 0, 40);
+  for (let i = 0; i < n0.length; i++) if (n0[i].hex !== nF[i].hex) FAIL("chroma-floor", `neutral stop ${n0[i].stop}: floor tinted a chroma-0 palette (${n0[i].hex}->${nF[i].hex})`);
+  // (d) SATURATED is untouched — a high-chroma ramp already clamps to the gamut, so the floor never binds.
+  const s0 = ramp(145, 99, 0), sF = ramp(145, 99, 40);
+  for (let i = 0; i < s0.length; i++) if (s0[i].hex !== sF[i].hex) FAIL("chroma-floor", `saturated stop ${s0[i].stop}: floor changed a vibrant ramp (${s0[i].hex}->${sF[i].hex})`);
+}
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-for (const g of ["ingamut", "monotonic", "white-endpoint", "chroma-target", "curve-fidelity", "hue-stability", "damping-curve", "edge-hue", "rel-chroma", "okhsl-modes"]) {
+for (const g of ["ingamut", "monotonic", "white-endpoint", "chroma-target", "curve-fidelity", "hue-stability", "damping-curve", "edge-hue", "rel-chroma", "okhsl-modes", "chroma-floor"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }
