@@ -122,16 +122,6 @@ const h = (tag, attrs = {}, ...kids) => {
   return el;
 };
 const fmt = (x, d = 0) => Number(x).toFixed(d);
-// keyStop — a ramp's "key color": its most CHROMATIC stop (the cusp), i.e. the palette's most
-// saturated, characteristic color. Used for gallery preview swatches — far more distinctive than a
-// fixed mid stop, especially in perceptual mode where stop 550 is mid-lightness for every palette,
-// so a row of 550s reads as near-identical mid-tones. Mode-agnostic (reads measured chroma). A
-// (near-)neutral ramp has no chromatic peak, so it falls back to its mid stop (a representative gray).
-const keyStop = (ramp) => {
-  const best = ramp.reduce((a, s) => (s.chroma > a.chroma ? s : a), ramp[0]);
-  if (best.chroma >= 8) return best;
-  return ramp.find((s) => s.stop === 550) || ramp[Math.floor(ramp.length / 2)];
-};
 const ago = (ts) => {
   const s = (Date.now() - ts) / 1000;
   if (s < 60) return "just now";
@@ -592,10 +582,7 @@ class HctApp extends HTMLElement {
       const strip = h(
         "div",
         { class: "strip" },
-        ...enabled.slice(0, 8).map((p) => {
-          const key = keyStop(p.ramp); // each palette's most chromatic ("key") color, not a flat 550
-          return h("i", { style: `background:${key.hex}` });
-        }),
+        ...enabled.slice(0, 8).map((p) => h("i", { style: `background:${p.key}` })), // p.key = vivid identity color
       );
       const tile = h(
         "button",
@@ -663,10 +650,7 @@ class HctApp extends HTMLElement {
       const strip = h(
         "div",
         { class: "strip" },
-        ...enabled.slice(0, 6).map((p, i) => {
-          const key = keyStop(p.ramp);
-          return h("i", { style: `background:${key.hex};flex:${SAMPLED_W[i] || 1}` });
-        }),
+        ...enabled.slice(0, 6).map((p, i) => h("i", { style: `background:${p.key};flex:${SAMPLED_W[i] || 1}` })),
       );
       return h(
         "button",
@@ -2276,12 +2260,15 @@ class HctApp extends HTMLElement {
     const p = this.doc.palettes[i];
     if (!p) return h("div", {}, "No palette selected");
     const vp = view.palettes[i];
+    // skew + lift shape the CIELAB tone curve (toneAt) — they have NO effect in the OKHSL distribution
+    // modes (perceptual/peak step lightness directly), so hide them there, matching the Global controls.
+    const isEven = this.doc.toneMode === "even";
 
     return h(
       "div",
       {},
       h("h3", { class: "insp-title" }, h("span", { class: "swatch-dot", style: `background:${(vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex};width:16px;height:16px` }), "Palette"),
-      h("div", { class: "insp-sub" }, "Tune hue · chroma · skew · lift — live"),
+      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
       // In the Scrims view, surface the sub-variant relationship at the top of the inspector.
       this.canvasView === "scrims" ? this.scrimContext(view) : false,
       h(
@@ -2318,8 +2305,8 @@ class HctApp extends HTMLElement {
       ),
       this.slider("Hue", p.hue, 0, 360, 1, (v) => fmt(v) + "°", (v) => this.editDrag((d) => (d.palettes[i].hue = v))),
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
-      this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))),
-      this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))),
+      isEven ? this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))) : false,
+      isEven ? this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))) : false,
       // Edge hue rotation — bipolar, centre 0. The readout shows the light/dark torsion:
       // left = light + / dark −, right = light − / dark + (the slider value = the dark edge).
       this.slider(

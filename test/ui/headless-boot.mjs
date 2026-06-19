@@ -943,6 +943,13 @@ ok(/Curve/.test(gcText()) && /Distribution/.test(gcText()), "(gc) 'even' mode sh
 app.commit((doc) => (doc.toneMode = "perceptual")); flushRaf();
 const _gct = gcText();
 ok(/Distribution/.test(_gct) && !/Curve/.test(_gct) && !/Chroma basis/.test(_gct), "(gc) the OKHSL modes HIDE Curve + Chroma basis entirely (not shown disabled)");
+// the Palette inspector likewise hides Skew + Lift (CIELAB tone-curve controls) outside "even".
+app.setSegment("palette");
+app.doc.toneMode = "even"; app.render(); flushRaf();
+ok(/Skew/.test(gcText()) && /Lift/.test(gcText()), "(gc) 'even' mode shows the per-palette Skew + Lift");
+app.doc.toneMode = "perceptual"; app.render(); flushRaf();
+const _gcp = gcText();
+ok(/Hue/.test(_gcp) && !/Skew/.test(_gcp) && !/Lift/.test(_gcp), "(gc) the OKHSL modes HIDE Skew + Lift (Hue/Chroma stay)");
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {
