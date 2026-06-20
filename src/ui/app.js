@@ -2741,6 +2741,7 @@ class HctApp extends HTMLElement {
           // tabpanel for the .drawer-tabs export-format tablist above (aria-labelledby the active tab).
           { class: "drawer-code", id: "export-panel", role: "tabpanel", "aria-labelledby": "xtab-" + this.exportTab },
           btn([icon("copy"), "Copy"], { variant: "bare", cls: "copy-float", title: "Copy to clipboard", ariaLabel: "Copy", onclick: () => this.copy(code) }),
+          h("button", { class: "copy-float", title: "Copy to clipboard", "aria-label": "Copy", onclick: () => this.copy(code) }, icon("copy"), "Copy"),
           h("pre", { class: "drawer-pre" }, code),
         ),
         h(
