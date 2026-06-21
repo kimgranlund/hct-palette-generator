@@ -5614,11 +5614,13 @@ class HctApp extends HTMLElement {
   }
 
   renderDrawer(view) {
-    // Export formats grouped for the <select> (the flat tab row outgrew the drawer width):
-    // CSS-variable outputs · token files for tools · the round-trip project config.
+    // Export formats grouped by DESTINATION (what consumes the output); the item names
+    // only the variant. Group = where it goes, so labels never collide (no "CSS / CSS").
+    // Internal ids (css/oklch/tailwind/…) are unchanged — only the display labels.
     const FORMAT_GROUPS = [
-      ["CSS", [["css", "CSS (hex)"], ["oklch", "OKLCH"], ["tailwind", "Tailwind"], ["shadcn", "ShadCN"]]],
-      ["Tokens", [["json", "JSON"], ["dtcg", "DTCG"], ["figma", "Figma"], ["ui3", "UI3"]]],
+      ["CSS", [["css", "Hex"], ["oklch", "OKLCH"]]],
+      ["Frameworks", [["tailwind", "Tailwind v4"], ["shadcn", "shadcn/ui"]]],
+      ["Design tools", [["figma", "Figma"], ["ui3", "Figma UI3"], ["dtcg", "DTCG"], ["json", "JSON"]]],
       ["Project", [["config", "Config"]]],
     ];
     // The three Figma mode files: [stateKey, label, real filename to import as].
