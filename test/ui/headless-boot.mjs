@@ -1016,7 +1016,7 @@ ok(rtKC && rtKC.length === 1 && rtKC[0].role === "dominant" && Array.isArray(rtK
 const { TRAVEL_PRESETS: TPs, TRAVEL_VOLUMES: TVs } = await import("../../src/ui/travel-presets.js");
 ok(TPs.every((p) => typeof p.vol === "string" && p.vol), "(st1) every preset carries a volume (vol)");
 const withStory = TPs.filter((p) => p.story);
-ok(withStory.length >= 1 && Object.keys(TVs).length >= 1, `(st2) some presets carry a story (${withStory.length}) + volume headers (${Object.keys(TVs).length})`);
+ok(withStory.length === TPs.length && Object.keys(TVs).length === 12, `(st2) ALL ${TPs.length} presets carry a story + 12 volume headers (got ${withStory.length} / ${Object.keys(TVs).length})`);
 const storyPreset = withStory[0];
 ok(storyPreset.story.title && storyPreset.story.narrative && Array.isArray(storyPreset.story.groups), "(st3) a story has title + narrative + groups");
 ok(storyPreset.palettes.some((q) => q.colorName && q.colorRole && q.description), "(st4) the curated colors carry name + role + description");

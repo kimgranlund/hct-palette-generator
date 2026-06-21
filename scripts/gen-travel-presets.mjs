@@ -12,8 +12,9 @@
 //   the other two supporting (by chroma) → secondary-base/muted; the two accents → accent-base/muted.
 //
 // STORY — the .html bundle carries the narrative the .md lacks (title, per-color descriptions, the
-// 60/30/10 groups, refuses) + the per-VOLUME intro. Only Volumes I–III are present in the bundle as
-// plain data (IV–XII are assembled by runtime code); the rest get colors + `vol` but no story yet.
+// 60/30/10 groups, refuses) + the per-VOLUME intro, for ALL 48 sets. It ships as two globals:
+// PALETTE_DATA_EARLY (Vols I–III, clean JSON) + PALETTE_DATA (Vols IV–XII, a JS object literal with
+// unquoted keys + comments). Both are gzipped in a bundler manifest — decompressed + parsed at gen time.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
@@ -39,8 +40,10 @@ const clean = (s) =>
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/\s+/g, " ").trim();
 
-// extractObj — JSON.parse the brace-balanced `<marker> { … }` (string-aware), retrying the next
-// occurrence if a match fails (the marker may appear in a comment/code first).
+// extractObj — read the brace-balanced `<marker> { … }` object out of the bundle (string-aware).
+// EARLY volumes are clean JSON; LATE volumes are a JS object literal (UNQUOTED keys + comments), so
+// JSON.parse fails — fall back to eval (build-time, trusted, our own data). Retries the next
+// occurrence if both fail (the marker can appear in a comment/code first).
 function extractObj(src, marker) {
   for (let from = 0; ; ) {
     const at = src.indexOf(marker, from);
@@ -54,14 +57,18 @@ function extractObj(src, marker) {
       else if (ch === "{") depth++;
       else if (ch === "}" && --depth === 0) { end = j; break; }
     }
-    if (end > 0) { try { return JSON.parse(src.slice(i, end + 1)); } catch { /* wrong { — retry */ } }
+    if (end > 0) {
+      const text = src.slice(i, end + 1);
+      try { return JSON.parse(text); } catch { /* not JSON */ }
+      try { return (0, eval)("(" + text + ")"); } catch { /* not a parseable literal — retry */ } // eslint-disable-line no-eval
+    }
     from = at + marker.length;
   }
 }
 
-// loadStory — decompress the .html bundle and read the EARLY volumes (I–III) it carries as plain
-// data. Returns { volumes:{vol:{title,intro}}, sets:[{vol, title, kicker, narrative, refuses,
-// groups, byHex}] } in volume order; byHex maps a source HEX → {name,note,hier} for per-color story.
+// loadStory — decompress the .html bundle and read BOTH data globals (EARLY JSON + LATE JS literal)
+// → all 12 volumes / 48 sets. Returns { volumes:{vol:{title,intro}}, sets:[{vol, title, kicker,
+// narrative, refuses, groups, byHex}] } in volume order; byHex maps a source HEX → {name,note,hier}.
 function loadStory() {
   let html;
   try { html = readFileSync(HTMLSRC, "utf8"); }
@@ -74,10 +81,11 @@ function loadStory() {
     if (r.compressed) { try { b = gunzipSync(b); } catch { /* not gzip */ } }
     all += b.toString("utf8") + "\n";
   }
-  const early = extractObj(all, "PALETTE_DATA_EARLY = {");
+  // EARLY (I–III, clean JSON) + LATE (IV–XII, JS literal). Merge in volume order.
+  const data = { ...(extractObj(all, "PALETTE_DATA_EARLY = {") || {}), ...(extractObj(all, "PALETTE_DATA = {") || {}) };
   const volumes = {}, sets = [];
-  if (early) {
-    for (const [vol, v] of Object.entries(early)) {
+  {
+    for (const [vol, v] of Object.entries(data)) {
       volumes[vol] = { title: clean(v.h1 || v.title), intro: clean((v.preface || []).join(" ")) };
       for (const p of v.palettes || []) {
         const hy = p.hierarchy || {};
