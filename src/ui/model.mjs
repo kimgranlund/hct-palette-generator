@@ -17,6 +17,7 @@ import {
   cam16FromRgb,
   peakC,
 } from "../engine/hct.js";
+import { oklchToRgb } from "../engine/okhsl.js";
 import {
   paletteStops,
   effHue,
@@ -107,6 +108,7 @@ export function defaultDocument() {
     relChroma: DEFAULT_CONTROLS.relChroma,
     chromaFloor: DEFAULT_CONTROLS.chromaFloor,
     toneMode: DEFAULT_CONTROLS.toneMode,
+    vibrancy: DEFAULT_CONTROLS.vibrancy,
     theme: "auto",
     selected: 0,
     roleOverrides: {}, // per-doc semantic-mapping re-points (empty = canonical role table)
@@ -128,6 +130,7 @@ function controlsOf(doc) {
     relChroma: doc.relChroma ?? DEFAULT_CONTROLS.relChroma,
     chromaFloor: doc.chromaFloor ?? DEFAULT_CONTROLS.chromaFloor,
     toneMode: doc.toneMode ?? DEFAULT_CONTROLS.toneMode,
+    vibrancy: doc.vibrancy ?? DEFAULT_CONTROLS.vibrancy,
   };
 }
 
@@ -151,6 +154,7 @@ function stateOf(doc) {
     relChroma: c.relChroma,
     chromaFloor: c.chromaFloor,
     toneMode: c.toneMode,
+    vibrancy: c.vibrancy,
   };
 }
 
@@ -195,34 +199,60 @@ function rampByStop(ramp) {
   return m;
 }
 
-// placeKeyColors — locate each retained key color on the generated ramp through the
-// PERCEPTUAL LENS: its L* picks the nearest stop, and `drift` is the CAM16 distance to
-// that stop (≈0 = lands on it; larger = genuinely off-ramp, kept as an exact reference).
-// Pure: uses lstarFromRgb (tone) + cam16FromRgb (hue/chroma); no new color lib.
+// keyCss — an OKLCH key color [L,C,H] → a CSS oklch() string (lossless; used for swatches + export).
+export function keyCss(oklch) {
+  const r = (x, d) => Number(x.toFixed(d));
+  return `oklch(${r(oklch[0], 4)} ${r(oklch[1], 4)} ${r(oklch[2], 2)})`;
+}
+
+// placeKeyColors — locate each retained key color (stored as OKLCH) on the generated ramp
+// through the PERCEPTUAL LENS: its L* picks the nearest stop, and `drift` is the CAM16
+// distance to that stop (≈0 = lands on it; larger = genuinely off-ramp, kept as an exact
+// reference). Pure: oklchToRgb → lstarFromRgb (tone) + cam16FromRgb (hue/chroma).
 function placeKeyColors(keyColors, fullStops) {
   if (!Array.isArray(keyColors) || !keyColors.length) return [];
   const RAD = Math.PI / 180;
   const ab = (rgb) => { const c = cam16FromRgb(rgb); return [c.chroma * Math.cos(c.hue * RAD), c.chroma * Math.sin(c.hue * RAD)]; };
   return keyColors.map((kc) => {
-    const rgb = hexToRgb(kc.hex);
+    const rgb = oklchToRgb(kc.oklch[0], kc.oklch[1], kc.oklch[2]);
     const tone = lstarFromRgb(rgb);
     let near = fullStops[0], best = Infinity;
     for (const s of fullStops) { const d = Math.abs(s.tone - tone); if (d < best) { best = d; near = s; } }
     const [ka, kb] = ab(rgb), [sa, sb] = ab(near.rgb);
     const dL = tone - near.tone;
     const drift = Math.sqrt(dL * dL + (ka - sa) ** 2 + (kb - sb) ** 2);
-    return { hex: kc.hex, name: kc.name || null, nearStop: near.stop, drift: Math.round(drift * 10) / 10 };
+    return { role: kc.role, oklch: kc.oklch, css: keyCss(kc.oklch), name: kc.name || null, nearStop: near.stop, drift: Math.round(drift * 10) / 10 };
   });
 }
 
-// seedFromKeyColor — recover a parametric palette seed from a brand color: its CAM16
+// seedFromKeyColor — recover a parametric palette seed from a key color (OKLCH): its CAM16
 // hue + chroma (the same inversion configFromVariables uses on a 500 base) plus its tone,
 // so the inspector's "Seed from key color" can align the generated family to the brand.
-export function seedFromKeyColor(hex) {
-  if (!/^#?[0-9a-f]{6}$/i.test(String(hex || ""))) return null;
-  const rgb = hexToRgb(hex);
+export function seedFromKeyColor(oklch) {
+  if (!Array.isArray(oklch) || oklch.length !== 3) return null;
+  const rgb = oklchToRgb(oklch[0], oklch[1], oklch[2]);
   const { hue, chroma } = cam16FromRgb(rgb);
   return { hue: Math.round(hue), chroma: Math.round(Math.min(100, chroma)), tone: Math.round(lstarFromRgb(rgb)) };
+}
+
+// rgbToOklchArr — [r,g,b] → [L,C,H] (for capturing a manual hex/identity color as OKLCH).
+export function rgbToOklchArr(rgb) {
+  const lin = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const r = lin(rgb[0]), g = lin(rgb[1]), b = lin(rgb[2]);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  const C = Math.hypot(A, B);
+  const H = ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return [L, C, H];
+}
+
+// hexToOklch — "#RRGGBB" → [L,C,H] (capture a palette's identity / a pasted brand hex as OKLCH).
+export function hexToOklch(hex) {
+  return rgbToOklchArr(hexToRgb(String(hex)));
 }
 
 // resolveRoleHex — a role ref ("550" solid | "500-200" scrim) -> a display hex

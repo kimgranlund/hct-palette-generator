@@ -684,14 +684,24 @@ input[type="range"]::-moz-range-thumb {
 .key-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .key-cell .key-fill { width: 54px; height: 26px; border-radius: 6px; border: 1px solid var(--line); box-shadow: var(--shadow); }
 .key-cell small { font-size: 9px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-/* inspector: one editable row per key color (swatch · hex · name · ≈stop · seed · remove). */
-.key-colors .key-edit { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.key-colors .key-hex { width: 82px; flex: none; font-family: var(--mono); font-size: 11px; }
-.key-colors .key-name { flex: 1; min-width: 0; font-size: 11px; }
-.key-colors .key-place { flex: none; font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.key-colors .key-act { flex: none; padding: 2px 4px; color: var(--ink-dim); }
-.key-colors .key-act:hover { color: var(--ink); background: var(--line-2); }
-.key-colors .key-add { margin-top: 8px; }
+/* inspector: two big expression swatches — `dominant` + `supportive`, each ≈ half width. */
+.key-colors .key-slots { display: flex; gap: 8px; margin-top: 6px; }
+.key-slot { flex: 1; min-width: 0; border-radius: var(--r); }
+.key-slot.filled { display: flex; flex-direction: column; }
+.key-slot .key-fill { height: 56px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.key-slot .key-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 5px; }
+.key-slot .key-role { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--ink); }
+.key-slot .key-place { font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.key-slot .key-acts { display: flex; gap: 2px; margin-top: 4px; }
+.key-slot .key-act { padding: 2px 6px; color: var(--ink-dim); }
+.key-slot .key-act:hover { color: var(--ink); background: var(--line-2); }
+/* empty slot — a dashed add tile with the same footprint as a filled swatch. */
+.key-slot.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  height: 84px; border: 1.5px dashed var(--line); background: var(--panel-2);
+  color: var(--ink-dim); font-size: 11px; font-weight: 550;
+}
+.key-slot.empty:hover { border-color: var(--accent); color: var(--accent); background: var(--panel-2); }
 
 .roles-table { font-size: 11px; }
 .roles-table .rrow { display: flex; align-items: center; gap: 8px; padding: 3px 0; }

@@ -118,6 +118,12 @@ function controlsOf(state) {
     dampAmp: state.dampAmp ?? DEFAULT_CONTROLS.dampAmp,
     dampBias: state.dampBias ?? DEFAULT_CONTROLS.dampBias,
     hueSpace: state.hueSpace ?? DEFAULT_CONTROLS.hueSpace,
+    // distribution mode + its shapers — previously dropped here, so exports always used the
+    // default mode regardless of the doc. Threaded now so exports match what the UI renders.
+    toneMode: state.toneMode ?? DEFAULT_CONTROLS.toneMode,
+    vibrancy: state.vibrancy ?? DEFAULT_CONTROLS.vibrancy,
+    relChroma: state.relChroma ?? DEFAULT_CONTROLS.relChroma,
+    chromaFloor: state.chromaFloor ?? DEFAULT_CONTROLS.chromaFloor,
   };
 }
 
@@ -142,6 +148,10 @@ function derivePalette(palette, controls, overrides) {
     dampAmp: controls.dampAmp,
     dampBias: controls.dampBias,
     hueSpace: controls.hueSpace,
+    toneMode: controls.toneMode,
+    vibrancy: controls.vibrancy,
+    relChroma: controls.relChroma,
+    chromaFloor: controls.chromaFloor,
   };
   const stopList = paletteStops(
     { hue: palette.hue, chroma: palette.chroma, skew: palette.skew, lift: palette.lift, hueShift: palette.hueShift, hueSameDir: palette.hueSameDir },
@@ -275,12 +285,13 @@ function cssFrom(palettes, oklch) {
       const dv = `var(--c_${p.n}-${refKey(r.darkRef)})`;
       lines.push(`  --c-${p.n}${r.suffix}: light-dark(${lv}, ${dv});`);
     }
-    // KEY COLORS — retained brand values, exact (NOT mode-flipped; they are source colors).
+    // KEY COLORS — retained brand values by expression (dominant/supportive), exact in OKLCH
+    // (NOT mode-flipped; they are source colors, lossless from the OKLCH source).
     if (p.keyColors.length) {
-      lines.push(`  /* ${p.name} — retained key colors (exact) */`);
-      p.keyColors.forEach((kc, idx) => {
-        lines.push(`  --c-${p.n}-key-${kc.name ? slug(kc.name) : idx + 1}: ${kc.hex};`);
-      });
+      lines.push(`  /* ${p.name} — retained key colors (exact, OKLCH) */`);
+      for (const kc of p.keyColors) {
+        lines.push(`  --c-${p.n}-key-${kc.role}: ${oklchStr({ L: kc.oklch[0], C: kc.oklch[1], H: kc.oklch[2] })};`);
+      }
     }
   }
   lines.push("}");
@@ -317,8 +328,8 @@ export function exportJSON(state) {
     }));
 
     const palette = { stops, scrims, semantic };
-    // keyColors: [{ hex, name? }] — retained exact brand colors (present only when set).
-    if (p.keyColors.length) palette.keyColors = p.keyColors.map((kc) => ({ hex: kc.hex, ...(kc.name ? { name: kc.name } : {}) }));
+    // keyColors: [{ role, oklch:[L,C,H], name? }] — retained exact brand colors (present only when set).
+    if (p.keyColors.length) palette.keyColors = p.keyColors.map((kc) => ({ role: kc.role, oklch: kc.oklch, ...(kc.name ? { name: kc.name } : {}) }));
     out[p.name] = palette;
   }
   return out;

@@ -40,7 +40,7 @@ const hexToRgb = (hex) => {
 // lightness comes from lift. (Stops away from 550 still span the full ramp — lift tapers to 0 at the ends.)
 const PRIME_TONE = toneAt(550, 0, 0, DEFAULT_CONTROLS);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const palette = (name, hex) => {
+const palette = (name, hex, oklch) => {
   const rgb = hexToRgb(hex);
   const { hue, chroma } = cam16FromRgb(rgb);
   return {
@@ -51,6 +51,10 @@ const palette = (name, hex) => {
     lift: Math.round(clamp(lstarFromRgb(rgb) - PRIME_TONE, -40, 40)),
     hueShift: 0,
     hueSameDir: false,
+    // Retain the EXACT source color as the `dominant` key color, in OKLCH (less lossy than the
+    // 8-bit hex). The ramp re-derives an even scale from the seed; the key color keeps the
+    // original verbatim, so the curated palette is represented accurately, not just approximated.
+    keyColors: [{ role: "dominant", oklch: oklch.map((v) => Number(v)) }],
     on: true,
   };
 };
@@ -69,7 +73,7 @@ function parseEntry(block) {
     .map((m) => ({ role: m[1], desc: m[2].trim(), oklch: m[3].trim().split(/\s+/).map(Number), hex: m[4].trim().toUpperCase() }));
   const system = Object.fromEntries(
     [...block.matchAll(/^\|\s*system-(red|yellow|green)\s*\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/gm)]
-      .map((m) => [m[1], m[3].trim().toUpperCase()]),
+      .map((m) => [m[1], { oklch: m[2].trim().split(/\s+/).map(Number), hex: m[3].trim().toUpperCase() }]),
   );
   return { idx, name, core, system };
 }
@@ -88,15 +92,15 @@ function mapColors({ core, system }) {
   const primaryMuted = byNearGround[0];
   const secondary = byNearGround.slice(1).sort((a, b) => C(b) - C(a)); // base = higher chroma, muted = lower
   return [
-    palette("primary-base", dom.hex),
-    palette("primary-muted", primaryMuted.hex),
-    palette("secondary-base", secondary[0].hex),
-    palette("secondary-muted", secondary[1].hex),
-    palette("accent-base", acc[0].hex),
-    palette("accent-muted", acc[1].hex),
-    palette("danger", system.red),
-    palette("warning", system.yellow),
-    palette("success", system.green),
+    palette("primary-base", dom.hex, dom.oklch),
+    palette("primary-muted", primaryMuted.hex, primaryMuted.oklch),
+    palette("secondary-base", secondary[0].hex, secondary[0].oklch),
+    palette("secondary-muted", secondary[1].hex, secondary[1].oklch),
+    palette("accent-base", acc[0].hex, acc[0].oklch),
+    palette("accent-muted", acc[1].hex, acc[1].oklch),
+    palette("danger", system.red.hex, system.red.oklch),
+    palette("warning", system.yellow.hex, system.yellow.oklch),
+    palette("success", system.green.hex, system.green.oklch),
   ];
 }
 

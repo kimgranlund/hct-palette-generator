@@ -162,6 +162,16 @@ export function okhslToRgb(hueDeg, s, l) {
   return [clamp255(255 * srgbTransfer(rgb[0])), clamp255(255 * srgbTransfer(rgb[1])), clamp255(255 * srgbTransfer(rgb[2]))];
 }
 
+// oklchToRgb(L, C, H) — OKLCH (L 0..1, C ≥0, H degrees) → [r,g,b] 0..255 ints, gamut-clamped.
+// Used to place/seed RETAINED key colors stored as OKLCH (less lossy than an 8-bit hex source).
+export function oklchToRgb(L, C, H) {
+  if (L >= 1) return [255, 255, 255];
+  if (L <= 0) return [0, 0, 0];
+  const h = (((H % 360) + 360) % 360) * Math.PI / 180;
+  const rgb = oklabToLinearSrgb(L, C * Math.cos(h), C * Math.sin(h));
+  return [clamp255(255 * srgbTransfer(rgb[0])), clamp255(255 * srgbTransfer(rgb[1])), clamp255(255 * srgbTransfer(rgb[2]))];
+}
+
 // rgbToOkhsl([r,g,b]) — inverse. Returns { h: degrees, s: 0..1, l: 0..1 }.
 export function rgbToOkhsl([r, g, b]) {
   const lab = linearSrgbToOklab(srgbTransferInv(r / 255), srgbTransferInv(g / 255), srgbTransferInv(b / 255));

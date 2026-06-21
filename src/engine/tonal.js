@@ -49,16 +49,20 @@ export const DEFAULT_CONTROLS = {
   // to a near-white "dead zone", WITHOUT muting saturated palettes (see paletteStops). Default on.
   chromaFloor: 40,
   // Ramp distribution mode (how stops map to lightness):
-  //   "even" (default) — the classic CIELAB-L* curve below (toneAt): per-stop tone is the SAME L* for
-  //                  every hue, so palettes stay tone-aligned AND keep their full per-hue vibrancy. The
-  //                  curve/skew/lift/damp/relChroma/chromaFloor controls all apply here.
-  //   "perceptual" — even steps in OKHSL lightness (perceptually uniform) + gamut-proportional chroma —
-  //                  harmonizes saturation across hue (softer/more uniform look).
-  //   "peak"       — like perceptual but the hue's CUSP (peak chroma) is anchored at stop 500 and each
-  //                  half spreads from there (Tailwind-style "the color is 500"). Vivid/centered.
-  // perceptual/peak go through the OKHSL path (okhslStops); lmin/lmax/damp still bound/shape it, but the
-  // CIELAB-only controls (curve/skew/lift/relChroma/chromaFloor) apply to "even" only.
-  toneMode: "even",
+  //   "perceptual" (default) — even steps in OKHSL lightness (perceptually uniform) + gamut-proportional
+  //                  chroma; harmonizes saturation across hue (no near-white dead zone). The `vibrancy`
+  //                  control (below) pulls each hue's center toward its chroma cusp for a vibrant mid.
+  //   "even"       — the classic CIELAB-L* curve below (toneAt): per-stop tone is the SAME L* for every
+  //                  hue (tone-aligned). curve/skew/lift/relChroma/chromaFloor apply to "even" only.
+  //   "peak"       — like perceptual with vibrancy pinned at 100: the hue's CUSP (peak chroma) anchored
+  //                  at stop 500 (Tailwind-style "the color is 500").
+  // perceptual/peak go through the OKHSL path (okhslStops); lmin/lmax/damp/vibrancy shape it there.
+  toneMode: "perceptual",
+  // Vibrancy (perceptual path) — pulls the ramp's lightness from the even-perceptual distribution (0)
+  // toward the hue's CUSP-anchored distribution (100), so the CENTER sits where the hue is most
+  // chromatic. The fix for hues whose vivid expression lives off-center (e.g. yellow, cusp at high L*):
+  // crank it and the mid stops read vibrant for ANY hue. ("peak" mode = vibrancy 100.)
+  vibrancy: 0,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,7 +121,7 @@ export function toneAt(stop, skew, lift, { curve, lmin, lmax, tension }) {
 // palette: { hue, chroma, skew, lift }; controls: DEFAULT_CONTROLS-shaped.
 // Returns [{ stop, tone, chroma, maxc, rgb, hex, inGamut }] for each stop.
 export function paletteStops(palette, controls, stops) {
-  const mode = controls.toneMode || "even";
+  const mode = controls.toneMode || "perceptual";
   if (mode === "perceptual" || mode === "peak") return okhslStops(palette, controls, stops, mode);
   // Resolve the BASE hue once. The per-stop hue may be EDGE-ROTATED below (hueShift);
   // when hueShift=0 every stop uses baseHue (the flat-hue, hue-stability default).
@@ -204,9 +208,13 @@ function okhslStops(palette, controls, stops, mode) {
   const cuspL = okhslLAt(pk.tone);                                 // OKHSL lightness of the cusp (peak pivot)
   return stops.map((stop) => {
     // lightness per stop — STOP-based so the display(19) and export(25) ramps agree at a given stop.
-    const l = mode === "peak"
-      ? (stop <= 500 ? lerp(lLight, cuspL, (stop - 50) / 450) : lerp(cuspL, lDark, (stop - 500) / 450))
-      : lerp(lLight, lDark, (stop - 50) / 900);
+    // Blend the EVEN-perceptual distribution toward the CUSP-anchored ("peak") one by `vibrancy`:
+    // t=0 → even lightness (uniform), t=1 → the hue's cusp sits at stop 500 (vibrant center). "peak"
+    // mode pins t=1. Pulling the center to the cusp is what lets off-center hues (yellow) read vibrant.
+    const evenL = lerp(lLight, lDark, (stop - 50) / 900);
+    const peakL = stop <= 500 ? lerp(lLight, cuspL, (stop - 50) / 450) : lerp(cuspL, lDark, (stop - 500) / 450);
+    const t = mode === "peak" ? 1 : Math.max(0, Math.min(1, (controls.vibrancy ?? 0) / 100));
+    const l = lerp(evenL, peakL, t);
     // saturation = chroma% of the gamut, shaped by the SAME damping multiplier m as the even path (so
     // damp/dampCurve/dampAmp/dampBias stay meaningful here), clamped to OKHSL's [0,1].
     const sp = (stop - 500) / 450;

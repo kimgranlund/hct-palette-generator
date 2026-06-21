@@ -810,6 +810,10 @@ ok(!TP.some((p) => /^[IVXLC]+·\d/.test(p.name)), "(hh) preset names drop the vo
 // presets carry the full controls (a config that OMITS them hydrates to the DARK domain-min, lmax 60,
 // which made every preset render muddy) AND use the "Vivid mids" damping by default (damp 70 / amp 55).
 ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 70 && p.dampAmp === 55 && p.chromaFloor === 40), "(hh) presets carry controls + 'Vivid mids' damping (damp 70, amp 55) + the chroma floor (40)");
+// re-import captures each curated source color as a `dominant` key color (OKLCH), so the preset
+// retains the original palette exactly while the ramp re-derives an even scale from it.
+ok(TP.every((p) => p.palettes.every((q) => q.keyColors && q.keyColors.length === 1 && q.keyColors[0].role === "dominant" && Array.isArray(q.keyColors[0].oklch) && q.keyColors[0].oklch.length === 3)),
+  "(hh) every preset palette retains its source color as a dominant key color (OKLCH)");
 // lift-anchoring: a LIGHT dominant (St John's fog cream, src L*≈85) must open LIGHT, not the old mid-dark
 // L*≈46 grey. This is the "colors look really wrong" fix (lift + controls together).
 const { projectView: _pvHH } = await import("../../src/ui/model.mjs");
@@ -985,26 +989,28 @@ ok(realTile && realTile.tagName === "DIV" && realTile.getAttribute("role") === "
 const del = app.querySelectorAll(".del").find(Boolean);
 ok(del && del.tagName === "BUTTON", "(px8) the tile delete affordance is a real, focusable <button>");
 
-// ── (kc) key colors: a retained brand color renders the canvas row, gets placed, and seeds ──
+// ── (kc) key colors: a retained brand color (OKLCH) renders the canvas row, gets placed + seeds ──
 const { seedFromKeyColor: seedKC } = await import("../../src/ui/model.mjs");
 app.openSet(app.sets[0].id); app.setCanvasView("palettes"); flushRaf();
-app.commit((d) => { d.palettes[0].on = true; d.palettes[0].keyColors = [{ hex: "#1E3A2F", name: "brand dark" }]; }); flushRaf();
+const KO = [0.32, 0.05, 150]; // a dark green, OKLCH [L,C,H]
+app.commit((d) => { d.palettes[0].on = true; d.palettes[0].keyColors = [{ role: "dominant", oklch: KO }]; }); flushRaf();
 ok(app.querySelectorAll(".key-cell").length >= 1, `(kc1) the canvas renders a key-color cell for the enabled palette (got ${app.querySelectorAll(".key-cell").length})`);
 const vpKC = (app._view || {}).palettes ? app._view.palettes[0] : null;
-ok(vpKC && vpKC.keyColors && vpKC.keyColors.length === 1 && typeof vpKC.keyColors[0].nearStop === "number" && typeof vpKC.keyColors[0].drift === "number",
-   "(kc2) the key color is placed on the ramp (nearStop + drift)");
+ok(vpKC && vpKC.keyColors && vpKC.keyColors.length === 1 && vpKC.keyColors[0].role === "dominant"
+   && typeof vpKC.keyColors[0].nearStop === "number" && typeof vpKC.keyColors[0].drift === "number" && /^oklch\(/.test(vpKC.keyColors[0].css || ""),
+   "(kc2) the key color is placed on the ramp (role + nearStop + drift + oklch css)");
 const driftBefore = vpKC.keyColors[0].drift;
 // seed the palette from the key color → hue/chroma match the recovered seed
-const seed = seedKC("#1E3A2F");
-app.seedFromKey(0, 0); flushRaf();
+const seed = seedKC(KO);
+app.seedFromKey(0, "dominant"); flushRaf();
 ok(app.doc.palettes[0].hue === seed.hue && app.doc.palettes[0].chroma === seed.chroma,
    `(kc3) 'seed from key' sets the palette hue/chroma from the color (got ${app.doc.palettes[0].hue}/${app.doc.palettes[0].chroma}, want ${seed.hue}/${seed.chroma})`);
 ok(app._view.palettes[0].keyColors[0].drift <= driftBefore,
    `(kc4) seeding pulls the ramp toward the key color (drift ${app._view.palettes[0].keyColors[0].drift} <= ${driftBefore})`);
-// key colors round-trip through serialize/hydrate
+// key colors round-trip through serialize/hydrate (OKLCH, by role)
 const { serialize: serKC, hydrate: hydKC } = await import("../../src/ui/persist.js");
 const rtKC = hydKC(serKC(app.doc)).palettes[0].keyColors;
-ok(rtKC && rtKC.length === 1 && rtKC[0].hex === "#1E3A2F" && rtKC[0].name === "brand dark", "(kc5) key colors round-trip through persist");
+ok(rtKC && rtKC.length === 1 && rtKC[0].role === "dominant" && Array.isArray(rtKC[0].oklch) && rtKC[0].oklch.length === 3, "(kc5) key colors round-trip through persist (oklch by role)");
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {
