@@ -4961,25 +4961,9 @@ class HctApp extends HTMLElement {
             ),
             h("span", { class: "ramp-name" }, vp.name, h("small", {}, `${stops.length} stops`)),
           ),
-          // retained key colors (when set): the brand colors, shown above the generated ramp,
+          // retained key colors (when set): the brand colors, above the generated ramp,
           // each captioned with its nearest stop (the perceptual placement). Off-ramp by design.
-          vp.keyColors && vp.keyColors.length
-            ? h(
-                "div",
-                { class: "key-strip" },
-                ...vp.keyColors.map((kc) =>
-                  h(
-                    "div",
-                    {
-                      class: "key-cell",
-                      title: `${kc.role}${kc.name ? " · " + kc.name : ""} · ${kc.css} · ≈ stop ${kc.nearStop} · drift ${kc.drift}`,
-                    },
-                    h("span", { class: "key-fill", style: `background:${kc.css}` }),
-                    h("small", {}, kc.role + " ≈" + kc.nearStop),
-                  ),
-                ),
-              )
-            : false,
+          this.keyStrip(vp),
           strip,
         );
       });
@@ -5128,6 +5112,25 @@ class HctApp extends HTMLElement {
   // chain, one row per mode — [ Mode · swatch · semantic-token · raw-token ]. Read-only for now
   // (the raw/semantic names are the values from the canonical role table; editing them — a
   // per-doc remap/rename — and bidirectional load are the next step, pending the data-model call).
+  // keyStrip — the retained key colors row (dominant/supportive) for one palette, captioned with
+  // each color's nearest stop. Shown above the ramp AND atop the mapping table so the brand colors
+  // stay visible across canvas views (not just the Palettes view).
+  keyStrip(vp) {
+    if (!vp || !vp.keyColors || !vp.keyColors.length) return false;
+    return h(
+      "div",
+      { class: "key-strip" },
+      ...vp.keyColors.map((kc) =>
+        h(
+          "div",
+          { class: "key-cell", title: `${kc.role}${kc.name ? " · " + kc.name : ""} · ${kc.css} · ≈ stop ${kc.nearStop} · drift ${kc.drift}` },
+          h("span", { class: "key-fill", style: `background:${kc.css}` }),
+          h("small", {}, kc.role + " ≈" + kc.nearStop),
+        ),
+      ),
+    );
+  }
+
   renderMappingScene(view) {
     const vp = view.palettes[this.selectedIndex()];
     if (!vp) return h("div", { class: "empty-note" }, "Select a palette to see its semantic mapping");
@@ -5195,6 +5198,7 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "map-wrap" },
+      this.keyStrip(vp), // the palette's retained key colors, visible here too (not just the ramps view)
       h(
         "div",
         { class: "map-head" },
