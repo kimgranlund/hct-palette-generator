@@ -2642,16 +2642,14 @@ class HctApp extends HTMLElement {
   }
 
   renderDrawer(view) {
-    const tabs = [
-      ["css", "CSS"],
-      ["oklch", "OKLCH"],
-      ["json", "JSON"],
-      ["dtcg", "DTCG"],
-      ["figma", "Figma"],
-      ["ui3", "UI3"],
-      ["tailwind", "Tailwind"],
-      ["shadcn", "ShadCN"],
-      ["config", "Config"],
+    // Export formats grouped by DESTINATION (what consumes the output); the item names
+    // only the variant. Group = where it goes, so labels never collide (no "CSS / CSS").
+    // Internal ids (css/oklch/tailwind/…) are unchanged — only the display labels.
+    const FORMAT_GROUPS = [
+      ["CSS", [["css", "Hex"], ["oklch", "OKLCH"]]],
+      ["Frameworks", [["tailwind", "Tailwind v4"], ["shadcn", "shadcn/ui"]]],
+      ["Design tools", [["figma", "Figma"], ["ui3", "Figma UI3"], ["dtcg", "DTCG"], ["json", "JSON"]]],
+      ["Project", [["config", "Config"]]],
     ];
     // The three Figma mode files: [stateKey, label, real filename to import as].
     const FIGMA = [
@@ -2691,14 +2689,30 @@ class HctApp extends HTMLElement {
           h("div", { class: "spacer" }),
           btn(icon("x"), { ariaLabel: "Close export drawer", onclick: () => this.toggleDrawer(false) }),
         ),
-        this.segmented(
-          tabs.map(([id, label]) => ({ id, label })),
-          this.exportTab,
-          (id) => {
-            this.exportTab = id;
-            this.render();
-          },
-          { baseClass: "drawer-tabs", ariaLabel: "Export format", idPrefix: "xtab", controls: "export-panel" },
+        h(
+          "div",
+          { class: "drawer-format" },
+          h("label", { for: "export-format" }, "Format"),
+          h(
+            "select",
+            {
+              id: "export-format",
+              "aria-label": "Export format",
+              onchange: (e) => {
+                this.exportTab = e.target.value;
+                this.render();
+              },
+            },
+            ...FORMAT_GROUPS.map(([label, items]) =>
+              h(
+                "optgroup",
+                { label },
+                ...items.map(([id, lab]) =>
+                  h("option", id === this.exportTab ? { value: id, selected: "selected" } : { value: id }, lab),
+                ),
+              ),
+            ),
+          ),
         ),
         // Figma sub-bar: the import note on its own row, then [mode-file segmented | Binder plugin].
         isFigma
@@ -2740,8 +2754,8 @@ class HctApp extends HTMLElement {
         // single download action instead of a row of competing buttons.
         h(
           "div",
-          // tabpanel for the .drawer-tabs export-format tablist above (aria-labelledby the active tab).
-          { class: "drawer-code", id: "export-panel", role: "tabpanel", "aria-labelledby": "xtab-" + this.exportTab },
+          // the output for the format chosen in the drawer-format <select> above.
+          { class: "drawer-code", role: "region", "aria-label": "Export output" },
           btn([icon("copy"), "Copy"], { variant: "bare", cls: "copy-float", title: "Copy to clipboard", ariaLabel: "Copy", onclick: () => this.copy(code) }),
           h("button", { class: "copy-float", title: "Copy to clipboard", "aria-label": "Copy", onclick: () => this.copy(code) }, icon("copy"), "Copy"),
           h("pre", { class: "drawer-pre" }, code),
