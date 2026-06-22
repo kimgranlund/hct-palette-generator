@@ -3040,7 +3040,6 @@ class HctApp extends HTMLElement {
           // the output for the format chosen in the drawer-format <select> above.
           { class: "drawer-code", role: "region", "aria-label": "Export output" },
           btn([icon("copy"), "Copy"], { variant: "bare", cls: "copy-float", title: "Copy to clipboard", ariaLabel: "Copy", onclick: () => this.copy(code) }),
-          h("button", { class: "copy-float", title: "Copy to clipboard", "aria-label": "Copy", onclick: () => this.copy(code) }, icon("copy"), "Copy"),
           h("pre", { class: "drawer-pre" }, code),
         ),
         h(
