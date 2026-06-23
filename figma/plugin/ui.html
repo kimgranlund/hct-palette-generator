@@ -816,7 +816,9 @@ input[type="range"]::-moz-range-thumb {
    (see app.js _syncDrawer). A closed dialog is display:none by default. */
 dialog.drawer {
   position: fixed; inset: 0 0 0 auto; /* pinned to the right edge, full height */
-  margin: 0; padding: 0; width: 480px; max-width: 92vw; max-height: 100%;
+  /* override the UA <dialog> default `height: fit-content` (which otherwise wins over the
+     top/bottom inset and sizes the drawer to its content) so it spans the full viewport height. */
+  margin: 0; padding: 0; width: 480px; max-width: 92vw; height: 100%; max-height: 100%;
   border: none; border-left: 1px solid var(--line);
   background: var(--panel); color: var(--ink);
   box-shadow: var(--shadow-lg);
@@ -1778,7 +1780,10 @@ function okhslStops(palette, controls, stops, mode) {
     // mode pins t=1. Pulling the center to the cusp is what lets off-center hues (yellow) read vibrant.
     const evenL = lerp(lLight, lDark, (stop - 50) / 900);
     const peakL = stop <= 500 ? lerp(lLight, cuspL, (stop - 50) / 450) : lerp(cuspL, lDark, (stop - 500) / 450);
-    const t = mode === "peak" ? 1 : Math.max(0, Math.min(1, (controls.vibrancy ?? 0) / 100));
+    // blend amount = the PER-PALETTE "cusp pull" when set, else the global `vibrancy`. Lets one palette
+    // (e.g. yellow Warning, cusp at high L*) nudge its richest stop toward 500 without touching the rest.
+    const v = palette.cuspPull ?? controls.vibrancy ?? 0;
+    const t = mode === "peak" ? 1 : Math.max(0, Math.min(1, v / 100));
     const l = lerp(evenL, peakL, t);
     // saturation = chroma% of the gamut, shaped by the SAME damping multiplier m as the even path (so
     // damp/dampCurve/dampAmp/dampBias stay meaningful here), clamped to OKHSL's [0,1].
@@ -1936,6 +1941,9 @@ function clampPalette(p) {
   // (a palette without key colors must round-trip unchanged, not gain an empty array).
   const kc = clampKeyColors(src.keyColors);
   if (kc.length) out.keyColors = kc;
+  // cuspPull (perceptual path) is OPTIONAL — a per-palette override of the global `vibrancy` (0..100):
+  // how far this palette's richest stop is nudged toward stop 500. Absent → inherit the global vibrancy.
+  if (Number.isFinite(src.cuspPull)) out.cuspPull = clampNumber(src.cuspPull, 0, 100);
   // STORY (optional, from a curated preset): the source color's evocative name, a one-line
   // description, and its role in the set. Kept as-is iff present (free strings / known role).
   if (typeof src.colorName === "string" && src.colorName) out.colorName = src.colorName;
@@ -2196,7 +2204,7 @@ function derivePalette(palette, controls, overrides) {
     chromaFloor: controls.chromaFloor,
   };
   const stopList = paletteStops(
-    { hue: palette.hue, chroma: palette.chroma, skew: palette.skew, lift: palette.lift, hueShift: palette.hueShift, hueSameDir: palette.hueSameDir },
+    { hue: palette.hue, chroma: palette.chroma, skew: palette.skew, lift: palette.lift, hueShift: palette.hueShift, hueSameDir: palette.hueSameDir, cuspPull: palette.cuspPull },
     ctl,
     EXPORT_STOPS,
   );
@@ -3513,7 +3521,7 @@ function projectView(doc) {
     // half-steps (75/125/175/825/875/925) resolve — they are absent from the 19 display STOPS,
     // and a miss used to fall back to #000000 (the black swatches in the Roles panel).
     const fullStops = paletteStops(
-      { hue: p.hue, chroma: p.chroma, skew: p.skew, lift: p.lift, hueShift: p.hueShift, hueSameDir: p.hueSameDir },
+      { hue: p.hue, chroma: p.chroma, skew: p.skew, lift: p.lift, hueShift: p.hueShift, hueSameDir: p.hueSameDir, cuspPull: p.cuspPull },
       controls,
       EXPORT_STOPS,
     ).map((s) => ({
@@ -6218,7 +6226,7 @@ class HctApp extends HTMLElement {
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, swatch((vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex, { size: 16 }), "Palette"),
-      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
+      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : (this.doc.toneMode === "perceptual" ? "Tune hue · chroma · cusp pull — live" : "Tune hue · chroma — live")),
       // curated story for this color (preset palettes): its evocative name, role, and description.
       vp.colorName
         ? h(
@@ -6261,6 +6269,11 @@ class HctApp extends HTMLElement {
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
       isEven ? this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))) : false,
       isEven ? this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))) : false,
+      // Cusp pull (perceptual only) — this palette's override of the global Vibrancy: how far its
+      // richest stop is nudged toward 500. Starts at the inherited global value; the peak mode pins it.
+      this.doc.toneMode === "perceptual"
+        ? this.slider("Cusp pull", p.cuspPull ?? (this.doc.vibrancy ?? 0), 0, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].cuspPull = v)))
+        : false,
       // Edge hue rotation — bipolar, centre 0. The readout shows the light/dark torsion:
       // left = light + / dark −, right = light − / dark + (the slider value = the dark edge).
       this.slider(

@@ -2579,7 +2579,7 @@ class HctApp extends HTMLElement {
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, swatch((vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex, { size: 16 }), "Palette"),
-      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
+      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : (this.doc.toneMode === "perceptual" ? "Tune hue · chroma · cusp pull — live" : "Tune hue · chroma — live")),
       // curated story for this color (preset palettes): its evocative name, role, and description.
       vp.colorName
         ? h(
@@ -2622,6 +2622,11 @@ class HctApp extends HTMLElement {
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
       isEven ? this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))) : false,
       isEven ? this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))) : false,
+      // Cusp pull (perceptual only) — this palette's override of the global Vibrancy: how far its
+      // richest stop is nudged toward 500. Starts at the inherited global value; the peak mode pins it.
+      this.doc.toneMode === "perceptual"
+        ? this.slider("Cusp pull", p.cuspPull ?? (this.doc.vibrancy ?? 0), 0, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].cuspPull = v)))
+        : false,
       // Edge hue rotation — bipolar, centre 0. The readout shows the light/dark torsion:
       // left = light + / dark −, right = light − / dark + (the slider value = the dark edge).
       this.slider(

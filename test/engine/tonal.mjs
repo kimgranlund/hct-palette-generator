@@ -259,6 +259,22 @@ for (const mode of ["perceptual", "peak"]) {
   if (!(at(500) > at(100) + 2 && at(500) > at(900) + 2)) FAIL("okhsl-modes", `peak: chroma not centered at 500 (100:${at(100).toFixed(0)} 500:${at(500).toFixed(0)} 900:${at(900).toFixed(0)})`);
 }
 
+// ── hpg-tonal-cusp-pull: a PER-PALETTE cuspPull nudges that palette's richest (max-chroma) stop toward
+//    500 in perceptual mode, overriding the global vibrancy. Yellow's chroma cusp is at high L*, so with
+//    no pull the richest stop sits light; full pull lands it on 500; partial pull moves it between. ──
+{
+  const Y = { hue: 75, chroma: 100, skew: 0, lift: 0 };       // yellow — cusp at high lightness
+  const pc = { ...CTL, toneMode: "perceptual", vibrancy: 0 }; // global vibrancy OFF, to isolate cuspPull
+  const richest = (cuspPull) =>
+    T.paletteStops({ ...Y, cuspPull }, pc, STOPS).reduce((a, r) => (r.chroma > a.chroma ? r : a)).stop;
+  const at0 = richest(undefined); // absent → inherits global vibrancy 0 → richest sits light
+  const at50 = richest(50);       // partial pull
+  const at100 = richest(100);     // full pull → richest at 500
+  if (!(at0 < 500)) FAIL("cusp-pull", `cuspPull 0: yellow richest stop ${at0}, expected light (<500)`);
+  if (at100 !== 500) FAIL("cusp-pull", `cuspPull 100: yellow richest stop ${at100}, expected 500`);
+  if (!(at50 > at0 && at50 <= 500)) FAIL("cusp-pull", `cuspPull 50: richest stop ${at50}, expected between ${at0} and 500`);
+}
+
 // ── hpg-tonal-chroma-floor: the even-mode chroma floor lifts the damping-starved ends of LOW-chroma
 //    ramps (kills the near-white dead zone) WITHOUT muting saturated ramps or tinting true neutrals. ──
 {
