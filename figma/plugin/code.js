@@ -29,6 +29,12 @@ figma.ui.postMessage({ type: "figma-init" });
 // reproduces the generator's state LOSSLESSLY instead of approximating it from the 500 colors.
 const CONFIG_KEY = "hct-config";
 
+// SETS_KEY — the gallery's "Your Palettes" sets, persisted in figma.clientStorage (PER-USER, survives
+// across plugin sessions). The plugin UI iframe has an opaque origin, so its localStorage is blocked /
+// non-persistent; clientStorage is the sanctioned per-user store. (Mirrors the browser's localStorage
+// key `nonoun-color-tokens-sets`, so the same gallery data model round-trips in both environments.)
+const SETS_KEY = "nonoun-color-tokens-sets";
+
 // writeConfig / readConfig — the file-embedded parametric config (root pluginData is a string store;
 // getPluginData returns "" when unset). JSON-encoded; a corrupt value reads back as null, never throws.
 function writeConfig(config) { figma.root.setPluginData(CONFIG_KEY, JSON.stringify(config)); }
@@ -58,6 +64,13 @@ figma.ui.onmessage = async (msg) => {
       const live = await readRawColors(); // read-only reference for the drift diff
       figma.ui.postMessage({ type: "variables-read", found: live.found, raw: live.raw });
       if (!live.found) figma.notify("HCT: no Color Primitives collection in this file yet");
+    } else if (msg.type === "load-sets") {
+      // the gallery's saved sets, from this user's clientStorage (null on first run).
+      const sets = await figma.clientStorage.getAsync(SETS_KEY);
+      figma.ui.postMessage({ type: "sets-loaded", sets: sets || null });
+    } else if (msg.type === "save-sets") {
+      // persist the gallery's sets for this user (the localStorage the iframe can't use).
+      await figma.clientStorage.setAsync(SETS_KEY, Array.isArray(msg.sets) ? msg.sets : []);
     }
   } catch (e) {
     figma.notify("HCT failed: " + (e && e.message ? e.message : String(e)), { error: true });

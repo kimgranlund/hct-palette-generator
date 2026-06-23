@@ -783,6 +783,31 @@ globalThis.parent = realParentDD;
 app.inFigma = false; app.liveVars = null; app.liveVarsFound = false; app.fileConfig = null; app._figmaProbed = false; app._loadRequested = false;
 app.toGallery();
 
+// ── (cs) Figma gallery sets persist via figma.clientStorage (the localStorage the sandboxed iframe blocks) ──
+app.inFigma = true; app._figmaProbed = false;
+const probedCS = [];
+const realParentCS = globalThis.parent;
+globalThis.parent = { postMessage: (m) => { probedCS.push(m && m.pluginMessage); } };
+app.toGallery(); flushRaf();                          // the one-shot gallery probe
+ok(probedCS.some((m) => m && m.type === "load-sets"), "(cs) the Figma gallery probe requests the saved sets from clientStorage (load-sets)");
+// persistSets posts the sets to the sandbox (clientStorage), not just the blocked localStorage
+probedCS.length = 0;
+app.persistSets();
+const savePostCS = probedCS.find((m) => m && m.type === "save-sets");
+ok(savePostCS && Array.isArray(savePostCS.sets) && savePostCS.sets.length === app.sets.length, "(cs) persistSets posts {type:'save-sets', sets} so clientStorage can store them");
+// receiveStoredSets restores the user's clientStorage sets into the gallery
+const restoredCS = [{ id: "set-csa", name: "Restored A", doc: ser(app.doc), updated: 1 }, { id: "set-csb", name: "Restored B", doc: ser(app.doc), updated: 2 }];
+app.receiveStoredSets(restoredCS);
+ok(app.sets.length === 2 && app.sets[0].name === "Restored A", "(cs) receiveStoredSets restores the clientStorage sets into the gallery");
+// first run (clientStorage empty) → keep the seeded set AND persist it (so it survives next open)
+probedCS.length = 0;
+const keptCS = app.sets;
+app.receiveStoredSets(null);
+ok(app.sets === keptCS && probedCS.some((m) => m && m.type === "save-sets"), "(cs) first run (no stored sets) keeps the seed AND persists it to clientStorage");
+globalThis.parent = realParentCS;
+app.inFigma = false; app._figmaProbed = false;
+app.toGallery();
+
 // ── (gg) figma-init AFTER the gallery is already on screen must re-render → fire the probe ──
 // Regression: setInFigma() re-rendered ONLY in the editor. But figma-init arrives ASYNC, after the
 // STARTUP gallery has already rendered — so the gallery never re-rendered, never probed, and the

@@ -338,7 +338,7 @@ class HctApp extends HTMLElement {
     rec.name = this.doc.name;
     rec.updated = Date.now();
     this.savedSnapshot = JSON.stringify(rec.doc);
-    saveSets(this.sets);
+    this.persistSets();
   }
 
   // mutate the document, autosave, and re-project. NOTE: this is the raw mutate
@@ -1009,7 +1009,27 @@ class HctApp extends HTMLElement {
     try {
       parent.postMessage({ pluginMessage: { type: "load-config" } }, "*");   // the exact saved config (preferred)
       parent.postMessage({ pluginMessage: { type: "read-variables" } }, "*"); // the variable structure (fallback)
+      parent.postMessage({ pluginMessage: { type: "load-sets" } }, "*");      // the gallery's saved sets (clientStorage)
     } catch { /* no frame */ }
+  }
+
+  // persistSets — write the gallery's sets to durable storage. The browser uses localStorage; a Figma
+  // plugin iframe can't (opaque origin), so it ALSO posts them to code.js → figma.clientStorage.
+  persistSets() {
+    saveSets(this.sets); // localStorage — best-effort; a no-op in the sandboxed Figma iframe
+    if (this.inFigma) {
+      try { parent.postMessage({ pluginMessage: { type: "save-sets", sets: this.sets } }, "*"); } catch { /* no frame */ }
+    }
+  }
+
+  // receiveStoredSets — the reply to load-sets (Figma): the user's sets from figma.clientStorage.
+  // Restore them into the gallery; on first run (none stored) persist the seeded Default so it
+  // survives the next open. Ignored once the user has left the gallery (don't clobber a live edit).
+  receiveStoredSets(sets) {
+    if (this.view !== "gallery") return;
+    if (Array.isArray(sets) && sets.length) this.sets = sets;
+    else this.persistSets(); // first run for this user — persist the seeded Default to clientStorage
+    this.render();
   }
 
   // renderFigmaImportRow — the "read a project" affordance ABOVE "Your Palettes" (Figma only).
@@ -1071,7 +1091,7 @@ class HctApp extends HTMLElement {
     const name = "Set " + (this.sets.length + 1);
     const rec = newSet(name);
     this.sets.push(rec);
-    saveSets(this.sets);
+    this.persistSets();
     this.openSet(rec.id);
   }
 
@@ -1098,7 +1118,7 @@ class HctApp extends HTMLElement {
         doc.name = name;
         const id = "set-" + Date.now().toString(36);
         this.sets.push({ id, name, doc: serialize(doc), updated: Date.now() });
-        saveSets(this.sets);
+        this.persistSets();
         this.openSet(id);
         this.toast("Imported " + name);
       };
@@ -1109,7 +1129,7 @@ class HctApp extends HTMLElement {
 
   deleteSet(id) {
     this.sets = this.sets.filter((s) => s.id !== id);
-    saveSets(this.sets);
+    this.persistSets();
     this.render();
   }
 
@@ -3234,7 +3254,7 @@ class HctApp extends HTMLElement {
     doc.name = name;
     const id = "set-" + Date.now().toString(36);
     this.sets.push({ id, name, doc: serialize(doc), updated: Date.now() });
-    saveSets(this.sets);
+    this.persistSets();
     this.openSet(id);
     if (toastMsg) this.toast(toastMsg);
   }
