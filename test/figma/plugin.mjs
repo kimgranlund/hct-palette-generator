@@ -3,7 +3,7 @@
 // Gates the generator-as-Figma-plugin without Figma: manifest shape + offline, code.js
 // parses + uses no network APIs, ui.html carries the generator + the bridge, AND the
 // load-bearing contract — model.figmaBundle() fed to code.applyBundle() (on a MOCK figma)
-// builds a raw-colors collection + a semantic-colors (Light/Dark) collection in which EVERY
+// builds a Color Primitives collection + a Color Modes (Light/Dark) collection in which EVERY
 // semantic var, in BOTH modes, is aliased to a raw var that was actually created.
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -100,11 +100,11 @@ if (applyBundle) {
 
   try {
     const res = await applyBundle(bundle);
-    const raw = F.collections.find((c) => c.name === "raw-colors");
-    const sem = F.collections.find((c) => c.name === "semantic-colors");
-    if (!raw) FAIL("apply", "no raw-colors collection created");
-    if (!sem) FAIL("apply", "no semantic-colors collection created");
-    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("apply", `semantic-colors modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark`);
+    const raw = F.collections.find((c) => c.name === "Color Primitives");
+    const sem = F.collections.find((c) => c.name === "Color Modes");
+    if (!raw) FAIL("apply", "no Color Primitives collection created");
+    if (!sem) FAIL("apply", "no Color Modes collection created");
+    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("apply", `Color Modes modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark`);
     if (res.raw !== rawExpect) FAIL("apply", `created ${res.raw} raw vars, expected ${rawExpect}`);
     if (res.semantic !== semExpect) FAIL("apply", `created ${res.semantic} semantic vars, expected ${semExpect}`);
 
@@ -127,15 +127,15 @@ if (applyBundle) {
     // (the user re-runs the plugin on the same file repeatedly; duplicate collections/vars/
     //  modes would corrupt the variable panel). Proven, not assumed.
     const res2 = await applyBundle(bundle);
-    const rawColls = F.collections.filter((c) => c.name === "raw-colors").length;
-    const semColls = F.collections.filter((c) => c.name === "semantic-colors").length;
-    if (rawColls !== 1) FAIL("idempotent", `re-apply made ${rawColls} raw-colors collections, want 1`);
-    if (semColls !== 1) FAIL("idempotent", `re-apply made ${semColls} semantic-colors collections, want 1`);
+    const rawColls = F.collections.filter((c) => c.name === "Color Primitives").length;
+    const semColls = F.collections.filter((c) => c.name === "Color Modes").length;
+    if (rawColls !== 1) FAIL("idempotent", `re-apply made ${rawColls} Color Primitives collections, want 1`);
+    if (semColls !== 1) FAIL("idempotent", `re-apply made ${semColls} Color Modes collections, want 1`);
     const rawVars2 = F.variables.filter((v) => raw && v.variableCollectionId === raw.id).length;
     const semVars2 = F.variables.filter((v) => sem && v.variableCollectionId === sem.id).length;
     if (rawVars2 !== rawExpect) FAIL("idempotent", `re-apply left ${rawVars2} raw vars, want ${rawExpect} (no duplicates)`);
     if (semVars2 !== semExpect) FAIL("idempotent", `re-apply left ${semVars2} semantic vars, want ${semExpect} (no duplicates)`);
-    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("idempotent", `re-apply left semantic-colors modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark (no duplicate mode)`);
+    if (sem && sem.modes.map((m) => m.name).join() !== "Light,Dark") FAIL("idempotent", `re-apply left Color Modes modes = ${sem && sem.modes.map((m) => m.name)}, want Light,Dark (no duplicate mode)`);
     if (res2.raw !== rawExpect || res2.semantic !== semExpect) FAIL("idempotent", `re-apply reported ${res2.raw}/${res2.semantic} vars, want ${rawExpect}/${semExpect}`);
 
     // ── ORPHAN PRUNE: re-apply removes any var NOT in the current bundle, in BOTH generated
@@ -150,8 +150,8 @@ if (applyBundle) {
     const rawNames3 = inColl(raw.id), semNames3 = inColl(sem.id);
     for (const dead of ["neutral/500-0", "neutral/750-3", "ghost/050"]) if (rawNames3.includes(dead)) FAIL("prune", `orphan raw var '${dead}' not pruned`);
     if (semNames3.includes("ghost/primary")) FAIL("prune", "orphan semantic var 'ghost/primary' not pruned");
-    if (rawNames3.length !== rawExpect) FAIL("prune", `raw-colors has ${rawNames3.length} vars after prune, want ${rawExpect}`);
-    if (semNames3.length !== semExpect) FAIL("prune", `semantic-colors has ${semNames3.length} vars after prune, want ${semExpect}`);
+    if (rawNames3.length !== rawExpect) FAIL("prune", `Color Primitives has ${rawNames3.length} vars after prune, want ${rawExpect}`);
+    if (semNames3.length !== semExpect) FAIL("prune", `Color Modes has ${semNames3.length} vars after prune, want ${semExpect}`);
     if (res3.pruned !== 4) FAIL("prune", `apply reported pruned=${res3.pruned}, expected 4`);
   } catch (e) { FAIL("apply", "applyBundle threw: " + e.message); }
 
@@ -173,12 +173,12 @@ if (applyBundle) {
     await F.figma.ui._h({ type: "apply", dtcg: figmaBundle(defaultDocument()), config: cfg2 });
     if (JSON.stringify(JSON.parse(F.figma.root.getPluginData("hct-config") || "null")) !== JSON.stringify(cfg2)) FAIL("config", "apply did not embed the config in the file (read-back would be lossy)");
 
-    // ── READ-VARIABLES (drift reference): the live raw-colors values come back as #RRGGBB(AA) hexes ──
+    // ── READ-VARIABLES (drift reference): the live Color Primitives values come back as #RRGGBB(AA) hexes ──
     F.figma.ui._posted.length = 0;
     await F.figma.ui._h({ type: "read-variables" });
     const read = F.figma.ui._posted.find((m) => m && m.type === "variables-read");
     if (!read) FAIL("read", "read-variables posted no {type:'variables-read'} message");
-    else if (!read.found) FAIL("read", "read-variables did not find the raw-colors collection");
+    else if (!read.found) FAIL("read", "read-variables did not find the Color Primitives collection");
     else {
       const names = Object.keys(read.raw);
       if (names.length !== rawExpect) FAIL("read", `read ${names.length} raw values, expected ${rawExpect}`);

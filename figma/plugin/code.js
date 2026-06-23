@@ -6,16 +6,16 @@
 // file only (a) opens that UI and (b) on an "apply" message turns the posted DTCG bundle
 // into two Figma variable COLLECTIONS:
 //
-//   raw-colors  (mode "Value")        — one COLOR var per stop/scrim, the concrete colors
-//   semantic-colors    (modes "Light","Dark")— one COLOR var per role, each mode ALIASED to the
+//   Color Primitives  (mode "Value")        — one COLOR var per stop/scrim, the concrete colors
+//   Color Modes        (modes "Light","Dark")— one COLOR var per role, each mode ALIASED to the
 //                                        raw var named by the leaf's com.figma.aliasData
 //                                        (the live raw→semantic cascade native import can't do)
 //
-// The bundle comes from the UI's figmaBundle() = exportDTCG(state, { rawColl:"raw-colors" }),
+// The bundle comes from the UI's figmaBundle() = exportDTCG(state, { rawColl:"Color Primitives" }),
 // so this file is palette-agnostic: it walks the tree, it does NOT hard-code the role table.
 
-const RAW_COLLECTION = "raw-colors";
-const SEMANTIC_COLLECTION = "semantic-colors";
+const RAW_COLLECTION = "Color Primitives";   // the raw color primitives (one "Value" mode)
+const SEMANTIC_COLLECTION = "Color Modes";   // the semantic Light/Dark tokens
 
 figma.showUI(__html__, { width: 1440, height: 900, themeColors: true });
 // Tell the UI it is running inside Figma so it reveals its "Apply to Figma" button.
@@ -57,7 +57,7 @@ figma.ui.onmessage = async (msg) => {
     } else if (msg.type === "read-variables") {
       const live = await readRawColors(); // read-only reference for the drift diff
       figma.ui.postMessage({ type: "variables-read", found: live.found, raw: live.raw });
-      if (!live.found) figma.notify("HCT: no raw-colors collection in this file yet");
+      if (!live.found) figma.notify("HCT: no Color Primitives collection in this file yet");
     }
   } catch (e) {
     figma.notify("HCT failed: " + (e && e.message ? e.message : String(e)), { error: true });
@@ -90,7 +90,7 @@ function rgbaToHex(c) {
   return typeof c.a === "number" && c.a < 1 ? base + h(c.a) : base;
 }
 
-// readRawColors — the live raw-colors variable values, as { "{n}/{key}": "#RRGGBB(AA)" }. Read-only
+// readRawColors — the live Color Primitives variable values, as { "{n}/{key}": "#RRGGBB(AA)" }. Read-only
 // reference for the drift diff (NO reverse-derive of params — colors only). Returns {} if absent.
 async function readRawColors() {
   const cols = await figma.variables.getLocalVariableCollectionsAsync();
@@ -126,7 +126,7 @@ async function applyBundle(dtcg) {
   raw.renameMode(raw.modes[0].modeId, "Value");
   const rawMode = raw.modes[0].modeId;
   const rawByName = await varsByName(raw.id);
-  const currentRaw = new Set(); // names this bundle WANTS in raw-colors — everything else is stale
+  const currentRaw = new Set(); // names this bundle WANTS in Color Primitives — everything else is stale
   let rawCount = 0;
   for (const n of childKeys(rawTree)) {
     for (const key of childKeys(rawTree[n])) {
@@ -146,7 +146,7 @@ async function applyBundle(dtcg) {
   const darkMode = (sem.modes[1] && sem.modes[1].modeId) || sem.addMode("Dark");
   if (sem.modes[1]) sem.renameMode(darkMode, "Dark");
   const semByName = await varsByName(sem.id);
-  const currentSem = new Set(); // names this bundle WANTS in semantic-colors — everything else is stale
+  const currentSem = new Set(); // names this bundle WANTS in Color Modes — everything else is stale
   let semCount = 0;
   for (const n of childKeys(semLight)) {
     for (const key of childKeys(semLight[n])) {

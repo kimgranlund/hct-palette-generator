@@ -158,12 +158,12 @@ function stateOf(doc) {
   };
 }
 
-// figmaBundle — the DTCG export with raw-collection aliasing ON ("raw-colors"): the
-// exact shape the Figma plugin's code.js turns into a raw-colors collection + a
-// Semantic collection (Light/Dark modes) aliased to it. Each semantic leaf carries
-// com.figma.aliasData.targetVariableName so the plugin can build the cascade.
+// figmaBundle — the DTCG export with raw-collection aliasing ON ("Color Primitives"): the
+// exact shape the Figma plugin's code.js turns into a "Color Primitives" collection + a
+// "Color Modes" collection (Light/Dark modes) aliased to it. Each semantic leaf carries
+// com.figma.aliasData.targetVariableName/targetVariableSetName so the plugin can build the cascade.
 export function figmaBundle(doc) {
-  return exportDTCG(stateOf(doc), { rawColl: "raw-colors" });
+  return exportDTCG(stateOf(doc), { rawColl: "Color Primitives" });
 }
 
 // WCAG relative-luminance contrast ratio between two [r,g,b] int triples.

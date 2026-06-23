@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.23 — 2026-06-23 — Figma collections renamed `Color Primitives` / `Color Modes`
+
+The two generated Figma variable collections are renamed for clarity:
+
+- **`Color Primitives`** (was `raw-colors`) — the raw color primitives (single `Value` mode).
+- **`Color Modes`** (was `semantic-colors`) — the semantic Light/Dark tokens, aliased to the primitives.
+
+Updated: `figma/plugin/code.js` + `figma/binder/figma-semantic-binder/code.js` (the `RAW_COLLECTION` /
+`SEMANTIC_COLLECTION` constants), `src/ui/model.mjs` (`figmaBundle`'s `rawColl`, which sets each
+semantic leaf's `aliasData.targetVariableSetName`, so it still matches the primitives collection),
+`test/figma/plugin.mjs` + `test/engine/exports.mjs` (the collection-name / `targetVariableSetName`
+assertions), `knowledge-05` / `SKILL`, and the README; regenerated `figma-plugin-assets.js` +
+`figma/plugin/ui.html`. No role / ref / token / variable-name change — only the collection labels.
+
+> Migration note: re-applying on a file that already has the old `raw-colors` / `semantic-colors`
+> collections from a prior run creates the new `Color Primitives` / `Color Modes` collections and
+> leaves the old ones orphaned (the prune only manages the collections the plugin creates) — delete
+> the old collections by hand.
+
 ## 1.22 — 2026-06-18 — default back to "even" (vibrant) + a chroma floor that kills the dead zone
 
 Reverses 1.18's default flip: **`toneMode` default is `even` again**, restoring the original per-hue
