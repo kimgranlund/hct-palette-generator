@@ -17,8 +17,8 @@
 // with alpha% = step/10 -> "{base}-{step}" verbatim), every emitted "{n}/{refKey}" is a member of
 // the canonical raw-colors name set — no unpadded "{n}/50", no out-of-range "{n}/500-999".
 
-const RAW_COLLECTION = "raw-colors";
-const SEMANTIC_COLLECTION = "semantic-colors";
+const RAW_COLLECTION = "Color Primitives";
+const SEMANTIC_COLLECTION = "Color Modes";
 
 // The 8 default palettes (knowledge-05 §3; defaults[].name in data/role-table.json).
 const PALETTES = [
@@ -123,14 +123,14 @@ async function main() {
     return;
   }
 
-  // 1. Index raw-colors variables by name.
+  // 1. Index the Color Primitives variables by name.
   const allVars = await figma.variables.getLocalVariablesAsync();
   const rawVars = {};
   for (const v of allVars) {
     if (v.variableCollectionId === rawColl.id) rawVars[v.name] = v;
   }
 
-  // 2. Create/find the semantic-colors collection with Light + Dark modes.
+  // 2. Create/find the Color Modes collection with Light + Dark modes.
   let sem = collections.find((c) => c.name === SEMANTIC_COLLECTION);
   if (!sem) sem = figma.variables.createVariableCollection(SEMANTIC_COLLECTION);
   const lightMode = sem.modes[0].modeId;

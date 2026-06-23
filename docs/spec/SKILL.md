@@ -75,8 +75,8 @@ The six child rubric cells **and** the six capability cells are now **validated*
 **integration** cells consume them downstream and are validated against their own harnesses — NOT part
 of this engine/output carving (the same way the editor UI is a separate concern): `capability.system.ui-app`
 (the interactive generator UI) and `capability.system.figma-plugin-app` (that same UI packaged as a Figma
-plugin, applying `figmaBundle()` → a `raw-colors` collection + a `semantic-colors` Light/Dark collection whose
-every role is aliased to its raw var, **idempotently** on re-apply).
+plugin, applying `figmaBundle()` → a `Color Primitives` collection + a `Color Modes` Light/Dark collection whose
+every role is aliased to its primitive, **idempotently** on re-apply).
 
 ```json
 {
