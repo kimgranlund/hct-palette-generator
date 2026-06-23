@@ -213,7 +213,10 @@ function okhslStops(palette, controls, stops, mode) {
     // mode pins t=1. Pulling the center to the cusp is what lets off-center hues (yellow) read vibrant.
     const evenL = lerp(lLight, lDark, (stop - 50) / 900);
     const peakL = stop <= 500 ? lerp(lLight, cuspL, (stop - 50) / 450) : lerp(cuspL, lDark, (stop - 500) / 450);
-    const t = mode === "peak" ? 1 : Math.max(0, Math.min(1, (controls.vibrancy ?? 0) / 100));
+    // blend amount = the PER-PALETTE "cusp pull" when set, else the global `vibrancy`. Lets one palette
+    // (e.g. yellow Warning, cusp at high L*) nudge its richest stop toward 500 without touching the rest.
+    const v = palette.cuspPull ?? controls.vibrancy ?? 0;
+    const t = mode === "peak" ? 1 : Math.max(0, Math.min(1, v / 100));
     const l = lerp(evenL, peakL, t);
     // saturation = chroma% of the gamut, shaped by the SAME damping multiplier m as the even path (so
     // damp/dampCurve/dampAmp/dampBias stay meaningful here), clamped to OKHSL's [0,1].

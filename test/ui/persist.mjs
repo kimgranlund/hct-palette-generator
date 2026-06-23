@@ -13,9 +13,11 @@ const FAIL = (g, m) => { if (!fails.some((f) => f.startsWith(g + ":"))) fails.pu
 
 const inDomainState = () => {
   const n = 1 + Math.floor(rnd() * 4);
-  const palettes = Array.from({ length: n }, (_, i) => ({
-    name: "P" + i, hue: rnd() * 360, chroma: rnd() * 100, skew: -100 + rnd() * 200, lift: -40 + rnd() * 80, hueShift: -60 + rnd() * 120, hueSameDir: rnd() > 0.5, on: rnd() > 0.3,
-  }));
+  const palettes = Array.from({ length: n }, (_, i) => {
+    const p = { name: "P" + i, hue: rnd() * 360, chroma: rnd() * 100, skew: -100 + rnd() * 200, lift: -40 + rnd() * 80, hueShift: -60 + rnd() * 120, hueSameDir: rnd() > 0.5, on: rnd() > 0.3 };
+    if (rnd() > 0.5) p.cuspPull = rnd() * 100; // OPTIONAL per-palette override — must round-trip when present, and stay absent when not
+    return p;
+  });
   // per-doc semantic-mapping overrides: a random, shape-valid subset re-points some roles.
   const roleOverrides = {};
   for (const [k, v] of [["onSurface", { light: "900", dark: "100" }], ["primary", { light: "500-300" }], ["outline", { dark: "550" }]])

@@ -38,6 +38,10 @@ import {
   SCRIM_STEPS,
 } from "../engine/exports.js";
 
+// Re-export the scrim model so the UI (app.js) can build the Mapping tab's re-point targets from the
+// SAME source of truth as the exporters — no second, drift-prone hardcoded scrim-step list.
+export { SCRIM_BASES, SCRIM_STEPS };
+
 // The eight seed palettes (data/role-table.json `defaults`). Inlined so the
 // pure core has no file I/O and runs identically in node and the browser.
 const DEFAULT_PALETTES = [
@@ -295,7 +299,7 @@ export function projectView(doc) {
     // half-steps (75/125/175/825/875/925) resolve — they are absent from the 19 display STOPS,
     // and a miss used to fall back to #000000 (the black swatches in the Roles panel).
     const fullStops = paletteStops(
-      { hue: p.hue, chroma: p.chroma, skew: p.skew, lift: p.lift, hueShift: p.hueShift, hueSameDir: p.hueSameDir },
+      { hue: p.hue, chroma: p.chroma, skew: p.skew, lift: p.lift, hueShift: p.hueShift, hueSameDir: p.hueSameDir, cuspPull: p.cuspPull },
       controls,
       EXPORT_STOPS,
     ).map((s) => ({

@@ -154,7 +154,7 @@ function derivePalette(palette, controls, overrides) {
     chromaFloor: controls.chromaFloor,
   };
   const stopList = paletteStops(
-    { hue: palette.hue, chroma: palette.chroma, skew: palette.skew, lift: palette.lift, hueShift: palette.hueShift, hueSameDir: palette.hueSameDir },
+    { hue: palette.hue, chroma: palette.chroma, skew: palette.skew, lift: palette.lift, hueShift: palette.hueShift, hueSameDir: palette.hueSameDir, cuspPull: palette.cuspPull },
     ctl,
     EXPORT_STOPS,
   );

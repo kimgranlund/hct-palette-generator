@@ -134,6 +134,9 @@ function clampPalette(p) {
   // (a palette without key colors must round-trip unchanged, not gain an empty array).
   const kc = clampKeyColors(src.keyColors);
   if (kc.length) out.keyColors = kc;
+  // cuspPull (perceptual path) is OPTIONAL — a per-palette override of the global `vibrancy` (0..100):
+  // how far this palette's richest stop is nudged toward stop 500. Absent → inherit the global vibrancy.
+  if (Number.isFinite(src.cuspPull)) out.cuspPull = clampNumber(src.cuspPull, 0, 100);
   // STORY (optional, from a curated preset): the source color's evocative name, a one-line
   // description, and its role in the set. Kept as-is iff present (free strings / known role).
   if (typeof src.colorName === "string" && src.colorName) out.colorName = src.colorName;

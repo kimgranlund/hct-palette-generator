@@ -20,6 +20,8 @@ import {
   seedFromKeyColor,
   keyCss,
   hexToOklch,
+  SCRIM_BASES,
+  SCRIM_STEPS,
 } from "./model.mjs";
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
@@ -2157,8 +2159,11 @@ class HctApp extends HTMLElement {
     const n = slug(vp.name);
     const ov = this.doc.roleOverrides || {};
     const ovCount = Object.keys(ov).reduce((a, k) => a + Object.keys(ov[k] || {}).length, 0);
-    // raw refs you can re-point a role to: the 25 solid stops + the 7 scrim steps (500-{step}).
-    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ..."100 175 250 300 400 450 550".split(" ").map((st) => "500-" + st)];
+    // raw refs you can re-point a role to: the 25 solid stops + every scrim ref (base-step), built
+    // from the SAME SCRIM_BASES × SCRIM_STEPS the engine/exporters use — so the scrim roles
+    // (e.g. scrim-weakest → 500-50) always have a matching option instead of falling back to 050.
+    const scrimRefs = SCRIM_BASES.flatMap((b) => SCRIM_STEPS.map((st) => String(b).padStart(3, "0") + "-" + st));
+    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ...scrimRefs];
     const tokenName = (ref) => n + "-" + (ref.includes("-") ? ref : ref.padStart(3, "0")); // the displayed raw-token name
     const padRef = (ref) => (ref.includes("-") ? ref : ref.padStart(3, "0"));
     const drift = this.liveVars ? this.driftSummary() : null; // the Figma drift-diff summary, if a live read was done
@@ -2579,7 +2584,7 @@ class HctApp extends HTMLElement {
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, swatch((vp.ramp.find((s) => s.stop === 550) || vp.ramp[9]).hex, { size: 16 }), "Palette"),
-      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : "Tune hue · chroma — live"),
+      h("div", { class: "insp-sub" }, isEven ? "Tune hue · chroma · skew · lift — live" : (this.doc.toneMode === "perceptual" ? "Tune hue · chroma · cusp pull — live" : "Tune hue · chroma — live")),
       // curated story for this color (preset palettes): its evocative name, role, and description.
       vp.colorName
         ? h(
@@ -2622,6 +2627,11 @@ class HctApp extends HTMLElement {
       this.slider("Chroma", p.chroma, 0, 100, 1, (v) => fmt(v) + "%", (v) => this.editDrag((d) => (d.palettes[i].chroma = v))),
       isEven ? this.slider("Skew", p.skew, -100, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].skew = v))) : false,
       isEven ? this.slider("Lift", p.lift, -40, 40, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].lift = v))) : false,
+      // Cusp pull (perceptual only) — this palette's override of the global Vibrancy: how far its
+      // richest stop is nudged toward 500. Starts at the inherited global value; the peak mode pins it.
+      this.doc.toneMode === "perceptual"
+        ? this.slider("Cusp pull", p.cuspPull ?? (this.doc.vibrancy ?? 0), 0, 100, 1, (v) => fmt(v), (v) => this.editDrag((d) => (d.palettes[i].cuspPull = v)))
+        : false,
       // Edge hue rotation — bipolar, centre 0. The readout shows the light/dark torsion:
       // left = light + / dark −, right = light − / dark + (the slider value = the dark edge).
       this.slider(
@@ -3091,10 +3101,30 @@ class HctApp extends HTMLElement {
     this.downloadBytes(bytes, `nonoun-color-tokens-${s}.zip`, "application/zip");
   }
 
-  // downloadBytes — trigger a browser download of raw bytes (the binary sibling of download()).
-  downloadBytes(bytes, filename, type) {
+  // _saveBlob — save a Blob to disk. PREFERS the File System Access API (showSaveFilePicker): an
+  // explicit save dialog that writes the file directly, so it works in embedded/sandboxed webviews
+  // that ignore <a download> and would otherwise NAVIGATE to (preview) the blob. Falls back to the
+  // universal <a download> anchor when the picker is unsupported or blocked. Cancelling the dialog
+  // is a no-op (never force a fallback download the user just dismissed).
+  async _saveBlob(blob, filename) {
+    if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
+      try {
+        const ext = (String(filename).match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+        const opts = { suggestedName: filename };
+        if (ext) opts.types = [{ description: ext.toUpperCase() + " file", accept: { [blob.type || "application/octet-stream"]: ["." + ext] } }];
+        const handle = await window.showSaveFilePicker(opts);
+        const w = await handle.createWritable();
+        await w.write(blob);
+        await w.close();
+        this.toast("Downloaded " + filename);
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return; // user dismissed the save dialog — don't fall through
+        // any other error (unsupported option, SecurityError, blocked in a sandbox) → anchor fallback
+      }
+    }
+    // Fallback: <a download> + a blob URL — the universal path (works in any top-level browser tab).
     try {
-      const blob = new Blob([bytes], { type: type || "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -3112,6 +3142,11 @@ class HctApp extends HTMLElement {
     } catch {
       this.toast("Download failed");
     }
+  }
+
+  // downloadBytes — save raw bytes (the binary sibling of download()); e.g. the Download-All .zip.
+  downloadBytes(bytes, filename, type) {
+    this._saveBlob(new Blob([bytes], { type: type || "application/octet-stream" }), filename);
   }
 
   // figmaBundle — public accessor: the DTCG (raw + Light/Dark, aliased) for the
@@ -3281,19 +3316,10 @@ class HctApp extends HTMLElement {
     ta.remove();
   }
 
+  // download — save text (CSS/JSON/etc.). Routes through _saveBlob, so it benefits from the same
+  // File System Access save dialog (and anchor fallback) the .zip uses.
   download(text, filename) {
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.setAttribute("download", filename);
-    a.rel = "noopener";
-    a.style.display = "none";
-    document.body.append(a);
-    a.click();
-    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
-    this.toast("Downloaded " + filename);
+    this._saveBlob(new Blob([text], { type: "text/plain" }), filename);
   }
 
   toast(msg) {
