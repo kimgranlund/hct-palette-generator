@@ -3096,10 +3096,30 @@ class HctApp extends HTMLElement {
     this.downloadBytes(bytes, `nonoun-color-tokens-${s}.zip`, "application/zip");
   }
 
-  // downloadBytes — trigger a browser download of raw bytes (the binary sibling of download()).
-  downloadBytes(bytes, filename, type) {
+  // _saveBlob — save a Blob to disk. PREFERS the File System Access API (showSaveFilePicker): an
+  // explicit save dialog that writes the file directly, so it works in embedded/sandboxed webviews
+  // that ignore <a download> and would otherwise NAVIGATE to (preview) the blob. Falls back to the
+  // universal <a download> anchor when the picker is unsupported or blocked. Cancelling the dialog
+  // is a no-op (never force a fallback download the user just dismissed).
+  async _saveBlob(blob, filename) {
+    if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
+      try {
+        const ext = (String(filename).match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+        const opts = { suggestedName: filename };
+        if (ext) opts.types = [{ description: ext.toUpperCase() + " file", accept: { [blob.type || "application/octet-stream"]: ["." + ext] } }];
+        const handle = await window.showSaveFilePicker(opts);
+        const w = await handle.createWritable();
+        await w.write(blob);
+        await w.close();
+        this.toast("Downloaded " + filename);
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return; // user dismissed the save dialog — don't fall through
+        // any other error (unsupported option, SecurityError, blocked in a sandbox) → anchor fallback
+      }
+    }
+    // Fallback: <a download> + a blob URL — the universal path (works in any top-level browser tab).
     try {
-      const blob = new Blob([bytes], { type: type || "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -3117,6 +3137,11 @@ class HctApp extends HTMLElement {
     } catch {
       this.toast("Download failed");
     }
+  }
+
+  // downloadBytes — save raw bytes (the binary sibling of download()); e.g. the Download-All .zip.
+  downloadBytes(bytes, filename, type) {
+    this._saveBlob(new Blob([bytes], { type: type || "application/octet-stream" }), filename);
   }
 
   // figmaBundle — public accessor: the DTCG (raw + Light/Dark, aliased) for the
@@ -3286,19 +3311,10 @@ class HctApp extends HTMLElement {
     ta.remove();
   }
 
+  // download — save text (CSS/JSON/etc.). Routes through _saveBlob, so it benefits from the same
+  // File System Access save dialog (and anchor fallback) the .zip uses.
   download(text, filename) {
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.setAttribute("download", filename);
-    a.rel = "noopener";
-    a.style.display = "none";
-    document.body.append(a);
-    a.click();
-    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
-    this.toast("Downloaded " + filename);
+    this._saveBlob(new Blob([text], { type: "text/plain" }), filename);
   }
 
   toast(msg) {
