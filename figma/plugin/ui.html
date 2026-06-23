@@ -3264,6 +3264,9 @@ const { paletteStops, effHue, STOPS, EXPORT_STOPS, DEFAULT_CONTROLS } = __M.tona
 const { semanticRoles, refKey, applyRoleOverrides } = __M.semantic;
 const { exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3, exportTailwind, exportShadcn, SCRIM_BASES, SCRIM_STEPS } = __M.exports;
 
+// Re-export the scrim model so the UI (app.js) can build the Mapping tab's re-point targets from the
+// SAME source of truth as the exporters — no second, drift-prone hardcoded scrim-step list.
+
 // The eight seed palettes (data/role-table.json `defaults`). Inlined so the
 // pure core has no file I/O and runs identically in node and the browser.
 const DEFAULT_PALETTES = [
@@ -3656,7 +3659,7 @@ function tokenCount(doc) {
 
 // Re-exports the app needs from the core (so app.js imports one module).
 
-return { configFromVariables, slug, defaultDocument, figmaBundle, contrastRatio, keyCss, seedFromKeyColor, rgbToOklchArr, hexToOklch, projectView, appThemeCSS, tokenCount, hctToRgb, lstarFromRgb, hexToRgb, STOPS, EXPORT_STOPS, DEFAULT_CONTROLS };
+return { configFromVariables, slug, defaultDocument, figmaBundle, contrastRatio, keyCss, seedFromKeyColor, rgbToOklchArr, hexToOklch, projectView, appThemeCSS, tokenCount, SCRIM_BASES, SCRIM_STEPS, hctToRgb, lstarFromRgb, hexToRgb, STOPS, EXPORT_STOPS, DEFAULT_CONTROLS };
 })();
 (function(){
 // app.js — the DOM app for the HCT Palette Generator.
@@ -3667,7 +3670,7 @@ return { configFromVariables, slug, defaultDocument, figmaBundle, contrastRatio,
 // lists them. The six validated capability modules do all the color/token work
 // (imported through model.mjs); this file only owns DOM + interaction.
 
-const { defaultDocument, projectView, tokenCount, slug, contrastRatio, appThemeCSS, hctToRgb, STOPS, figmaBundle, configFromVariables, seedFromKeyColor, keyCss, hexToOklch } = __M.model;
+const { defaultDocument, projectView, tokenCount, slug, contrastRatio, appThemeCSS, hctToRgb, STOPS, figmaBundle, configFromVariables, seedFromKeyColor, keyCss, hexToOklch, SCRIM_BASES, SCRIM_STEPS } = __M.model;
 const { STORAGE_KEY, serialize, hydrate } = __M.persist;
 const { FIGMA_PLUGIN } = __M.figmaPlugin;
 const { SURVEY_INDEX, loadSurvey } = __M.surveyIndex;
@@ -5804,8 +5807,11 @@ class HctApp extends HTMLElement {
     const n = slug(vp.name);
     const ov = this.doc.roleOverrides || {};
     const ovCount = Object.keys(ov).reduce((a, k) => a + Object.keys(ov[k] || {}).length, 0);
-    // raw refs you can re-point a role to: the 25 solid stops + the 7 scrim steps (500-{step}).
-    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ..."100 175 250 300 400 450 550".split(" ").map((st) => "500-" + st)];
+    // raw refs you can re-point a role to: the 25 solid stops + every scrim ref (base-step), built
+    // from the SAME SCRIM_BASES × SCRIM_STEPS the engine/exporters use — so the scrim roles
+    // (e.g. scrim-weakest → 500-50) always have a matching option instead of falling back to 050.
+    const scrimRefs = SCRIM_BASES.flatMap((b) => SCRIM_STEPS.map((st) => String(b).padStart(3, "0") + "-" + st));
+    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ...scrimRefs];
     const tokenName = (ref) => n + "-" + (ref.includes("-") ? ref : ref.padStart(3, "0")); // the displayed raw-token name
     const padRef = (ref) => (ref.includes("-") ? ref : ref.padStart(3, "0"));
     const drift = this.liveVars ? this.driftSummary() : null; // the Figma drift-diff summary, if a live read was done

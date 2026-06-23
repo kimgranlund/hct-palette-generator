@@ -20,6 +20,8 @@ import {
   seedFromKeyColor,
   keyCss,
   hexToOklch,
+  SCRIM_BASES,
+  SCRIM_STEPS,
 } from "./model.mjs";
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
@@ -2157,8 +2159,11 @@ class HctApp extends HTMLElement {
     const n = slug(vp.name);
     const ov = this.doc.roleOverrides || {};
     const ovCount = Object.keys(ov).reduce((a, k) => a + Object.keys(ov[k] || {}).length, 0);
-    // raw refs you can re-point a role to: the 25 solid stops + the 7 scrim steps (500-{step}).
-    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ..."100 175 250 300 400 450 550".split(" ").map((st) => "500-" + st)];
+    // raw refs you can re-point a role to: the 25 solid stops + every scrim ref (base-step), built
+    // from the SAME SCRIM_BASES × SCRIM_STEPS the engine/exporters use — so the scrim roles
+    // (e.g. scrim-weakest → 500-50) always have a matching option instead of falling back to 050.
+    const scrimRefs = SCRIM_BASES.flatMap((b) => SCRIM_STEPS.map((st) => String(b).padStart(3, "0") + "-" + st));
+    const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ...scrimRefs];
     const tokenName = (ref) => n + "-" + (ref.includes("-") ? ref : ref.padStart(3, "0")); // the displayed raw-token name
     const padRef = (ref) => (ref.includes("-") ? ref : ref.padStart(3, "0"));
     const drift = this.liveVars ? this.driftSummary() : null; // the Figma drift-diff summary, if a live read was done
