@@ -32,12 +32,13 @@ All formats operate over **enabled** palettes (`palette.on`) and **export stops*
 :root{
   color-scheme: light dark;
 
-  /* {Name} — cam16 hue {h}°; flat mode-independent RAW primitives (--c_ underscore) */
-  --c_{n}-050: {hex};            ... --c_{n}-950: {hex};
+  /* {Name} — cam16 hue {h}°; flat mode-independent RAW primitives. Raw names end in DIGITS,
+     semantic names end in a WORD, so both share the --c- prefix with no collision. */
+  --c-{n}-050: {hex};            ... --c-{n}-950: {hex};
   /* scrims (the 500 ramp; alpha% = step/10) */
-  --c_{n}-500-50: {hex8};  ...  --c_{n}-500-950: {hex8};
-  /* SEMANTIC roles (--c- hyphen) -> light-dark of two raw primitives */
-  --c-{n}{suffix}: light-dark(var(--c_{n}-{refKey(light)}), var(--c_{n}-{refKey(dark)}));
+  --c-{n}-500-50: {hex8};  ...  --c-{n}-500-950: {hex8};
+  /* SEMANTIC roles -> light-dark of two raw primitives */
+  --c-{n}{suffix}: light-dark(var(--c-{n}-{refKey(light)}), var(--c-{n}-{refKey(dark)}));
 }
 ```
 

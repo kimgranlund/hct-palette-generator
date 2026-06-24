@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.25 — 2026-06-24 — CSS raw vars drop the `_`: `--c_*` → `--c-*` (all-hyphen namespace)
+
+The raw color primitives in the CSS exports (Hex + OKLCH, both via `cssFrom`) used an underscore —
+`--c_{family}-{stop}` — to flag raw-vs-semantic; semantic roles used `--c-{family}-{role}`. Both now
+use the **`--c-`** prefix. There is no collision: a raw name's suffix always ends in DIGITS
+(`--c-neutral-550`, `--c-neutral-500-200`) and a semantic name's in a WORD (`--c-neutral-dim`,
+`--c-neutral-surface`) or is the bare prime (`--c-neutral`). Semantic vars now reference raw via
+`var(--c-…)`. Only the CSS exports are affected (JSON/DTCG/Figma/UI3 use `{family}/{stop}` names;
+the chrome aliases reference the semantic `--c-*` layer, unchanged). Updated `exports.js` (`cssFrom`),
+the `hpg-export-css-resolves` / `hpg-export-padding` gates, `knowledge-04`, and ADR (CSS var prefix
+convention, revised).
+
 ## 1.24 — 2026-06-24 — role-table order regrouped (scrims last) for a cleaner token list
 
 The 37 semantic roles are reordered so the emitted token list — Figma variables in the `Color Modes`
