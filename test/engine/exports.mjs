@@ -59,7 +59,7 @@ if (sa.length === 0 || !sa.every((l) => {
 
 // ── hpg-export-css-resolves (every --c-* is light-dark(var,var) over existing raw vars) ───
 const css = X.exportCSS(C(ALL));
-const declared = new Set([...css.matchAll(/(--[a-z0-9_-]+)\s*:/gi)].map((m) => m[1])); // raw vars use --c_ (underscore)
+const declared = new Set([...css.matchAll(/(--[a-z0-9_-]+)\s*:/gi)].map((m) => m[1])); // raw + semantic both use --c- (raw names end in digits, semantic in a word)
 let cssChecked = 0;
 for (const m of css.matchAll(/(--c-[a-z0-9-]+)\s*:\s*light-dark\(\s*var\((--[a-z0-9_-]+)\)\s*,\s*var\((--[a-z0-9_-]+)\)\s*\)/gi)) {
   cssChecked++;
@@ -68,16 +68,16 @@ for (const m of css.matchAll(/(--c-[a-z0-9-]+)\s*:\s*light-dark\(\s*var\((--[a-z
 if (cssChecked === 0) FAIL("css-resolves", "no --c-* light-dark(var,var) lines found");
 
 // ── hpg-export-padding (3-digit stop padding in CSS var names) ───────────────────────────
-for (const m of css.matchAll(/--c_[a-z0-9-]+?-(\d+)(?:-\d+)?\s*:/gi)) {
+for (const m of css.matchAll(/--c-[a-z0-9-]+?-(\d+)(?:-\d+)?\s*:/gi)) {
   const stop = m[1];
-  if (/^\d+$/.test(stop) && stop.length < 3) FAIL("padding", `unpadded stop in --c_…-${stop}`);
+  if (/^\d+$/.test(stop) && stop.length < 3) FAIL("padding", `unpadded stop in --c-…-${stop}`);
 }
 
 // ── hpg-export-disabled-palette (on:false absent; all-disabled = valid empty, no throw) ───
 const oneOff = C(ALL.map((p, i) => (i === 1 ? { ...p, on: false } : p)));
 const cssOff = X.exportCSS(oneOff);
 const offName = ALL[1].name.toLowerCase();
-if (cssOff.includes(`--c_${offName}-`) || cssOff.includes(`--c-${offName}-`)) FAIL("disabled-palette", `disabled palette '${offName}' still in CSS`);
+if (cssOff.includes(`--c-${offName}-`)) FAIL("disabled-palette", `disabled palette '${offName}' still in CSS`);
 try {
   const empty = C(ALL.map((p) => ({ ...p, on: false })));
   const ec = X.exportCSS(empty), ed = X.exportDTCG(empty, {});

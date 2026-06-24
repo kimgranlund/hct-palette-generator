@@ -94,10 +94,12 @@ Format: Context → Decision → Rationale → Consequences → Status.
 - **Context.** Stops range 50–950; mixing `"50"` and `"050"` causes sort and lookup bugs.
 - **Decision.** All stop references zero-pad to 3 digits (`pad3`/`refKey`) in CSS var names,
   CSS refs, JSON keys, DTCG names, and UI3 keys. Scrims keep `"{base}-{step}"` with padded base.
-- **CSS var prefix convention (2026-06-17).** RAW primitives are `--c_{family}-{stop|500-step}`
-  (UNDERSCORE after `c`); SEMANTIC roles are `--c-{family}-{role}` (HYPHEN). The `c_` vs `c-`
-  distinction lets a reader tell a raw primitive from a semantic role at a glance, and keeps both
-  under one `--c…` namespace. Semantic vars reference raw vars via `var(--c_…)`.
+- **CSS var prefix convention (2026-06-17; revised 2026-06-24).** RAW primitives and SEMANTIC roles
+  both use the `--c-` prefix: raw are `--c-{family}-{stop|500-step}` and semantic are
+  `--c-{family}-{role}`. A raw name's suffix always ends in DIGITS and a semantic name's in a WORD, so
+  they never collide despite the shared prefix. (Originally raw used `--c_` with an underscore to
+  flag raw-vs-semantic; revised to drop the `_` for a cleaner, all-hyphen CSS namespace — the
+  digit-vs-word suffix already disambiguates.) Semantic vars reference raw vars via `var(--c-…)`.
 - **Rationale.** Stable lexical sort, exact name matching against the user's `raw-colors`
   collection (which is padded), no ambiguity; the raw/semantic prefix split is self-documenting.
 - **Status.** DECIDED.

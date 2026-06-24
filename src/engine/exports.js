@@ -264,25 +264,26 @@ function cssFrom(palettes, oklch) {
   for (const p of palettes) {
     lines.push("");
     lines.push(`  /* ${p.name} — flat mode-independent primitives */`);
-    // solid RAW vars: --c_{n}-050 .. --c_{n}-950  (underscore prefix distinguishes raw from semantic)
+    // solid RAW vars: --c-{n}-050 .. --c-{n}-950 (raw stop names end in digits; semantic role names
+    // end in a word, so the two never collide despite sharing the --c- prefix).
     for (const key of Object.keys(p.stops)) {
       const { rgb } = p.stops[key];
       const val = oklch ? oklchStr(rgbToOklch(rgb)) : hexOf(rgb);
-      lines.push(`  --c_${p.n}-${key}: ${val};`);
+      lines.push(`  --c-${p.n}-${key}: ${val};`);
     }
-    // scrim RAW vars: --c_{n}-500-{step}  (the 500 color at alpha% = step/10)
+    // scrim RAW vars: --c-{n}-500-{step}  (the 500 color at alpha% = step/10)
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
         const sc = p.scrims[base][step];
         const val = oklch ? oklchStrA(rgbToOklch(sc.rgb), sc.alphaPct) : sc.hex;
-        lines.push(`  --c_${p.n}-${pad3(base)}-${step}: ${val};`);
+        lines.push(`  --c-${p.n}-${pad3(base)}-${step}: ${val};`);
       }
     }
     // SEMANTIC --c-{n}-{role} vars: light-dark(var(light raw), var(dark raw)) (ADR-005)
     lines.push(`  /* ${p.name} — semantic roles */`);
     for (const r of p.roles) {
-      const lv = `var(--c_${p.n}-${refKey(r.lightRef)})`;
-      const dv = `var(--c_${p.n}-${refKey(r.darkRef)})`;
+      const lv = `var(--c-${p.n}-${refKey(r.lightRef)})`;
+      const dv = `var(--c-${p.n}-${refKey(r.darkRef)})`;
       lines.push(`  --c-${p.n}${r.suffix}: light-dark(${lv}, ${dv});`);
     }
     // KEY COLORS — retained brand values by expression (dominant/supportive), exact in OKLCH
