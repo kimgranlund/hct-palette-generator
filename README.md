@@ -57,12 +57,12 @@ npm run dev        # Vite dev server with HMR (http://localhost:5173)
 ## Build
 
 ```bash
-npm run build      # gen assets → surveys → tsc → vite build (dist/) → offline single-file → figma ui.html
+npm run build      # gen assets → categories → tsc → vite build (dist/) → offline single-file → figma ui.html
 npm run preview    # serve the built dist/
 ```
 
 `npm run build` produces:
-- `dist/` — the Vite-built web app (survey categories are code-split into lazy chunks).
+- `dist/` — the Vite-built web app (the color categories are code-split into lazy chunks).
 - `dist/nonoun-color-tokens.html` — a dependency-free **offline single-file** build (open it
   directly). This is the artifact published to the [live demo](https://kimgranlund.github.io/nonoun-color-tokens/).
 - `figma/plugin/ui.html` — the Figma plugin UI (the bundled app + a postMessage bridge).
@@ -76,8 +76,8 @@ npm test           # regenerates the build artifacts, then runs every verifier +
 The test suite is the real coverage — pure-`node` verifiers per layer (engine round-trips, tonal-curve
 fidelity, the OKHSL ↔ sRGB module, the 37-role table vs. the canonical answer key, the export formats,
 the Figma raw→semantic cascade, persistence round-trip) plus a DOM-shim boot
-(`test/ui/headless-boot.mjs`) that drives the real `app.js` — gallery, surveys, editor, exports — without
-a browser.
+(`test/ui/headless-boot.mjs`) that drives the real `app.js` — gallery, color categories, editor, exports —
+without a browser.
 
 ## Layout
 
@@ -85,23 +85,23 @@ a browser.
 src/
   engine/   hct.js · okhsl.js · tonal.js · semantic.js · exports.js   — pure ES modules, no DOM
   ui/       app.js · model.mjs · persist.js · styles.css · icons.js · zip.mjs
-            surveys/        index.js + one lazy module per category (generated)
+            categories/     index.js + one lazy module per category (generated)
             figma-plugin-assets.js
   main.ts   — Vite entry (imports the stylesheet + <nonoun-color-tokens>, mounts it)
 figma/
   plugin/   code.js · manifest.json · ui.html              — the generator AS a Figma plugin
   binder/   bind-plan.mjs · figma-semantic-binder/          — the standalone Semantic Binder plugin
-scripts/    bundle.mjs · gen-surveys.mjs · gen-figma-ui.mjs · gen-figma-assets.mjs · gen-preview.mjs
+scripts/    bundle.mjs · gen-categories.mjs · gen-figma-ui.mjs · gen-figma-assets.mjs · gen-preview.mjs
 docs/spec/  the product specification, the canonical data/role-table.json (the answer key),
-            and colors/surveys/*.json (the survey source data gen-surveys reads)
+            and colors/categories/*.json (the color-category source data gen-categories reads)
 test/       engine/ · ui/ · figma/ · run.mjs
 ```
 
 The engine is pure and DOM-free; `src/ui/app.js` defines the `<nonoun-color-tokens>` web component over
 it; the Figma plugin reuses the exact same bundle. `docs/spec/data/role-table.json` is the **canonical
 contract** the semantic / export / figma verifiers validate against — it is the spec, not a derived
-file. The Color Categories (the `surveys/` source name is retained internally) are generated from
-`docs/spec/colors/surveys/*.json` by `npm run gen:surveys`.
+file. The Color Categories are generated from `docs/spec/colors/categories/*.json` by
+`npm run gen:categories` (into `src/ui/categories/`).
 
 ## Figma plugin
 

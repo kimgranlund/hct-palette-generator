@@ -24,7 +24,7 @@ import {
 } from "./model.mjs";
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
-import { SURVEY_INDEX, loadSurvey } from "./surveys/index.js";
+import { CATEGORY_INDEX, loadCategory } from "./categories/index.js";
 import { deriveNeutral, deriveRelative, RELATIONSHIPS } from "../engine/derive.mjs";
 import { zipStore } from "./zip.mjs";
 import { icon, brandMark } from "./icons.js";
@@ -274,8 +274,8 @@ class HctApp extends HTMLElement {
     this.sets = loadSets();
     // session (UI-only, not persisted with the doc)
     this.view = "gallery"; // gallery | editor
-    this.survey = null; // open Survey category slug within the gallery hub (null = hub). UI-session only.
-    this._surveyData = {}; // slug → { VOLUMES, PRESETS } cache for lazily-loaded category modules
+    this.category = null; // open Category category slug within the gallery hub (null = hub). UI-session only.
+    this._categoryData = {}; // slug → { VOLUMES, PRESETS } cache for lazily-loaded category modules
     this.inFigma = false; // set true by the Figma bridge (gen-ui.mjs) on figma-init → reveals "Add Variables → Figma"
     this.liveVars = null; // { "{n}/{key}": hex } read from the file (read-only drift reference); null = not read
     this.liveVarsFound = false; // whether the file has a raw-colors collection (gates the gallery import row)
@@ -802,8 +802,8 @@ class HctApp extends HTMLElement {
     return [newTile, ...tiles];
   }
 
-  // buildPresetTiles — the read-only palette shelf for ONE survey category (its lazily-loaded
-  // { VOLUMES, PRESETS }). Presets ship in code (generated from docs/spec/colors/surveys/), never in
+  // buildPresetTiles — the read-only palette shelf for ONE category category (its lazily-loaded
+  // { VOLUMES, PRESETS }). Presets ship in code (generated from docs/spec/colors/categories/), never in
   // localStorage; clicking one OPENS AN EDITABLE COPY into the user's sets (openConfigAsSet hydrates +
   // appends + opens). Grouped by volume; filtered by the search box.
   buildPresetTiles(data) {
@@ -858,41 +858,41 @@ class HctApp extends HTMLElement {
 
   // refreshTiles — re-render ONLY the grid hosts' children. Used on search input so the <input>
   // element is never replaced and keeps focus + caret. On the hub, search filters Your Palettes; inside
-  // a survey category it filters that category's palette shelf (only one host exists per view).
+  // a category category it filters that category's palette shelf (only one host exists per view).
   refreshTiles() {
     if (this._gridHost) this._gridHost.replaceChildren(...this.buildTiles());
-    if (this._presetGridHost && this.survey)
-      this._presetGridHost.replaceChildren(...this.buildPresetTiles(this._surveyData[this.survey]));
+    if (this._presetGridHost && this.category)
+      this._presetGridHost.replaceChildren(...this.buildPresetTiles(this._categoryData[this.category]));
   }
 
-  // openSurvey / closeSurvey — navigate the gallery hub. Opening a category lazily loads its module
+  // openCategory / closeCategory — navigate the gallery hub. Opening a category lazily loads its module
   // (one code-split chunk; cached after first open) and re-renders into the category page; while the
-  // chunk is in flight the page shows a "Loading…" note. closeSurvey returns to the hub.
-  openSurvey(slug) {
-    this.survey = slug;
+  // chunk is in flight the page shows a "Loading…" note. closeCategory returns to the hub.
+  openCategory(slug) {
+    this.category = slug;
     this.search = "";
-    if (this._surveyData[slug]) { this.render(); return Promise.resolve(this._surveyData[slug]); }
+    if (this._categoryData[slug]) { this.render(); return Promise.resolve(this._categoryData[slug]); }
     this.render(); // loading state
-    return loadSurvey(slug)
-      .then((m) => { if (m) this._surveyData[slug] = m; if (this.survey === slug) this.render(); return m; })
-      .catch(() => { if (this.survey === slug) this.render(); return null; });
+    return loadCategory(slug)
+      .then((m) => { if (m) this._categoryData[slug] = m; if (this.category === slug) this.render(); return m; })
+      .catch(() => { if (this.category === slug) this.render(); return null; });
   }
-  closeSurvey() { this.survey = null; this.search = ""; this.render(); }
+  closeCategory() { this.category = null; this.search = ""; this.render(); }
 
-  // surveyCard — one category tile on the hub: a color strip sampled from the category + its name,
+  // categoryCard — one category tile on the hub: a color strip sampled from the category + its name,
   // eyebrow, tagline, and palette count. Clicking opens the category page.
-  surveyCard(c) {
+  categoryCard(c) {
     return h(
       "button",
-      { class: "survey-card", title: `Open ${c.category}`, onclick: () => this.openSurvey(c.slug) },
-      h("div", { class: "survey-strip" }, ...c.strip.map((hex) => h("i", { style: `background:${hex}` }))),
+      { class: "category-card", title: `Open ${c.category}`, onclick: () => this.openCategory(c.slug) },
+      h("div", { class: "category-strip" }, ...c.strip.map((hex) => h("i", { style: `background:${hex}` }))),
       h(
         "div",
-        { class: "survey-card-body" },
-        c.eyebrow ? h("div", { class: "survey-card-eyebrow" }, c.eyebrow) : false,
-        h("div", { class: "survey-card-title" }, c.category),
-        c.tagline ? h("p", { class: "survey-card-tagline" }, c.tagline) : false,
-        h("span", { class: "survey-card-count" }, `${c.count} palettes`),
+        { class: "category-card-body" },
+        c.eyebrow ? h("div", { class: "category-card-eyebrow" }, c.eyebrow) : false,
+        h("div", { class: "category-card-title" }, c.category),
+        c.tagline ? h("p", { class: "category-card-tagline" }, c.tagline) : false,
+        h("span", { class: "category-card-count" }, `${c.count} palettes`),
       ),
     );
   }
@@ -938,12 +938,12 @@ class HctApp extends HTMLElement {
         btn("+ New", { onclick: () => this.createSet() }),
         this.themeBtn(),
       ),
-      this.survey ? this.renderSurveyBody() : this.renderHubBody(),
+      this.category ? this.renderCategoryBody() : this.renderHubBody(),
     );
   }
 
   // renderHubBody — the gallery home: a STICKY masthead (title + search · description) over the
-  // scrolling content — Your Palettes (your saved sets) and the Surveys category grid.
+  // scrolling content — Your Palettes (your saved sets) and the Categories category grid.
   renderHubBody() {
     this._presetGridHost = null;
     this._gridHost = h("div", { class: "set-grid" }, ...this.buildTiles());
@@ -972,23 +972,23 @@ class HctApp extends HTMLElement {
         // Color Categories — read-only curated categories. Opening a palette copies it into Your Palettes.
         h(
           "div",
-          { class: "gallery-title surveys-head" },
+          { class: "gallery-title categories-head" },
           h("h2", {}, "Color Categories"),
-          h("span", { class: "title-count" }, String(SURVEY_INDEX.length)),
+          h("span", { class: "title-count" }, String(CATEGORY_INDEX.length)),
         ),
-        h("p", { class: "surveys-lede" }, "Palettes sourced from real places, dishes, films, books, scenes, biomes — read for their colour, not their cliché. Open any palette as an editable copy."),
-        h("div", { class: "survey-grid" }, ...SURVEY_INDEX.map((c) => this.surveyCard(c))),
+        h("p", { class: "categories-lede" }, "Palettes sourced from real places, dishes, films, books, scenes, biomes — read for their colour, not their cliché. Open any palette as an editable copy."),
+        h("div", { class: "category-grid" }, ...CATEGORY_INDEX.map((c) => this.categoryCard(c))),
       ),
     );
   }
 
-  // renderSurveyBody — one survey category page: a STICKY masthead (back-eyebrow + search · title ·
+  // renderCategoryBody — one category category page: a STICKY masthead (back-eyebrow + search · title ·
   // description) over the category's 12 volumes × 4 palettes (lazily loaded). The eyebrow row doubles
   // as the back affordance to the hub.
-  renderSurveyBody() {
+  renderCategoryBody() {
     this._gridHost = null;
-    const card = SURVEY_INDEX.find((c) => c.slug === this.survey) || { category: this.survey, count: 0 };
-    const data = this._surveyData[this.survey];
+    const card = CATEGORY_INDEX.find((c) => c.slug === this.category) || { category: this.category, count: 0 };
+    const data = this._categoryData[this.category];
     this._presetGridHost = data
       ? h("div", { class: "preset-shelf" }, ...this.buildPresetTiles(data))
       : h("div", { class: "preset-shelf" }, h("div", { class: "empty-note" }, "Loading…"));
@@ -997,14 +997,14 @@ class HctApp extends HTMLElement {
       { class: "gallery-body" },
       h(
         "div",
-        { class: "gallery-masthead survey" },
+        { class: "gallery-masthead category" },
         h(
           "div",
           { class: "masthead-row" },
           // the eyebrow IS the back affordance: ‹ + the category eyebrow → return to the hub.
           h(
             "button",
-            { class: "survey-back-eyebrow", title: "Back to all color categories", "aria-label": "Back to all color categories", onclick: () => this.closeSurvey() },
+            { class: "category-back-eyebrow", title: "Back to all color categories", "aria-label": "Back to all color categories", onclick: () => this.closeCategory() },
             icon("caret-left", { size: 13 }),
             h("span", {}, card.eyebrow || "All color categories"),
           ),

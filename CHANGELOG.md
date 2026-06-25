@@ -11,9 +11,12 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 ### 2026-06-25
 
 #### Changed
-- Renamed the gallery's **"Surveys"** section to **"Color Categories"** (heading, the back-to-hub
-  navigation, and the hub description). The internal `surveys/` source + identifiers are unchanged;
-  the per-category editorial eyebrows still read "… Palette Survey".
+- Renamed the **"Surveys"** feature to **"Color Categories"** throughout — the gallery label/nav and
+  the **internal code**: `src/ui/surveys/` → `src/ui/categories/`, `docs/spec/colors/surveys/` →
+  `…/categories/`, `scripts/gen-surveys.mjs` → `gen-categories.mjs` (npm `gen:categories`),
+  `SURVEY_INDEX`/`loadSurvey` → `CATEGORY_INDEX`/`loadCategory`, the `openSurvey`/`closeSurvey`/
+  `renderSurveyBody` methods, and the `.survey-*` CSS classes. The curated per-category editorial
+  eyebrows still read "… Palette Survey" (left as authored copy). No behavior change.
 
 ## [1.1.0] — 2026-06-25
 

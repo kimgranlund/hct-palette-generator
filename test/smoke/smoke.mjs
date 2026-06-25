@@ -2,7 +2,7 @@
 // smoke.mjs — a REAL-BROWSER smoke test (dependency-free). The node verifiers + the headless DOM
 // shim (test/run.mjs) cover logic; this boots the actual built single-file in headless Chrome over
 // CDP (node's built-in WebSocket + fetch — no Playwright/puppeteer, keeping the zero-dep ethos) and
-// drives the core user flows: gallery hub → a survey category → the editor → the export dialog.
+// drives the core user flows: gallery hub → a category category → the editor → the export dialog.
 //
 // Run: `npm run build` then `npm run smoke`. Chrome is auto-detected (override with $CHROME_BIN).
 // CI uses the runner's preinstalled google-chrome. Screenshots land in smoke-out/ (gitignored).
@@ -66,13 +66,13 @@ try {
 
   const el = `document.querySelector("nonoun-color-tokens")`;
   ok(await evalJS(`!!${el} && !!${el}.querySelector(".gallery")`), "gallery boots");
-  ok(await evalJS(`${el}.querySelectorAll(".survey-card").length === 7`), "hub renders 7 survey cards");
+  ok(await evalJS(`${el}.querySelectorAll(".category-card").length === 7`), "hub renders 7 category cards");
 
-  await evalJS(`${el}.openSurvey("travel")`, true); await sleep(1200);
-  ok(await evalJS(`${el}.survey === "travel" && ${el}.querySelectorAll(".preset").length === 48`), "Travel category lazy-loads 48 palettes");
+  await evalJS(`${el}.openCategory("travel")`, true); await sleep(1200);
+  ok(await evalJS(`${el}.category === "travel" && ${el}.querySelectorAll(".preset").length === 48`), "Travel category lazy-loads 48 palettes");
   ok(await evalJS(`${el}.querySelectorAll(".preset-vol").length === 12`), "12 volume groups render");
 
-  await evalJS(`${el}.closeSurvey()`);
+  await evalJS(`${el}.closeCategory()`);
   await evalJS(`${el}.openSet(${el}.sets[0].id)`); await sleep(800);
   ok(await evalJS(`${el}.view === "editor" && !!${el}.querySelector(".canvas-header")`), "opening a set enters the editor");
   ok(await evalJS(`${el}.querySelectorAll(".ramp-row").length >= 1`), "editor renders palette ramps");
@@ -126,5 +126,5 @@ try {
 }
 
 if (fails.length) { console.error(`\nSMOKE FAIL (${fails.length}):\n  ${fails.join("\n  ")}`); process.exit(1); }
-console.log("\nSMOKE PASS — gallery · survey · editor · export dialog all render in a real browser");
+console.log("\nSMOKE PASS — gallery · category · editor · export dialog all render in a real browser");
 process.exit(0);

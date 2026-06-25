@@ -17,7 +17,7 @@ jobs:
       - run: npm run build
       - run: npm test
       # real-browser smoke: boot the built single-file in the runner's headless Chrome (CDP, no extra
-      # deps) and drive gallery → survey → editor → export dialog. Catches UI regressions the DOM shim can't.
+      # deps) and drive gallery → category → editor → export dialog. Catches UI regressions the DOM shim can't.
       - run: npm run smoke
       - name: Upload smoke screenshots
         if: always()

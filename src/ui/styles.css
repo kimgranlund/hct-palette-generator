@@ -154,14 +154,14 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .masthead-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
 .masthead-title.masthead-serif { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 24px; margin-top: 8px; }
 .masthead-desc { margin: 7px 0 0; max-width: 78ch; color: var(--ink-dim); font-size: 13px; line-height: 1.5; }
-/* the survey eyebrow doubles as the back affordance (‹ + category eyebrow → hub). */
-.survey-back-eyebrow {
+/* the category eyebrow doubles as the back affordance (‹ + category eyebrow → hub). */
+.category-back-eyebrow {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 0; border: none; background: none; cursor: pointer;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
   color: var(--ink-faint);
 }
-.survey-back-eyebrow:hover { color: var(--accent); background: none; }
+.category-back-eyebrow:hover { color: var(--accent); background: none; }
 .gallery-content { padding: 18px 24px 24px; }
 /* the "read a project that has no config yet" row — shown above the sets when the Figma file
    already carries a compatible raw-colors structure (renderFigmaImportRow). */
@@ -259,15 +259,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .new-tile .plus { font-size: 26px; line-height: 1; }
 .empty-note { color: var(--ink-dim); padding: 40px 0; text-align: center; }
 
-/* ─────────────────── PALETTE SURVEYS — hub category grid ─────────────────── */
-.surveys-head { margin-top: 32px; }
-.surveys-lede { margin: -10px 0 18px; max-width: 76ch; color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
-.survey-grid {
+/* ─────────────────── PALETTE CATEGORYS — hub category grid ─────────────────── */
+.categories-head { margin-top: 32px; }
+.categories-lede { margin: -10px 0 18px; max-width: 76ch; color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
+.category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px; align-items: start;
 }
-.survey-card {
+.category-card {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--panel);
@@ -276,17 +276,17 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   transition: transform .08s ease, box-shadow .12s ease;
   text-align: left; padding: 0; display: block; width: 100%;
 }
-.survey-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.survey-strip { display: flex; height: 64px; }
-.survey-strip i { flex: 1; }
-.survey-card-body { padding: 13px 15px 15px; }
-.survey-card-eyebrow {
+.category-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.category-strip { display: flex; height: 64px; }
+.category-strip i { flex: 1; }
+.category-card-body { padding: 13px 15px 15px; }
+.category-card-eyebrow {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
   color: var(--ink-faint); margin-bottom: 5px;
 }
-.survey-card-title { font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 600; color: var(--ink); }
-.survey-card-tagline { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-dim); }
-.survey-card-count {
+.category-card-title { font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 600; color: var(--ink); }
+.category-card-tagline { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-dim); }
+.category-card-count {
   display: inline-block; margin-top: 11px; font-size: 11px; font-weight: 600;
   color: var(--ink-faint); font-variant-numeric: tabular-nums;
 }

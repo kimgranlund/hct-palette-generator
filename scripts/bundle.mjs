@@ -4,29 +4,29 @@ import { dirname } from "node:path";
 // ROOT = the repo root (this script lives in scripts/), derived from its own location.
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
-// The Palette Surveys ship as a small bundled index + one LAZY module per category (surveys/<slug>.js),
+// The Palette Categories ship as a small bundled index + one LAZY module per category (categories/<slug>.js),
 // loaded in the web build via dynamic import() (vite code-splits each into its own chunk). The single-file
-// offline plugin can't lazy-load, so we INLINE every survey module here and rewrite import("./<slug>.js")
+// offline plugin can't lazy-load, so we INLINE every category module here and rewrite import("./<slug>.js")
 // → a synchronous registry resolve (see transform()). Discover them so adding a category needs no edit here.
-const SURVEY_DIR = "src/ui/surveys";
-const SURVEY_FILES = readdirSync(`${ROOT}/${SURVEY_DIR}`).filter((f) => f.endsWith(".js"));
-const surveyKey = (file) => (file === "index.js" ? "surveyIndex" : "survey_" + file.replace(/\.js$/, ""));
+const CATEGORY_DIR = "src/ui/categories";
+const CATEGORY_FILES = readdirSync(`${ROOT}/${CATEGORY_DIR}`).filter((f) => f.endsWith(".js"));
+const categoryKey = (file) => (file === "index.js" ? "categoryIndex" : "category_" + file.replace(/\.js$/, ""));
 
-// dependency order; entry last. Survey modules are pure data (no imports) — placed before the app,
+// dependency order; entry last. Category modules are pure data (no imports) — placed before the app,
 // which imports the index; the index's lazy thunks reference the category modules only at call time.
 const MODS = [
   ["hct", "src/engine/hct.js"], ["okhsl", "src/engine/okhsl.js"], ["semantic", "src/engine/semantic.js"],
   ["tonal", "src/engine/tonal.js"], ["derive", "src/engine/derive.mjs"], ["persist", "src/ui/persist.js"],
   ["exports", "src/engine/exports.js"], ["figmaPlugin", "src/ui/figma-plugin-assets.js"],
-  ...SURVEY_FILES.filter((f) => f !== "index.js").map((f) => [surveyKey(f), `${SURVEY_DIR}/${f}`]),
-  ["surveyIndex", `${SURVEY_DIR}/index.js`],
+  ...CATEGORY_FILES.filter((f) => f !== "index.js").map((f) => [categoryKey(f), `${CATEGORY_DIR}/${f}`]),
+  ["categoryIndex", `${CATEGORY_DIR}/index.js`],
   ["zip", "src/ui/zip.mjs"],
   ["icons", "src/ui/icons.js"],
   ["model", "src/ui/model.mjs"], ["app", "src/ui/app.js"],
 ];
 const KEY = { "hct.js": "hct", "okhsl.js": "okhsl", "semantic.js": "semantic", "tonal.js": "tonal", "derive.mjs": "derive", "persist.js": "persist",
   "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "zip.mjs": "zip", "icons.js": "icons", "model.mjs": "model",
-  ...Object.fromEntries(SURVEY_FILES.map((f) => [f, surveyKey(f)])) };
+  ...Object.fromEntries(CATEGORY_FILES.map((f) => [f, categoryKey(f)])) };
 
 function transform(src) {
   const names = new Set();
@@ -39,8 +39,8 @@ function transform(src) {
       .map((s) => s.includes(" as ") ? s.replace(/\s+as\s+/, ": ") : s).join(", ");
     return `const { ${inner} } = __M.${key};`;
   });
-  // rewrite DYNAMIC import("./surveys/<slug>.js") -> a synchronous registry resolve. The single-file
-  // offline bundle has no module server, so each lazy survey chunk is inlined into __M and resolved here.
+  // rewrite DYNAMIC import("./categories/<slug>.js") -> a synchronous registry resolve. The single-file
+  // offline bundle has no module server, so each lazy category chunk is inlined into __M and resolved here.
   src = src.replace(/\bimport\(\s*["']([^"']+)["']\s*\)/g, (_, path) => {
     const key = KEY[path.split("/").pop()];
     if (!key) throw new Error("unknown dynamic import path " + path);

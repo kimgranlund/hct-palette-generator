@@ -10,10 +10,10 @@
     "bundle": "node scripts/bundle.mjs",
     "gen:figma-ui": "node scripts/gen-figma-ui.mjs",
     "gen:preview": "node scripts/gen-preview.mjs",
-    "gen:surveys": "node scripts/gen-surveys.mjs",
-    "build": "npm run gen:figma-assets && npm run gen:surveys && tsc && vite build && npm run bundle && npm run gen:figma-ui",
+    "gen:categories": "node scripts/gen-categories.mjs",
+    "build": "npm run gen:figma-assets && npm run gen:categories && tsc && vite build && npm run bundle && npm run gen:figma-ui",
     "preview": "vite preview",
-    "test": "npm run gen:figma-assets && npm run gen:surveys && npm run bundle && npm run gen:figma-ui && node test/run.mjs",
+    "test": "npm run gen:figma-assets && npm run gen:categories && npm run bundle && npm run gen:figma-ui && node test/run.mjs",
     "smoke": "node test/smoke/smoke.mjs"
   },
   "devDependencies": {

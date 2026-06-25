@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.33 — 2026-06-25 — "Surveys" renamed to "Color Categories" (label + internal code)
+
+The gallery's **"Surveys"** feature is now **"Color Categories"** — the user-facing label/nav AND the
+internal code. Directories: `src/ui/surveys/` → `src/ui/categories/`, `docs/spec/colors/surveys/` →
+`docs/spec/colors/categories/`. Generator: `scripts/gen-surveys.mjs` → `gen-categories.mjs` (npm
+script `gen:surveys` → `gen:categories`). Exports/identifiers: `SURVEY_INDEX`/`loadSurvey` →
+`CATEGORY_INDEX`/`loadCategory`; `openSurvey`/`closeSurvey`/`renderSurveyBody`/`surveyCard`/`this.survey`
+→ `category` forms; bundle `SURVEY_DIR`/`surveyKey` → `CATEGORY_DIR`/`categoryKey`; `.survey-*` CSS →
+`.category-*`. The curated per-category + per-volume **editorial eyebrows** ("… Palette Survey", "…
+Survey · Vol I") are **left as authored copy** (content, not code). Separate `preset`/`volume` concepts
+untouched. Verifiers (`(hh)` headless, smoke) updated to the new names; pure rename, no behavior change.
+
 ## 1.32 — 2026-06-25 — Figma "Regroup" moves into the Figma export tab
 
 The opt-in **"Regroup"** action (re-creates `Color Modes` in canonical grouped order) moved from the
