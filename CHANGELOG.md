@@ -13,17 +13,30 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 #### Added
 - **"New palette" derivation modal** — "+ Palette" now opens a large, **draggable** dialog (drag it
   by the header) that *derives* a palette instead of adding a default. Three modes: **Relative** (a
-  color-theory relationship — extend / complete / contrast / bridge / anchor / recontextualize —
-  computed from the palettes you include via a "Derive from" strip of swatches), **Environmental** (a
-  neutral/environment tone: chroma-weighted mean hue + a clamped low chroma), and **Custom** (pick hue
-  + chroma directly). The "Derive from" strip is **swatch-only** (palette name on hover); status
-  palettes (success/warning/error/…) are excluded from the derivation context by default. The modal
-  is **two-column**: a hue × chroma circle + chroma curve on the left, and the selection/picker plus a
-  **live proposed-palette preview** (dominant/supporting swatches + the generated ramp) on the right.
+  color-theory relationship — extend / complete / contrast / bridge / anchor / recontextualize — that
+  pivots on the **primary**, the first non-neutral palette you include via a swatch-only "Derive from"
+  strip), **Environmental** (a neutral/environment tone: chroma-weighted mean hue + a clamped low
+  chroma), and **Custom** (pick hue + chroma directly). Status palettes (success/warning/error/…) are
+  excluded from the derivation context by default. The modal is **two-column**: a hue × chroma circle
+  + chroma curve on the left, and the selection/picker plus a **live proposed-palette preview**
+  (the Dominant + the Primary it derives against, and the generated ramp) on the right. (#64)
 - **Survey presets lead with a derived `neutral`** — all 336 gallery presets now prepend a
   neutral/environment palette derived from their own character colors (the same rule as the modal's
   Environmental mode), baked into the survey generator so it travels with the data and shows on the
-  tiles. 10 palettes/preset (was 9).
+  tiles. 10 palettes/preset (was 9). (#64)
+- **Opt-in WCAG-safe on-colors** (`onColorMode: "contrast"`) — re-points the accent on-colors to the
+  end with the better contrast vs the accent fill, per mode (`550` light / `450` dark): `on{N}` flips
+  050↔950, `on{N}Variant` 200↔800. A resolution-layer adjustment; the default stays **`"fixed"`** and
+  the canonical role table is unchanged. (#62)
+- **Download-All ships a `figma-aliased/` folder** — the Light/Dark/raw tokens with `aliasData`
+  targeting the `Color Primitives` collection (the shape the plugin posts), so the plugin-free native
+  import can be tested by hand. The default `figma/` stays resolved; the plugin stays the reliable
+  path. (#63)
+
+#### Changed
+- **Tooling:** CI now runs a **real-browser smoke test** (headless Chrome over CDP, zero new deps) on
+  every PR, driving gallery → survey → editor → export dialog. Node bumped to 22 (the smoke harness
+  needs a global `WebSocket`). (#61)
 
 ## [1.0.0] — 2026-06-24
 
