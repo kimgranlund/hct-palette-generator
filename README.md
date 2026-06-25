@@ -36,10 +36,11 @@ collections.
 - **37-role semantic layer.** From each palette the engine derives the full role set — accents,
   on-colors, surfaces (dim/bright/low/high), outlines, containers, scrims, and inverse — resolved for
   **Light and Dark** in one pass.
-- **Gallery + Palette Surveys.** Keep your own sets under **Your Palettes**, or browse **Surveys** — a
-  curated hub of **7 categories** (Architecture, Cuisine, Film, Literature, Music, Nature, Travel),
-  each **12 volumes × 4 = 48** palettes (336 total), sourced from real places, dishes, films, biomes…
-  and carrying their story. Open any one as an editable copy. Survey data is lazy-loaded per category.
+- **Gallery + Color Categories.** Keep your own sets under **Your Palettes**, or browse **Color
+  Categories** — a curated hub of **7 categories** (Architecture, Cuisine, Film, Literature, Music,
+  Nature, Travel), each **12 volumes × 4 = 48** palettes (336 total), sourced from real places, dishes,
+  films, biomes… and carrying their story. Open any one as an editable copy. Each category's data is
+  lazy-loaded.
 - **Exports.** CSS (Hex or **OKLCH**), **Tailwind v4**, **shadcn/ui**, **Figma** variables,
   **Figma UI3** (Material), **DTCG**, **JSON**, a re-importable parametric **Config**, and a
   **Download-all `.zip`** of every format.
@@ -99,8 +100,8 @@ test/       engine/ · ui/ · figma/ · run.mjs
 The engine is pure and DOM-free; `src/ui/app.js` defines the `<nonoun-color-tokens>` web component over
 it; the Figma plugin reuses the exact same bundle. `docs/spec/data/role-table.json` is the **canonical
 contract** the semantic / export / figma verifiers validate against — it is the spec, not a derived
-file. The Palette Surveys are generated from `docs/spec/colors/surveys/*.json` by
-`npm run gen:surveys`.
+file. The Color Categories (the `surveys/` source name is retained internally) are generated from
+`docs/spec/colors/surveys/*.json` by `npm run gen:surveys`.
 
 ## Figma plugin
 

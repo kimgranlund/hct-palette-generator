@@ -8,6 +8,13 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ## [Unreleased]
 
+### 2026-06-25
+
+#### Changed
+- Renamed the gallery's **"Surveys"** section to **"Color Categories"** (heading, the back-to-hub
+  navigation, and the hub description). The internal `surveys/` source + identifiers are unchanged;
+  the per-category editorial eyebrows still read "… Palette Survey".
+
 ## [1.1.0] — 2026-06-25
 
 Adds the **New-Palette derivation modal**, a derived **`neutral`** leading every survey preset,

@@ -961,7 +961,7 @@ class HctApp extends HTMLElement {
           h("div", { class: "spacer" }),
           this.ensureSearchInput("Search your palette sets"),
         ),
-        h("p", { class: "masthead-desc" }, "Generate perceptual color palettes and semantic design tokens. Build your own set, or open a curated survey as a starting point."),
+        h("p", { class: "masthead-desc" }, "Generate perceptual color palettes and semantic design tokens. Build your own set, or open a curated color category as a starting point."),
       ),
       h(
         "div",
@@ -969,11 +969,11 @@ class HctApp extends HTMLElement {
         this.renderFigmaImportRow(), // a separate row ABOVE the sets when this Figma file already has palette variables
         h("div", { class: "gallery-title" }, h("h2", {}, "Your Palettes")),
         this._gridHost,
-        // Palette Surveys — read-only curated categories. Opening a palette copies it into Your Palettes.
+        // Color Categories — read-only curated categories. Opening a palette copies it into Your Palettes.
         h(
           "div",
           { class: "gallery-title surveys-head" },
-          h("h2", {}, "Surveys"),
+          h("h2", {}, "Color Categories"),
           h("span", { class: "title-count" }, String(SURVEY_INDEX.length)),
         ),
         h("p", { class: "surveys-lede" }, "Palettes sourced from real places, dishes, films, books, scenes, biomes — read for their colour, not their cliché. Open any palette as an editable copy."),
@@ -1004,9 +1004,9 @@ class HctApp extends HTMLElement {
           // the eyebrow IS the back affordance: ‹ + the category eyebrow → return to the hub.
           h(
             "button",
-            { class: "survey-back-eyebrow", title: "Back to all surveys", "aria-label": "Back to all surveys", onclick: () => this.closeSurvey() },
+            { class: "survey-back-eyebrow", title: "Back to all color categories", "aria-label": "Back to all color categories", onclick: () => this.closeSurvey() },
             icon("caret-left", { size: 13 }),
-            h("span", {}, card.eyebrow || "All surveys"),
+            h("span", {}, card.eyebrow || "All color categories"),
           ),
           h("div", { class: "spacer" }),
           this.ensureSearchInput(`Search ${card.category} palettes`),
