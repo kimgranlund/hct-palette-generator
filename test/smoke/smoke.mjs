@@ -87,6 +87,20 @@ try {
   ok(await evalJS(`${el}.view === "editor" && !!${el}.querySelector(".canvas-header")`), "opening a set enters the editor");
   ok(await evalJS(`${el}.querySelectorAll(".ramp-row").length >= 1`), "editor renders palette ramps");
 
+  // drag-to-reorder: a real handle-drag lifts a floating clone (.drag-ghost) and opens a dashed drop
+  // placeholder (.drop-ghost) at the landing slot; the source row collapses.
+  const dragPt = await evalJS(`(()=>{const h=${el}.querySelector(".drag-handle");if(!h)return null;const r=h.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
+  if (dragPt) {
+    await evalJS(`(()=>{const h=${el}.querySelector(".drag-handle");h.dispatchEvent(new PointerEvent("pointerdown",{clientX:${dragPt.x},clientY:${dragPt.y},bubbles:true,cancelable:true}));document.dispatchEvent(new PointerEvent("pointermove",{clientX:${dragPt.x},clientY:${dragPt.y + 230},bubbles:true,cancelable:true}));})()`);
+    await sleep(140);
+    ok(await evalJS(`!!${el}.querySelector(".drag-ghost") && !!${el}.querySelector(".drop-ghost")`), "drag-to-reorder lifts a floating clone + opens a drop placeholder");
+    const dragShot = await send("Page.captureScreenshot", { format: "png" });
+    writeFileSync(resolve(OUT, "drag-reorder.png"), Buffer.from(dragShot.data, "base64"));
+    console.log("  · screenshot → smoke-out/drag-reorder.png");
+    await evalJS(`document.dispatchEvent(new PointerEvent("pointerup",{bubbles:true,cancelable:true}))`); await sleep(120);
+    ok(await evalJS(`!${el}.querySelector(".drag-ghost") && !${el}.querySelector(".drop-ghost")`), "releasing the drag removes the clone + placeholder");
+  }
+
   await evalJS(`${el}.toggleDrawer(true)`); await sleep(400);
   ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.drawer");return !!d && d.open && Math.round(d.getBoundingClientRect().height) === innerHeight})()`), "export drawer opens as a full-height <dialog>");
   await evalJS(`${el}.toggleDrawer(false)`); await sleep(200);
