@@ -871,6 +871,88 @@ dialog.drawer::backdrop { background: rgba(10,14,22,.34); }
    The group wraps as a UNIT under the meta on a narrow plugin window; its own buttons stay side by side. */
 .drawer-foot .foot-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 
+/* ── New-Palette modal — a CENTERED native <dialog> (top layer, like the export drawer) that
+   DERIVES a new palette: a "Derive from" context strip, the relative/environmental/custom tabs,
+   and a live preview. Unlike the drawer it's centered, not edge-pinned. ── */
+dialog.newpal {
+  position: fixed; inset: 0; margin: auto;
+  width: min(860px, 94vw); height: min(82vh, 760px);
+  max-width: 94vw; max-height: 90vh;
+  padding: 0; border: none; border-radius: var(--r-lg);
+  background: var(--panel); color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+dialog.newpal:not([open]) { display: none; }
+dialog.newpal::backdrop { background: rgba(10,14,22,.34); }
+/* the header is the drag handle — move cursor everywhere except its buttons. */
+.newpal-head { cursor: move; user-select: none; touch-action: none; }
+.newpal-head button { cursor: pointer; }
+.newpal-ctx { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.newpal-ctx.muted { opacity: .5; }
+.newpal-ctx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.newpal-ctx-head b { font-size: 12px; }
+.newpal-ctx-head small { color: var(--ink-dim); font-size: 11px; }
+/* swatch-only chips — the palette name is the title (hover tooltip), no inline text. */
+.newpal-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.newpal-chip {
+  width: 32px; height: 32px; padding: 0; flex: none;
+  border-radius: var(--r-sm); border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  opacity: .42; transition: opacity .12s, box-shadow .12s; /* excluded reads dimmer */
+}
+.newpal-chip:hover:not(:disabled) { opacity: .75; }
+.newpal-chip.on { opacity: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.newpal-chip:disabled { cursor: default; }
+.newpal-seg { margin: 12px 16px 0; }
+.newpal-body { padding: 14px 16px; overflow: auto; flex: 1; min-height: 0; }
+/* two columns: diagrams (left) · selection + preview (right). */
+.newpal-cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; align-items: start; }
+.newpal-col { min-width: 0; }
+@media (max-width: 720px) { .newpal-cols { grid-template-columns: 1fr; } }
+/* LEFT — diagrams */
+.newpal-diagram { margin-bottom: 16px; }
+.newpal-diagram-title { font-size: 11px; color: var(--ink-dim); font-weight: 600; margin-bottom: 6px; }
+.newpal-hc svg { display: block; width: 100%; height: auto; max-width: 300px; margin: 0 auto; }
+.hc-rim { fill: none; stroke: var(--line-2); stroke-width: 1; }
+.hc-axis { fill: var(--ink-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.hc-dot { stroke: rgba(0,0,0,.28); stroke-width: 1; }
+.hc-ring { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+/* RIGHT — relationship radios (single column inside the right pane) */
+.newpal-rels { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.newpal-rel {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  padding: 10px 13px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+}
+.newpal-rel:hover { border-color: var(--line-2); }
+.newpal-rel.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--panel); }
+.newpal-rel-label { font-size: 13px; }
+.newpal-rel-hint { color: var(--ink-dim); font-size: 11.5px; line-height: 1.45; }
+.newpal-note { color: var(--ink-dim); font-size: 12.5px; line-height: 1.6; margin: 0 0 12px; }
+.newpal-readout { font-size: 12.5px; color: var(--ink); margin: 0 0 12px; }
+.newpal-readout b { font-variant-numeric: tabular-nums; }
+.newpal-custom .field { margin-bottom: 16px; }
+/* RIGHT — proposed-palette preview (swatches + ramp) */
+.newpal-pp-host { margin-top: 14px; }
+.newpal-preview-pane { border-top: 1px solid var(--line); padding-top: 12px; }
+.newpal-preview-pane.empty { color: var(--ink-dim); font-size: 12px; }
+.newpal-pp-label { font-size: 11px; color: var(--ink-dim); font-weight: 600; margin-bottom: 10px; }
+.newpal-pp-swatches { display: flex; gap: 16px; margin-bottom: 12px; }
+.newpal-pp-sw-item { display: flex; flex-direction: column; gap: 5px; }
+.newpal-pp-sw { width: 46px; height: 46px; border-radius: var(--r-sm); border: 1px solid var(--line); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.newpal-pp-sw-item small { color: var(--ink-dim); font-size: 10.5px; }
+.newpal-ramp { display: flex; height: 30px; border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--line); }
+.newpal-ramp i { flex: 1 1 0; min-width: 0; }
+.newpal-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-top: 1px solid var(--line);
+}
+.newpal-foot .spacer { flex: 1; } /* push the Cancel / Create CTA group to the trailing edge */
+.newpal-preview { display: flex; align-items: center; gap: 8px; }
+.newpal-preview small { color: var(--ink-dim); font-size: 11px; }
+.newpal-sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background-clip: padding-box; flex: none; }
+
 /* ── responsive toolbars — the plugin window can be narrow; toolbars must never overflow ── */
 /* never break a button's own label across lines (no 3-line "⚑ Add Variables → Figma"). */
 .app-header button, .canvas-header button, .drawer-foot button, .drawer-head button { white-space: nowrap; }

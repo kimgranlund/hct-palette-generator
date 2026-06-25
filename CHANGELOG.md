@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are grouped by the day
 they landed on `main` and reference the squash-merged PR that introduced them.
 
+## [Unreleased]
+
+### 2026-06-25
+
+#### Added
+- **"New palette" derivation modal** — "+ Palette" now opens a large, **draggable** dialog (drag it
+  by the header) that *derives* a palette instead of adding a default. Three modes: **Relative** (a
+  color-theory relationship — extend / complete / contrast / bridge / anchor / recontextualize —
+  computed from the palettes you include via a "Derive from" strip of swatches), **Environmental** (a
+  neutral/environment tone: chroma-weighted mean hue + a clamped low chroma), and **Custom** (pick hue
+  + chroma directly). The "Derive from" strip is **swatch-only** (palette name on hover); status
+  palettes (success/warning/error/…) are excluded from the derivation context by default. The modal
+  is **two-column**: a hue × chroma circle + chroma curve on the left, and the selection/picker plus a
+  **live proposed-palette preview** (dominant/supporting swatches + the generated ramp) on the right.
+- **Survey presets lead with a derived `neutral`** — all 336 gallery presets now prepend a
+  neutral/environment palette derived from their own character colors (the same rule as the modal's
+  Environmental mode), baked into the survey generator so it travels with the data and shows on the
+  tiles. 10 palettes/preset (was 9).
+
 ## [1.0.0] — 2026-06-24
 
 The first tagged release. Beyond the foundations (HCT/OKHSL engine, 37-role semantic layer, the

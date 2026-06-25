@@ -16,7 +16,7 @@ const surveyKey = (file) => (file === "index.js" ? "surveyIndex" : "survey_" + f
 // which imports the index; the index's lazy thunks reference the category modules only at call time.
 const MODS = [
   ["hct", "src/engine/hct.js"], ["okhsl", "src/engine/okhsl.js"], ["semantic", "src/engine/semantic.js"],
-  ["tonal", "src/engine/tonal.js"], ["persist", "src/ui/persist.js"],
+  ["tonal", "src/engine/tonal.js"], ["derive", "src/engine/derive.mjs"], ["persist", "src/ui/persist.js"],
   ["exports", "src/engine/exports.js"], ["figmaPlugin", "src/ui/figma-plugin-assets.js"],
   ...SURVEY_FILES.filter((f) => f !== "index.js").map((f) => [surveyKey(f), `${SURVEY_DIR}/${f}`]),
   ["surveyIndex", `${SURVEY_DIR}/index.js`],
@@ -24,7 +24,7 @@ const MODS = [
   ["icons", "src/ui/icons.js"],
   ["model", "src/ui/model.mjs"], ["app", "src/ui/app.js"],
 ];
-const KEY = { "hct.js": "hct", "okhsl.js": "okhsl", "semantic.js": "semantic", "tonal.js": "tonal", "persist.js": "persist",
+const KEY = { "hct.js": "hct", "okhsl.js": "okhsl", "semantic.js": "semantic", "tonal.js": "tonal", "derive.mjs": "derive", "persist.js": "persist",
   "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "zip.mjs": "zip", "icons.js": "icons", "model.mjs": "model",
   ...Object.fromEntries(SURVEY_FILES.map((f) => [f, surveyKey(f)])) };
 

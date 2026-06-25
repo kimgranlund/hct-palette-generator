@@ -840,9 +840,13 @@ ok(SI.every((c) => c.slug && c.category && c.count === 48 && Array.isArray(c.str
 const TPm = await LS("travel"); // one category lazily loaded
 const TP = TPm.PRESETS;
 ok(Array.isArray(TP) && TP.length === 48, `(hh) travel survey lazily loads 48 presets (got ${TP && TP.length})`);
-ok(TP.every((p) => p.palettes.length === 9), "(hh) each preset has 9 palettes (6 sampled + danger/warning/success)");
-const SLOTS = ["primary-base","primary-muted","secondary-base","secondary-muted","accent-base","accent-muted","danger","warning","success"];
-ok(TP.every((p) => JSON.stringify(p.palettes.map((x) => x.name)) === JSON.stringify(SLOTS)), "(hh) every preset uses the {tier}-{rank} + status naming model, identically");
+ok(TP.every((p) => p.palettes.length === 10), "(hh) each preset has 10 palettes (a derived neutral + 6 sampled + danger/warning/success)");
+const SLOTS = ["neutral","primary-base","primary-muted","secondary-base","secondary-muted","accent-base","accent-muted","danger","warning","success"];
+ok(TP.every((p) => JSON.stringify(p.palettes.map((x) => x.name)) === JSON.stringify(SLOTS)), "(hh) every preset leads with the derived neutral, then the {tier}-{rank} + status model, identically");
+// the leading neutral is DERIVED from the character palettes' key colors (environment tone): a
+// low-chroma tinted grey retaining the derived target as its dominant key color.
+ok(TP.every((p) => { const n = p.palettes[0]; return n.name === "neutral" && n.chroma < 30 && n.keyColors && n.keyColors[0].role === "dominant" && n.keyColors[0].oklch.length === 3; }),
+  "(hh) the derived neutral leads each preset (low chroma + a dominant key color)");
 // names are the PLACE only (no "IV·01 ·" vol-index prefix)
 ok(!TP.some((p) => /^[IVXLC]+·\d/.test(p.name)), "(hh) preset names drop the vol·index prefix (just the place)");
 // presets carry the full controls (a config that OMITS them hydrates to the DARK domain-min, lmax 60,
@@ -850,20 +854,20 @@ ok(!TP.some((p) => /^[IVXLC]+·\d/.test(p.name)), "(hh) preset names drop the vo
 ok(TP.every((p) => p.lmax === 100 && p.lmin === 5 && p.damp === 70 && p.dampAmp === 55 && p.chromaFloor === 40), "(hh) presets carry controls + 'Vivid mids' damping (damp 70, amp 55) + the chroma floor (40)");
 // re-import captures each curated source color as a `dominant` key color (OKLCH), so the preset
 // retains the original palette exactly while the ramp re-derives an even scale from it.
-ok(TP.every((p) => p.palettes.slice(0, 6).every((q) => q.keyColors && q.keyColors.length === 1 && q.keyColors[0].role === "dominant" && Array.isArray(q.keyColors[0].oklch) && q.keyColors[0].oklch.length === 3)),
+ok(TP.every((p) => p.palettes.slice(1, 7).every((q) => q.keyColors && q.keyColors.length === 1 && q.keyColors[0].role === "dominant" && Array.isArray(q.keyColors[0].oklch) && q.keyColors[0].oklch.length === 3)),
   "(hh) every sampled preset palette retains its source color as a dominant key color (OKLCH)");
-// every category lazily loads + holds 48 fully-formed presets (9 palettes each)
+// every category lazily loads + holds 48 fully-formed presets (10 palettes each)
 for (const c of SI) {
   const m = await LS(c.slug);
-  ok(m && Array.isArray(m.PRESETS) && m.PRESETS.length === 48 && m.PRESETS.every((p) => p.palettes.length === 9),
-    `(hh) survey "${c.slug}" loads 48 presets × 9 palettes`);
+  ok(m && Array.isArray(m.PRESETS) && m.PRESETS.length === 48 && m.PRESETS.every((p) => p.palettes.length === 10),
+    `(hh) survey "${c.slug}" loads 48 presets × 10 palettes`);
 }
 // lift-anchoring (EVEN mode): a LIGHT dominant must open LIGHT, not the old mid-dark L*≈46 grey.
 // This is the "colors look really wrong" fix. Keyed on any preset whose primary-base source is light.
 const { projectView: _pvHH } = await import("../../src/ui/model.mjs");
 const { hydrate: _hydHH } = await import("../../src/ui/persist.js");
-const _light = TP.find((p) => p.palettes[0].keyColors[0].oklch[0] > 0.85);
-const _lightPrime = _pvHH(_hydHH({ ..._light, toneMode: "even" })).palettes[0].ramp.find((s) => s.stop === 550);
+const _light = TP.find((p) => p.palettes[1].keyColors[0].oklch[0] > 0.85); // primary-base (after the neutral at [0])
+const _lightPrime = _pvHH(_hydHH({ ..._light, toneMode: "even" })).palettes[1].ramp.find((s) => s.stop === 550);
 ok(_lightPrime.tone > 72, `(hh) [even] lift anchors the prime to source lightness — a light dominant opens LIGHT (550 L*=${_lightPrime.tone.toFixed(0)})`);
 app.toGallery(); flushRaf();
 // the HUB shows a category card per survey (not the presets directly)
@@ -878,7 +882,7 @@ const setsBeforeHH = app.sets.length;
 const openPreset = TP[0];
 app.openConfigAsSet(openPreset, "Opened");
 ok(app.view === "editor" && app.sets.length === setsBeforeHH + 1, "(hh) opening a preset adds an EDITABLE copy to your sets + enters the editor");
-ok(app.doc.palettes.length === 9 && app.doc.palettes[0].name === "primary-base", "(hh) the opened copy carries the 9 named palettes (primary-base first)");
+ok(app.doc.palettes.length === 10 && app.doc.palettes[0].name === "neutral" && app.doc.palettes[1].name === "primary-base", "(hh) the opened copy carries the 10 named palettes (neutral first, then primary-base)");
 ok(app.doc.palettes.some((p) => p.name === "danger") && app.doc.palettes.some((p) => p.name === "success"), "(hh) the status palettes (danger/warning/success) are present in the copy");
 app.toGallery(); flushRaf();
 ok(app.survey === "travel", "(hh) returning from the editor lands back on the open category page");
@@ -1080,13 +1084,104 @@ ok(app.doc.story && app.doc.story.title === storyPreset.story.title, "(st5) open
 app.setSegment("story"); flushRaf();
 ok(!!app.querySelector(".story-pane"), "(st6) the Story tab renders for a set with a story");
 ok(app.querySelectorAll(".story-color").length >= 1, "(st7) the Story tab lists the curated colors");
-// the Palette tab shows the per-color story line
-app.setSegment("palette"); flushRaf();
+// the Palette tab shows the per-color story line — select a CURATED palette (primary-base, now at
+// index 1 after the derived neutral; the neutral carries no curated story line of its own).
+app.setSegment("palette"); app.selectPalette(1); flushRaf();
 ok(!!app.querySelector(".color-story"), "(st8) the Palette tab shows the curated color's story line");
 // a category page groups its presets by volume
 app.toGallery(); app.search = ""; await app.openSurvey("travel"); flushRaf();
 ok(app.querySelectorAll(".preset-vol").length >= 1, `(st9) a category page groups presets into volume sub-groups (got ${app.querySelectorAll(".preset-vol").length})`);
 app.closeSurvey();
+
+// ── (np) New-Palette modal: derive (relative / environmental) + custom, with the context strip ──
+const { RELATIONSHIPS: NP_RELS } = await import("../../src/engine/derive.mjs");
+app.openSet(app.sets[0].id); flushRaf();
+const npCount0 = app.doc.palettes.length;
+
+app.openNewPalette(); flushRaf();
+ok(app.newPalOpen === true, "(np1) openNewPalette flips newPalOpen");
+ok(!!app.querySelector(".newpal"), "(np1b) the New-Palette <dialog> is in the tree");
+ok(app.newPalCtx instanceof Set && app.newPalCtx.size >= 1, `(np1c) the 'Derive from' strip is pre-seeded with palettes (got ${app.newPalCtx.size})`);
+// status palettes (warning/error/success/…) are excluded from the context by default.
+const npSysIdx = app.doc.palettes.findIndex((p) => /warning|error|success|danger|critical/i.test(p.name));
+if (npSysIdx >= 0) ok(!app.newPalCtx.has(npSysIdx), `(np1d) the system palette "${app.doc.palettes[npSysIdx].name}" starts excluded`);
+
+const npView = app._view;
+const npSamples = app.newPalSamples(npView);
+ok(npSamples.length === app.newPalCtx.size && npSamples.every((s) => Array.isArray(s) && s.length === 3), "(np2) samples = one OKLCH [L,C,H] per included palette");
+
+// A. Relative — extend (analogous): yields a target OKLCH; creating appends + retains it as the dominant key.
+app.newPalTab = "relative"; app.newPalRel = "extend"; app.render(); flushRaf();
+ok(app.querySelectorAll(".newpal-rel").length === NP_RELS.length, `(np3) the Relative tab lists all ${NP_RELS.length} relationships (got ${app.querySelectorAll(".newpal-rel").length})`);
+// the two-column previews: hue circle (left) + chroma curve + the proposed ramp & dominant swatch (right).
+ok(!!app.querySelector(".newpal-hc") && app.querySelectorAll(".newpal-diagram").length === 2, "(np3c) left column shows the hue circle + chroma-curve diagrams");
+ok(!!app.querySelector(".newpal-ramp") && app.querySelector(".newpal-ramp").children.length >= 19, "(np3d) right column shows the proposed-palette ramp preview");
+ok(app.querySelectorAll(".newpal-pp-sw").length === 2, "(np3e) Relative preview shows BOTH a dominant + supporting swatch");
+const npProp = app._newPalProposed(npView);
+ok(npProp && npProp.vp && Array.isArray(npProp.vp.ramp) && /^#|^oklch/.test(npProp.hex), "(np3f) _newPalProposed projects a real palette (vp.ramp + identity hex)");
+const npTarget = app.newPalTarget(npView);
+ok(npTarget && Array.isArray(npTarget.oklch) && npTarget.oklch.length === 3, "(np3b) Relative→extend yields a target OKLCH");
+app.createNewPalette(npView); flushRaf();
+ok(app.doc.palettes.length === npCount0 + 1, "(np4) creating a relative palette appends exactly one");
+const npA = app.doc.palettes[app.doc.palettes.length - 1];
+ok(npA.keyColors && npA.keyColors[0].role === "dominant" && npA.keyColors[0].oklch.length === 3, "(np4b) the derived palette retains the target as its dominant key color");
+ok(typeof npA.hue === "number" && typeof npA.chroma === "number", "(np4c) hue/chroma seeded from the target");
+ok(app.newPalOpen === false, "(np4d) creating closes the modal");
+ok(app.selectedIndex() === app.doc.palettes.length - 1, "(np4e) the freshly-derived palette is selected");
+
+// B. Environmental — a neutral: low, clamped chroma (≤ 0.018 OKLCH) → a muted seed.
+app.openNewPalette(); app.newPalTab = "environmental"; app.render(); flushRaf();
+const npEnv = app.newPalTarget(app._view);
+ok(npEnv && npEnv.oklch && npEnv.oklch[1] <= 0.018 + 1e-9, `(np5) Environmental yields a low-chroma neutral (C=${npEnv.oklch[1].toFixed(4)} ≤ 0.018)`);
+const npBeforeEnv = app.doc.palettes.length;
+app.createNewPalette(app._view); flushRaf();
+ok(app.doc.palettes.length === npBeforeEnv + 1, "(np5b) Environmental appends a palette");
+ok(app.doc.palettes[app.doc.palettes.length - 1].chroma < 30, `(np5c) the neutral seed is muted, not vivid (chroma ${app.doc.palettes[app.doc.palettes.length - 1].chroma})`);
+
+// C. Custom — parametric hue/chroma, needs NO context.
+app.openNewPalette(); app.newPalTab = "custom"; app.newPalCustom = { hue: 300, chroma: 70 }; app.render(); flushRaf();
+ok(!!app.querySelector(".newpal-custom"), "(np6) the Custom tab shows the hue/chroma sliders");
+ok(!!app.querySelector(".newpal-ramp") && app.querySelectorAll(".newpal-pp-sw").length === 1, "(np6a1) Custom preview shows the ramp + a single (dominant) swatch");
+// a Custom slider drag refreshes the preview IN PLACE without rebuilding the dragged input.
+const npHueInput = findIn(app.querySelector(".newpal-custom"), isRange);
+const npRampBefore = app.querySelector(".newpal-ramp");
+ok(!!npHueInput, "(np6a2) found the Custom hue range input");
+npHueInput.value = "120"; npHueInput.dispatch("input", {});
+ok(app.newPalCustom.hue === 120, "(np6a3) dragging the Custom hue slider updates newPalCustom");
+ok(findIn(app.querySelector(".newpal-custom"), isRange) === npHueInput, "(np6a4) the dragged slider node is NOT rebuilt (smooth drag)");
+ok(app.querySelector(".newpal-ramp") !== npRampBefore, "(np6a5) the preview ramp refreshed in place (new node)");
+app.newPalCustom = { hue: 300, chroma: 70 }; app.render(); flushRaf();
+app.newPalCtx = new Set(); // empty the strip — Custom must not care
+const npBeforeC = app.doc.palettes.length;
+app.createNewPalette(app._view); flushRaf();
+ok(app.doc.palettes.length === npBeforeC + 1, "(np6b) Custom creates a palette with no context selected");
+const npC = app.doc.palettes[app.doc.palettes.length - 1];
+ok(npC.hue === 300 && npC.chroma === 70, `(np6c) Custom uses the picked hue/chroma (got ${npC.hue}/${npC.chroma})`);
+ok(!npC.keyColors, "(np6d) Custom is parametric — no retained key color");
+
+// relative/environmental REQUIRE context: empty → blocked, Create is a no-op.
+app.openNewPalette(); app.newPalTab = "relative"; app.newPalCtx = new Set(); app.render(); flushRaf();
+ok(app.newPalTarget(app._view) === null, "(np7) no context → no target (Relative blocked)");
+const npBeforeBlocked = app.doc.palettes.length;
+app.createNewPalette(app._view); flushRaf();
+ok(app.doc.palettes.length === npBeforeBlocked, "(np7b) Create is a no-op when Relative has no context");
+app.closeNewPalette(); flushRaf();
+ok(app.newPalOpen === false, "(np7c) closeNewPalette dismisses the modal");
+
+// the modal is header-draggable: a drag offsets newPalDrag from centre; reopening recenters.
+app.openNewPalette(); flushRaf();
+ok(app.newPalDrag && app.newPalDrag.x === 0 && app.newPalDrag.y === 0, "(np8) opening centers the modal (drag offset 0,0)");
+app._beginNewPalDrag({ clientX: 100, clientY: 100, target: {}, preventDefault() {} });
+doc.dispatch("pointermove", { clientX: 140, clientY: 170 });
+ok(app.newPalDrag.x === 40 && app.newPalDrag.y === 70, `(np8b) a header-drag offsets the modal (got ${app.newPalDrag.x},${app.newPalDrag.y})`);
+ok((app.querySelector(".newpal").style.transform || "").includes("40px"), "(np8c) the offset is applied to the dialog transform in place");
+doc.dispatch("pointerup", {});
+app.openNewPalette(); flushRaf();
+ok(app.newPalDrag.x === 0 && app.newPalDrag.y === 0, "(np8d) reopening recenters (drag reset)");
+// chips are swatch-only now — the palette name is the title (hover), not inline text.
+const npChip = app.querySelector(".newpal-chip");
+ok(npChip && !!npChip.getAttribute("title") && (npChip.textContent || "") === "", "(np8e) context chips are swatch-only (name in title, no inline text)");
+app.closeNewPalette(); flushRaf();
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {

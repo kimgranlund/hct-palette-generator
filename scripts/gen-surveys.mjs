@@ -22,6 +22,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve, basename } from "node:path";
 import { cam16FromRgb, lstarFromRgb } from "../src/engine/hct.js";
 import { toneAt, DEFAULT_CONTROLS } from "../src/engine/tonal.js";
+import { deriveNeutral } from "../src/engine/derive.mjs";
+import { seedFromKeyColor } from "../src/ui/model.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRCDIR = resolve(here, "../docs/spec/colors/surveys");
@@ -111,6 +113,33 @@ function mapColors(swatches) {
   ];
 }
 
+// the status palettes carry meaning, not character — excluded from the neutral's derivation context
+// (same set the New-Palette modal's "Derive from" strip excludes by default).
+const STATUS_NAMES = /^(danger|warning|success|error|critical|info|positive|negative)$/i;
+
+// derive the NEUTRAL / environment palette from a preset's character palettes, using the established
+// logic of the New-Palette modal's Environmental tab: the chroma-weighted circular-mean hue of the
+// key colors + a clamped near-grey chroma (engine/derive.mjs `deriveNeutral`), seeded back into a
+// parametric palette (`seedFromKeyColor`) and retaining the derived target as its dominant key color.
+function deriveNeutralPalette(palettes) {
+  const samples = palettes
+    .filter((p) => !STATUS_NAMES.test(p.name) && p.keyColors && p.keyColors[0])
+    .map((p) => p.keyColors[0].oklch.map(Number));
+  const oklch = deriveNeutral(samples);
+  const seed = seedFromKeyColor(oklch) || { hue: 0, chroma: 0 };
+  return {
+    name: "neutral",
+    hue: seed.hue,
+    chroma: seed.chroma,
+    skew: 0,
+    lift: 0,
+    hueShift: 0,
+    hueSameDir: false,
+    keyColors: [{ role: "dominant", oklch: oklch.map((v) => Number(v)) }],
+    on: true,
+  };
+}
+
 const VIVID_MIDS = { damp: 70, dampCurve: 1.5, dampAmp: 55, dampBias: 0 };
 
 // ── build one category → { volumes, presets, strip } ─────────────────────────────────────────────
@@ -136,7 +165,8 @@ function buildCategory(doc) {
           groups: ["d", "s", "a"].filter((k) => hy[k]).map((k) => ({ hier: k, pct: hy[k].pct, note: clean(hy[k].text) })),
         },
         ...DEFAULT_CONTROLS, ...VIVID_MIDS,
-        palettes: mapColors(p.swatches || []),
+        // neutral first (derived from the character palettes' key colors), then the named families.
+        palettes: (() => { const pals = mapColors(p.swatches || []); return [deriveNeutralPalette(pals), ...pals]; })(),
       });
     });
   }

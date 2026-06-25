@@ -1,5 +1,65 @@
 # CHANGELOG
 
+## 1.31 — 2026-06-25 — every survey preset leads with a derived `neutral` palette
+
+Each of the 336 survey presets now **prepends a `neutral` / environment palette** derived from its
+own character colors — the same rule as the New-Palette modal's Environmental tab (1.30):
+`deriveNeutral` over the 6 character palettes' key colors (status palettes — danger/warning/success —
+excluded), then `seedFromKeyColor`. Baked into **`scripts/gen-surveys.mjs`** (`deriveNeutralPalette`,
+importing `deriveNeutral` from the engine + `seedFromKeyColor` from the model) so the neutral travels
+with the data, shows in the gallery tiles, and serializes. Preset order is now `neutral,
+primary-base, primary-muted, secondary-base, secondary-muted, accent-base, accent-muted, danger,
+warning, success` (**10/preset**, was 9). The Lake Baikal preset reproduces `color-neutral-derivation.md`'s
+worked example exactly (OKLCH ≈ `[0.66, 0.009, 48°]`). The leading neutral carries no curated
+`colorName`/story (so it doesn't appear in the Story tab — intentional). The seeded `Default` set is
+not a survey and is intentionally left unchanged. `(hh)` headless assertions bumped to 10/neutral-first
++ a low-chroma-neutral check; `(st8)` + the lift probe re-pointed past the leading neutral. No
+engine/contract change (it composes 1.30's `deriveNeutral`).
+
+## 1.30 — 2026-06-25 — "New palette" derivation modal (relative / environmental / custom)
+
+"+ Palette" now opens a large, **header-draggable** centered top-layer **`<dialog class="newpal">`**
+(`min(860px, 94vw)` × `min(82vh, 760px)`; dragging offsets it from centre via a live
+`transform: translate()`, reset to centre on each open) that **derives** a palette instead of dropping
+a default. A **"Derive from"** strip of **swatch-only chips** (the palette name is the hover title —
+no inline text) toggles which existing palettes feed the derivation (status palettes —
+success/warning/error/danger/critical/info — start **excluded**, since they carry meaning, not
+character; included reads full-opacity with an accent ring, excluded reads dimmed); each included
+palette contributes its vivid identity color as an OKLCH sample. Three modes (segmented tabs):
+
+- **Relative** — a color-theory relationship that pivots on the **primary** (the first non-neutral
+  included palette, by priority ORDER — not chroma weighting; a low-chroma primary still anchors):
+  `extend` (analogous, primary +30°), `contrast` (primary's complement), `anchor` (the primary),
+  `recontextualize` (the primary's muted complement — Albers). `complete` (largest open gap) and
+  `bridge` (mediate the two most-separated hues) stay set-based (the whole context's geometry). The
+  preview's reference swatch is labeled **Primary** and is stable across relationships (the anchor),
+  while the **Dominant** changes. (`deriveRelative` reads `samples[0]`; the UI orders samples
+  primary-first via `_orderedContext`, deprioritizing neutral-named / near-grey palettes.)
+- **Environmental** — a neutral/environment tone per `color-neutral-derivation.md`: chroma-weighted
+  circular-mean hue + `clamp(0.30·meanC, 0.004, 0.018)` chroma.
+- **Custom** — pick Hue + Chroma directly (the classic parametric seed); needs no context.
+
+Relative/Environmental compute a **target OKLCH** (`engine/derive.mjs`, validated by
+`test/engine/derive.mjs`), seed the palette's hue+chroma from it (`seedFromKeyColor`), and retain the
+target as the palette's **dominant key color**; Custom sets hue+chroma straight. The new palette is
+appended + selected.
+
+The body is **two columns**: LEFT = diagrams (a **hue × chroma circle** — every context color and the
+proposed one plotted at angle = hue, radius ∝ chroma normalized to the busiest sample, proposed wears
+an accent ring; 0° top, clockwise — plus the reused **chroma-curve** graph); RIGHT = the segment's
+selection/picker, then a **proposed-palette preview** (a Dominant swatch — plus the Supporting context
+color on Relative — and the full generated ramp). The previews are driven by a single
+**`_newPalProposed`** that PROJECTS the would-be palette (a throwaway `projectView`) — the same object
+`createNewPalette` commits, so the preview is the source of truth. Custom slider drags refresh the
+diagrams + preview **in place** (no full render → the dragged input survives).
+
+Pure-additive: no engine/contract/persist-schema change (it composes existing machinery). Covered by
+`(np)` headless assertions (context pre-seed + system exclusion, the three modes, the no-context
+block, header-drag offset + swatch-only chips, the two-column diagrams + ramp preview, the in-place
+Custom-drag refresh) and real-browser smoke checks (centered top-layer dialog, the strip + all six
+relationships, swatch-only chips, hue circle + chroma curve + ramp on Relative, the Custom picker +
+live preview, header-draggable).
+
 ## 1.29 — 2026-06-25 — Download-All ships `figma-aliased/` (OD-004 cascade test artifact)
 
 The Download-All `.zip` now includes a **`figma-aliased/`** folder alongside the default `figma/`:

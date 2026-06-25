@@ -79,11 +79,44 @@ try {
 
   await evalJS(`${el}.toggleDrawer(true)`); await sleep(400);
   ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.drawer");return !!d && d.open && Math.round(d.getBoundingClientRect().height) === innerHeight})()`), "export drawer opens as a full-height <dialog>");
+  await evalJS(`${el}.toggleDrawer(false)`); await sleep(200);
 
   mkdirSync(OUT, { recursive: true });
   const shot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "editor.png"), Buffer.from(shot.data, "base64"));
   console.log("  · screenshot → smoke-out/editor.png");
+
+  // New-Palette modal: a CENTERED top-layer <dialog> with the "Derive from" strip + the 3 tabs.
+  await evalJS(`${el}.openNewPalette()`); await sleep(400);
+  ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.newpal");if(!d||!d.open)return false;const r=d.getBoundingClientRect();return Math.abs((r.left+r.right)/2 - innerWidth/2) < 2 && Math.abs((r.top+r.bottom)/2 - innerHeight/2) < 2})()`), "New-Palette modal opens centered in the top layer");
+  ok(await evalJS(`${el}.querySelectorAll(".newpal-chip").length >= 1 && ${el}.querySelectorAll(".newpal-rel").length === 6`), "modal shows the context strip + all 6 Relative relationships");
+  // swatch-only chips: no inline text, the palette name lives in the title (hover tooltip).
+  ok(await evalJS(`(()=>{const c=${el}.querySelector(".newpal-chip");return !!c.getAttribute("title") && c.textContent.trim()===""})()`), "context chips are swatch-only (name in title)");
+  // two-column previews: left = hue circle + chroma curve; right = the proposed-palette ramp.
+  ok(await evalJS(`!!${el}.querySelector(".newpal-hc svg") && ${el}.querySelectorAll(".newpal-diagram").length === 2 && ${el}.querySelector(".newpal-ramp").children.length >= 19`), "Relative tab renders hue circle + chroma curve + ramp preview");
+  // priority order: the Dominant changes per relationship, the Primary (the anchor it pivots on) does NOT.
+  const swAt = (rel) => evalJS(`(()=>{${el}.newPalRel="${rel}";${el}.render();const s=${el}.querySelectorAll(".newpal-pp-sw");return [s[0]&&s[0].getAttribute("style"), s[1]&&s[1].getAttribute("style")]})()`);
+  const swAnchor = await swAt("anchor"), swContrast = await swAt("contrast");
+  ok(swAnchor[1] && swAnchor[1] === swContrast[1], "Primary reference swatch is stable across relationships (the priority anchor)");
+  ok(swAnchor[0] && swAnchor[0] !== swContrast[0], "Dominant swatch changes with the relationship (anchor ≠ contrast)");
+  await evalJS(`(()=>{${el}.newPalRel="extend";${el}.render();})()`); await sleep(150);
+  // the Cancel/Create CTA is justified to the trailing edge (right) of the dialog.
+  ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.newpal").getBoundingClientRect();const c=${el}.querySelector(".newpal-create").getBoundingClientRect();return (d.right - c.right) < 24 && (c.left - d.left) > d.width*0.5})()`), "footer CTA is right/end-justified");
+  const npShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "new-palette.png"), Buffer.from(npShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/new-palette.png");
+  // Custom tab: the picker + a live, in-place preview refresh on slider input.
+  await evalJS(`(()=>{${el}.newPalTab="custom";${el}.newPalCustom={hue:300,chroma:70};${el}.render();})()`); await sleep(250);
+  ok(await evalJS(`!!${el}.querySelector(".newpal-custom") && ${el}.querySelector(".newpal-ramp").children.length >= 19`), "Custom tab shows the picker + live palette preview");
+  const npCustomShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "new-palette-custom.png"), Buffer.from(npCustomShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/new-palette-custom.png");
+  await evalJS(`(()=>{${el}.newPalTab="relative";${el}.render();})()`); await sleep(200);
+  // the modal is draggable by its header — synthesize a header-drag and confirm it offsets.
+  await evalJS(`(()=>{const a=${el};a._beginNewPalDrag({clientX:200,clientY:200,target:{},preventDefault(){}});document.dispatchEvent(new PointerEvent('pointermove',{clientX:260,clientY:240}));document.dispatchEvent(new PointerEvent('pointerup',{}));})()`);
+  await sleep(120);
+  ok(await evalJS(`/translate\\(\\s*60px\\s*,\\s*40px\\s*\\)/.test(${el}.querySelector("dialog.newpal").style.transform)`), "New-Palette modal is draggable by its header (offsets via transform)");
+  await evalJS(`${el}.closeNewPalette()`); await sleep(150);
 } catch (e) {
   fails.push("smoke threw: " + e.message);
 } finally {
