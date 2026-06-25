@@ -94,6 +94,12 @@ try {
   ok(await evalJS(`(()=>{const c=${el}.querySelector(".newpal-chip");return !!c.getAttribute("title") && c.textContent.trim()===""})()`), "context chips are swatch-only (name in title)");
   // two-column previews: left = hue circle + chroma curve; right = the proposed-palette ramp.
   ok(await evalJS(`!!${el}.querySelector(".newpal-hc svg") && ${el}.querySelectorAll(".newpal-diagram").length === 2 && ${el}.querySelector(".newpal-ramp").children.length >= 19`), "Relative tab renders hue circle + chroma curve + ramp preview");
+  // priority order: the Dominant changes per relationship, the Primary (the anchor it pivots on) does NOT.
+  const swAt = (rel) => evalJS(`(()=>{${el}.newPalRel="${rel}";${el}.render();const s=${el}.querySelectorAll(".newpal-pp-sw");return [s[0]&&s[0].getAttribute("style"), s[1]&&s[1].getAttribute("style")]})()`);
+  const swAnchor = await swAt("anchor"), swContrast = await swAt("contrast");
+  ok(swAnchor[1] && swAnchor[1] === swContrast[1], "Primary reference swatch is stable across relationships (the priority anchor)");
+  ok(swAnchor[0] && swAnchor[0] !== swContrast[0], "Dominant swatch changes with the relationship (anchor ≠ contrast)");
+  await evalJS(`(()=>{${el}.newPalRel="extend";${el}.render();})()`); await sleep(150);
   const npShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "new-palette.png"), Buffer.from(npShot.data, "base64"));
   console.log("  · screenshot → smoke-out/new-palette.png");

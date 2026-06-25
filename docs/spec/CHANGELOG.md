@@ -27,10 +27,14 @@ success/warning/error/danger/critical/info — start **excluded**, since they ca
 character; included reads full-opacity with an accent ring, excluded reads dimmed); each included
 palette contributes its vivid identity color as an OKLCH sample. Three modes (segmented tabs):
 
-- **Relative** — a color-theory relationship over the samples: `extend` (analogous, +30° off the
-  chroma-weighted-mean hue), `complete` (fill the largest open gap), `contrast` (complement, vivid),
-  `bridge` (mediate the two most-separated hues), `anchor` (reinforce the dominant), `recontextualize`
-  (the dominant's muted complement — Albers).
+- **Relative** — a color-theory relationship that pivots on the **primary** (the first non-neutral
+  included palette, by priority ORDER — not chroma weighting; a low-chroma primary still anchors):
+  `extend` (analogous, primary +30°), `contrast` (primary's complement), `anchor` (the primary),
+  `recontextualize` (the primary's muted complement — Albers). `complete` (largest open gap) and
+  `bridge` (mediate the two most-separated hues) stay set-based (the whole context's geometry). The
+  preview's reference swatch is labeled **Primary** and is stable across relationships (the anchor),
+  while the **Dominant** changes. (`deriveRelative` reads `samples[0]`; the UI orders samples
+  primary-first via `_orderedContext`, deprioritizing neutral-named / near-grey palettes.)
 - **Environmental** — a neutral/environment tone per `color-neutral-derivation.md`: chroma-weighted
   circular-mean hue + `clamp(0.30·meanC, 0.004, 0.018)` chroma.
 - **Custom** — pick Hue + Chroma directly (the classic parametric seed); needs no context.

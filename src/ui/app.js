@@ -1763,12 +1763,37 @@ class HctApp extends HTMLElement {
     else if (!this.newPalOpen && d.open) { try { d.close(); } catch { /* already closed */ } }
   }
 
-  // samples for A/B = each included palette's vivid identity color, as OKLCH [L,C,H].
-  newPalSamples(view) {
+  // a context palette is "neutral" (deprioritized as a derivation primary) if it's named neutral/grey
+  // or its identity is near-grey — so a derived/leading neutral never becomes the Relative primary.
+  _isNeutralPalette(p, vp) {
+    if (/\b(neutral|grey|gray)\b/i.test(String((p && p.name) || ""))) return true;
+    return !!(vp && vp.key && hexToOklch(vp.key)[1] < 0.02);
+  }
+
+  // the included context palette indices in PRIORITY ORDER: non-neutral palettes first (in palette
+  // order — so the first non-neutral is the "primary"), neutrals last. Drives samples[0] = primary.
+  _orderedContext(view) {
     const ctx = this.newPalCtx || new Set();
-    const out = [];
-    for (const i of ctx) { const vp = view.palettes[i]; if (vp && vp.key) out.push(hexToOklch(vp.key)); }
-    return out;
+    return [...ctx]
+      .filter((i) => view.palettes[i] && view.palettes[i].key)
+      .sort((a, b) => {
+        const na = this._isNeutralPalette(this.doc.palettes[a], view.palettes[a]) ? 1 : 0;
+        const nb = this._isNeutralPalette(this.doc.palettes[b], view.palettes[b]) ? 1 : 0;
+        return (na - nb) || (a - b); // neutrals last; otherwise palette index order
+      });
+  }
+
+  // samples for A/B = each included palette's vivid identity color as OKLCH [L,C,H], PRIORITY-ORDERED
+  // (samples[0] = the primary, so deriveRelative pivots on it — see derive.mjs).
+  newPalSamples(view) {
+    return this._orderedContext(view).map((i) => hexToOklch(view.palettes[i].key));
+  }
+
+  // the primary context color (the highest-priority, first non-neutral included palette) — the hex
+  // the Relative relationships pivot on, shown as the preview's reference swatch.
+  _primaryContextHex(view) {
+    const o = this._orderedContext(view);
+    return o.length ? view.palettes[o[0]].key : null;
   }
 
   // the current tab's target: { oklch } for relative/environmental (null if no context), or
@@ -2025,11 +2050,11 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // the proposed-palette preview: a dominant swatch (+ the supporting context color on Relative)
-  // and the full generated ramp — so the user sees the actual colors before committing.
+  // the proposed-palette preview: the proposed Dominant swatch, the Primary it's derived relative to
+  // (Relative only — the priority anchor), and the full generated ramp — the colors before committing.
   _newPalPreviewPane(view, proposed) {
     if (!proposed) return h("div", { class: "newpal-preview-pane empty" }, h("small", {}, "Select a palette to derive from"));
-    const supp = this.newPalTab === "relative" ? this._dominantContextHex(view) : null;
+    const primary = this.newPalTab === "relative" ? this._primaryContextHex(view) : null;
     return h(
       "div",
       { class: "newpal-preview-pane" },
@@ -2038,7 +2063,7 @@ class HctApp extends HTMLElement {
         "div",
         { class: "newpal-pp-swatches" },
         this._ppSwatch("Dominant", proposed.hex),
-        supp ? this._ppSwatch("Supporting", supp) : false,
+        primary ? this._ppSwatch("Primary", primary, "the priority color this relationship pivots on") : false,
       ),
       h(
         "div",
@@ -2047,15 +2072,8 @@ class HctApp extends HTMLElement {
       ),
     );
   }
-  _ppSwatch(label, css) {
-    return h("div", { class: "newpal-pp-sw-item" }, h("span", { class: "newpal-pp-sw", style: `background:${css}` }), h("small", {}, label));
-  }
-  // the most-chromatic included palette's key color — the one the relationship is computed against.
-  _dominantContextHex(view) {
-    const ctx = this.newPalCtx || new Set();
-    let best = null, bestC = -1;
-    for (const i of ctx) { const vp = view.palettes[i]; if (!vp || !vp.key) continue; const c = hexToOklch(vp.key)[1]; if (c > bestC) { bestC = c; best = vp.key; } }
-    return best;
+  _ppSwatch(label, css, title) {
+    return h("div", { class: "newpal-pp-sw-item", title }, h("span", { class: "newpal-pp-sw", style: `background:${css}` }), h("small", {}, label));
   }
 
   // _envReadout — the derived neutral's hue + chroma, as a short human line under the description.

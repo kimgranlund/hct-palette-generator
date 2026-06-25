@@ -21,7 +21,6 @@ export function weightedMeanHue(samples) {
   return { hue: norm((Math.atan2(y, x) * 180) / Math.PI), coherence: Math.hypot(x, y) / wsum };
 }
 
-const dominant = (samples) => samples.reduce((a, s) => (s[1] > a[1] ? s : a), samples[0]); // max chroma
 const meanC = (samples) => mean(samples.map((s) => s[1]));
 const meanL = (samples) => mean(samples.map((s) => s[2 - 1])); // L is index 0
 // signed shortest angular distance a→b in (−180,180]
@@ -62,28 +61,30 @@ export function deriveNeutral(samples) {
   return [0.66, C, hue]; // mid-grey lightness; the ramp tapers chroma off both ends from here
 }
 
-// A — the color-theory relationships. Each derives a target hue + chroma from the context samples.
+// A — the color-theory relationships. The single-reference relationships (extend/contrast/anchor/
+// recontextualize) pivot on the PRIMARY — `samples[0]`, which the caller orders by priority (the
+// first non-neutral palette). The set-geometry ones (complete/bridge) use the whole set. So priority
+// ORDER drives the result, NOT chroma weighting: a low-chroma primary still anchors the relationship.
 export const RELATIONSHIPS = [
-  { id: "extend", label: "Extend", hint: "Analogous — continue the family (+30°)" },
+  { id: "extend", label: "Extend", hint: "Analogous — continue the primary's family (+30°)" },
   { id: "complete", label: "Complete", hint: "Fill the largest open gap on the wheel" },
-  { id: "contrast", label: "Contrast", hint: "Complement — oppose at 180°, vivid" },
+  { id: "contrast", label: "Contrast", hint: "Complement — oppose the primary at 180°" },
   { id: "bridge", label: "Bridge", hint: "Mediate between the two most-separated hues" },
-  { id: "anchor", label: "Anchor", hint: "Reinforce the dominant hue at full chroma" },
-  { id: "recontextualize", label: "Recontextualize", hint: "Albers — the dominant's complement, muted (reads shifted in context)" },
+  { id: "anchor", label: "Anchor", hint: "Reinforce the primary hue at full chroma" },
+  { id: "recontextualize", label: "Recontextualize", hint: "Albers — the primary's complement, muted (reads shifted in context)" },
 ];
 
 export function deriveRelative(id, samples) {
   if (!samples.length) return [0.6, 0.12, 0];
-  const { hue: hbar } = weightedMeanHue(samples);
-  const D = dominant(samples);
+  const P = samples[0]; // the PRIMARY — first by priority order (the caller puts non-neutrals first)
   const mc = meanC(samples), ml = meanL(samples);
   switch (id) {
-    case "extend": return [ml, mc, norm(hbar + 30)];
+    case "extend": return [P[0], P[1], norm(P[2] + 30)];
     case "complete": return [ml, mc, largestGapHue(samples.map((s) => s[2]))];
-    case "contrast": return [D[0], Math.max(mc, D[1]), norm(hbar + 180)];
+    case "contrast": return [P[0], P[1], norm(P[2] + 180)];
     case "bridge": return [ml, mc, bridgeHue(samples)];
-    case "anchor": return [D[0], D[1], norm(D[2])];
-    case "recontextualize": return [ml, mc * 0.6, norm(D[2] + 180)];
-    default: return [ml, mc, hbar];
+    case "anchor": return [P[0], P[1], norm(P[2])];
+    case "recontextualize": return [P[0], P[1] * 0.6, norm(P[2] + 180)];
+    default: return [P[0], P[1], P[2]];
   }
 }

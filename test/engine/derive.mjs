@@ -42,16 +42,20 @@ const CTX = [[0.62, 0.068, 78], [0.32, 0.045, 28], [0.92, 0.005, 215]];
     ok(Array.isArray(t) && t.length === 3 && t.every((n) => Number.isFinite(n)), `${id}: malformed OKLCH ${JSON.stringify(t)}`);
     ok(t[0] > 0 && t[0] <= 1 && t[1] >= 0 && t[2] >= 0 && t[2] < 360, `${id}: OKLCH out of range ${JSON.stringify(t)}`);
   }
-  const hbar = D.weightedMeanHue(CTX).hue;
-  const dom = CTX.reduce((a, s) => (s[1] > a[1] ? s : a)); // brass 78°, the dominant
-  ok(angClose(D.deriveRelative("extend", CTX)[2], norm(hbar + 30)), "extend = H̄ + 30°");
-  ok(angClose(D.deriveRelative("contrast", CTX)[2], norm(hbar + 180)), "contrast = H̄ + 180°");
-  ok(angClose(D.deriveRelative("anchor", CTX)[2], dom[2]), "anchor = dominant hue");
-  ok(angClose(D.deriveRelative("recontextualize", CTX)[2], norm(dom[2] + 180)), "recontextualize = dominant's complement");
-  const meanCtx = (0.068 + 0.045 + 0.005) / 3;
-  ok(D.deriveRelative("recontextualize", CTX)[1] < meanCtx, "recontextualize chroma is muted (< mean)");
-  // anchor takes the dominant's full chroma
-  ok(Math.abs(D.deriveRelative("anchor", CTX)[1] - dom[1]) < 1e-9, "anchor inherits the dominant's chroma");
+  // single-reference relationships pivot on the PRIMARY = samples[0] (priority order), NOT the mean.
+  const P = CTX[0]; // [0.62, 0.068, 78]
+  ok(angClose(D.deriveRelative("extend", CTX)[2], norm(P[2] + 30)), "extend = primary + 30°");
+  ok(angClose(D.deriveRelative("contrast", CTX)[2], norm(P[2] + 180)), "contrast = primary + 180°");
+  ok(angClose(D.deriveRelative("anchor", CTX)[2], P[2]), "anchor = primary hue");
+  ok(Math.abs(D.deriveRelative("anchor", CTX)[1] - P[1]) < 1e-9, "anchor inherits the primary's chroma");
+  ok(angClose(D.deriveRelative("recontextualize", CTX)[2], norm(P[2] + 180)), "recontextualize = primary's complement");
+  ok(D.deriveRelative("recontextualize", CTX)[1] < P[1], "recontextualize chroma is muted (< primary's)");
+
+  // PRIORITY beats CHROMA: a LOW-chroma primary still anchors, even with a vivid secondary present.
+  const CTX2 = [[0.5, 0.04, 200], [0.5, 0.12, 30]]; // primary = muted blue 200°; secondary = vivid orange 30°
+  ok(angClose(D.deriveRelative("anchor", CTX2)[2], 200), "anchor follows the PRIMARY (200°), not the max-chroma secondary (30°)");
+  ok(angClose(D.deriveRelative("extend", CTX2)[2], 230), "extend = primary + 30° = 230° (order, not chroma weighting)");
+  ok(angClose(D.deriveRelative("contrast", CTX2)[2], 20), "contrast = primary + 180° = 20°");
 }
 
 // ── edge cases: empty context → a sane fallback, never NaN ──
