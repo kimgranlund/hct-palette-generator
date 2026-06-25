@@ -1126,6 +1126,11 @@ ok(app.querySelectorAll(".newpal-rel").length === NP_RELS.length, `(np3) the Rel
 ok(!!app.querySelector(".newpal-hc") && app.querySelectorAll(".newpal-diagram").length === 2, "(np3c) left column shows the hue circle + chroma-curve diagrams");
 ok(!!app.querySelector(".newpal-ramp") && app.querySelector(".newpal-ramp").children.length >= 19, "(np3d) right column shows the proposed-palette ramp preview");
 ok(app.querySelectorAll(".newpal-pp-sw").length === 2, "(np3e) Relative preview shows BOTH a dominant + supporting swatch");
+// the priority chain: the ordered context (primary marked), so secondary/tertiary are visible too.
+const npChainSw = app.querySelectorAll(".newpal-pp-chain-sw");
+const npChainPrimary = npChainSw.filter((e) => e.classList.contains("primary")).length; // shim has no compound selectors
+ok(npChainSw.length >= 2 && npChainPrimary === 1,
+  `(np3g) Relative preview shows the priority chain with exactly one primary-marked swatch (got ${npChainSw.length} chain, ${npChainPrimary} primary)`);
 const npProp = app._newPalProposed(npView);
 ok(npProp && npProp.vp && Array.isArray(npProp.vp.ramp) && /^#|^oklch/.test(npProp.hex), "(np3f) _newPalProposed projects a real palette (vp.ramp + identity hex)");
 const npTarget = app.newPalTarget(npView);
@@ -1151,6 +1156,12 @@ ok(app.doc.palettes[app.doc.palettes.length - 1].chroma < 30, `(np5c) the neutra
 app.openNewPalette(); app.newPalTab = "custom"; app.newPalCustom = { hue: 300, chroma: 70 }; app.render(); flushRaf();
 ok(!!app.querySelector(".newpal-custom"), "(np6) the Custom tab shows the hue/chroma sliders");
 ok(!!app.querySelector(".newpal-ramp") && app.querySelectorAll(".newpal-pp-sw").length === 1, "(np6a1) Custom preview shows the ramp + a single (dominant) swatch");
+// the native color picker seeds hue+chroma from a picked hex (CAM16 recovery).
+const npColor = findIn(app.querySelector(".newpal-custom"), (e) => e.tagName === "INPUT" && (e.attrs.type === "color" || e.getAttribute("type") === "color"));
+ok(!!npColor, "(np6a0) the Custom tab has a native color picker");
+npColor.value = "#22aa55"; npColor.dispatch("input", {});
+ok(Number.isFinite(app.newPalCustom.hue) && Number.isFinite(app.newPalCustom.chroma) && (app.newPalCustom.hue !== 300 || app.newPalCustom.chroma !== 70),
+  `(np6a0b) picking a color seeds hue/chroma from the hex (got ${app.newPalCustom.hue}/${app.newPalCustom.chroma})`);
 // a Custom slider drag refreshes the preview IN PLACE without rebuilding the dragged input.
 const npHueInput = findIn(app.querySelector(".newpal-custom"), isRange);
 const npRampBefore = app.querySelector(".newpal-ramp");

@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.34 — 2026-06-25 — New-Palette modal polish: Custom color picker + Relative priority chain
+
+The **Custom** tab gains a native **`<input type="color">`** picker — picking a color recovers the
+palette's hue + chroma from it (`seedFromKeyColor(hexToOklch(hex))`); `oninput` refreshes the preview
+in place (so the OS color panel isn't detached mid-pick) and `onchange` does a full render so the
+Hue/Chroma sliders re-sync. The **Relative** preview adds a **priority chain** (`_orderedContext`):
+the ordered context colors as a small strip with the **primary** ring-marked, then secondary /
+tertiary — so the priority order driving the relationship is visible, not just the single anchor.
+`(np3g)` + `(np6a0)` headless assertions and two smoke checks (chain present + primary-marked; native
+color picker seeded from the proposed color). No engine/contract change.
+
 ## 1.33 — 2026-06-25 — "Surveys" renamed to "Color Categories" (label + internal code)
 
 The gallery's **"Surveys"** feature is now **"Color Categories"** — the user-facing label/nav AND the

@@ -110,6 +110,8 @@ try {
   ok(swAnchor[1] && swAnchor[1] === swContrast[1], "Primary reference swatch is stable across relationships (the priority anchor)");
   ok(swAnchor[0] && swAnchor[0] !== swContrast[0], "Dominant swatch changes with the relationship (anchor ≠ contrast)");
   await evalJS(`(()=>{${el}.newPalRel="extend";${el}.render();})()`); await sleep(150);
+  // the priority chain shows the ordered context (primary + secondary/tertiary…), primary marked.
+  ok(await evalJS(`${el}.querySelectorAll(".newpal-pp-chain-sw").length >= 3 && ${el}.querySelectorAll(".newpal-pp-chain-sw.primary").length === 1`), "Relative preview shows the priority chain (primary marked)");
   // the Cancel/Create CTA is justified to the trailing edge (right) of the dialog.
   ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.newpal").getBoundingClientRect();const c=${el}.querySelector(".newpal-create").getBoundingClientRect();return (d.right - c.right) < 24 && (c.left - d.left) > d.width*0.5})()`), "footer CTA is right/end-justified");
   const npShot = await send("Page.captureScreenshot", { format: "png" });
@@ -118,6 +120,7 @@ try {
   // Custom tab: the picker + a live, in-place preview refresh on slider input.
   await evalJS(`(()=>{${el}.newPalTab="custom";${el}.newPalCustom={hue:300,chroma:70};${el}.render();})()`); await sleep(250);
   ok(await evalJS(`!!${el}.querySelector(".newpal-custom") && ${el}.querySelector(".newpal-ramp").children.length >= 19`), "Custom tab shows the picker + live palette preview");
+  ok(await evalJS(`(()=>{const i=${el}.querySelector(".newpal-color-input");return !!i && i.getAttribute("type")==="color" && /^#[0-9a-fA-F]{6}$/.test(i.value)})()`), "Custom tab has a native color picker seeded from the proposed color");
   const npCustomShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "new-palette-custom.png"), Buffer.from(npCustomShot.data, "base64"));
   console.log("  · screenshot → smoke-out/new-palette-custom.png");

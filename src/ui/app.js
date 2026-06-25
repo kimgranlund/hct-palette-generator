@@ -1995,7 +1995,7 @@ class HctApp extends HTMLElement {
         pane,
       ];
     }
-    return [this._customPicker(), pane];
+    return [this._customPicker(proposed), pane];
   }
 
   // the relationship radio group (a single column inside the right pane).
@@ -2021,10 +2021,11 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // the Custom picker — parametric Hue + Chroma. Dedicated sliders (not this.slider) so they touch
-  // newPalCustom, not the doc/undo stack, and refresh the preview + diagrams in place (no full
-  // render — a full render would recreate the range input mid-drag and kill the native drag).
-  _customPicker() {
+  // the Custom picker — a native color picker + parametric Hue/Chroma sliders. Picking a color seeds
+  // hue/chroma from it (CAM16 recovery); the sliders fine-tune. Both touch newPalCustom (not the
+  // doc/undo stack) and refresh the preview + diagrams in place (a full render would recreate the
+  // range input mid-drag / detach the OS color panel) — the sliders re-sync on the picker's `change`.
+  _customPicker(proposed) {
     const c = this.newPalCustom || (this.newPalCustom = { hue: 210, chroma: 55 });
     const slider = (label, key, min, max, fmtFn) => {
       const readout = h("b", {}, fmtFn(c[key]));
@@ -2044,17 +2045,37 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "newpal-custom" },
-      h("p", { class: "newpal-note" }, "Set the palette's hue and chroma directly. The ramp builds from these the same way every palette does."),
+      h("p", { class: "newpal-note" }, "Pick a color, or set hue and chroma directly. The ramp builds from these the same way every palette does."),
+      h(
+        "div",
+        { class: "field newpal-color-field" },
+        h("label", {}, "Color"),
+        h("input", {
+          type: "color",
+          class: "newpal-color-input",
+          "data-fk": "npc:color",
+          "aria-label": "Pick a color",
+          value: (proposed && proposed.hex) || "#888888",
+          // live: recover hue/chroma from the picked color + refresh the preview in place (don't
+          // rebuild the input mid-pick — that would detach the OS color panel).
+          oninput: (e) => { const s = seedFromKeyColor(hexToOklch(e.target.value)); if (s) { c.hue = s.hue; c.chroma = s.chroma; this._refreshNewPalPreview(); } },
+          // settle: full render so the Hue/Chroma sliders move to reflect the picked color.
+          onchange: () => this.render(),
+        }),
+      ),
       slider("Hue", "hue", 0, 360, (v) => fmt(v) + "°"),
       slider("Chroma", "chroma", 0, 100, (v) => fmt(v) + "%"),
     );
   }
 
   // the proposed-palette preview: the proposed Dominant swatch, the Primary it's derived relative to
-  // (Relative only — the priority anchor), and the full generated ramp — the colors before committing.
+  // (Relative only — the priority anchor), the priority chain of the remaining context, and the full
+  // generated ramp — the colors before committing.
   _newPalPreviewPane(view, proposed) {
     if (!proposed) return h("div", { class: "newpal-preview-pane empty" }, h("small", {}, "Select a palette to derive from"));
-    const primary = this.newPalTab === "relative" ? this._primaryContextHex(view) : null;
+    const isRel = this.newPalTab === "relative";
+    const chain = isRel ? this._orderedContext(view).map((i) => view.palettes[i].key) : [];
+    const ord = ["Primary (anchor)", "Secondary", "Tertiary", "Quaternary"];
     return h(
       "div",
       { class: "newpal-preview-pane" },
@@ -2063,8 +2084,24 @@ class HctApp extends HTMLElement {
         "div",
         { class: "newpal-pp-swatches" },
         this._ppSwatch("Dominant", proposed.hex),
-        primary ? this._ppSwatch("Primary", primary, "the priority color this relationship pivots on") : false,
+        chain.length ? this._ppSwatch("Primary", chain[0], "the priority color this relationship pivots on") : false,
       ),
+      // priority chain (Relative): the ordered context — primary first, then secondary/tertiary — so
+      // the priority order driving the relationship is visible, not just the single anchor.
+      isRel && chain.length > 1
+        ? h(
+            "div",
+            { class: "newpal-pp-chain" },
+            h("small", {}, "Context priority"),
+            h(
+              "div",
+              { class: "newpal-pp-chain-row" },
+              ...chain.map((hex, i) =>
+                h("span", { class: "newpal-pp-chain-sw" + (i === 0 ? " primary" : ""), style: `background:${hex}`, title: ord[i] || `#${i + 1}` }),
+              ),
+            ),
+          )
+        : false,
       h(
         "div",
         { class: "newpal-ramp" },

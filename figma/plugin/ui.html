@@ -937,6 +937,18 @@ dialog.newpal::backdrop { background: rgba(10,14,22,.34); }
 .newpal-readout { font-size: 12.5px; color: var(--ink); margin: 0 0 12px; }
 .newpal-readout b { font-variant-numeric: tabular-nums; }
 .newpal-custom .field { margin-bottom: 16px; }
+/* native color picker on the Custom tab — a compact swatch button that opens the OS picker. */
+.newpal-color-field { display: flex; align-items: center; gap: 12px; }
+.newpal-color-field label { margin: 0; }
+.newpal-color-input { width: 64px; height: 32px; padding: 2px; flex: none; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); cursor: pointer; }
+.newpal-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.newpal-color-input::-webkit-color-swatch { border: none; border-radius: 3px; }
+/* priority chain (Relative preview) — the ordered context colors; the primary wears the accent ring. */
+.newpal-pp-chain { margin-bottom: 12px; }
+.newpal-pp-chain small { display: block; color: var(--ink-dim); font-size: 10.5px; margin-bottom: 6px; }
+.newpal-pp-chain-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.newpal-pp-chain-sw { width: 22px; height: 22px; border-radius: var(--r-sm); border: 1px solid var(--line); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.newpal-pp-chain-sw.primary { box-shadow: 0 0 0 2px var(--accent); }
 /* RIGHT — proposed-palette preview (swatches + ramp) */
 .newpal-pp-host { margin-top: 14px; }
 .newpal-preview-pane { border-top: 1px solid var(--line); padding-top: 12px; }
@@ -5879,7 +5891,7 @@ class HctApp extends HTMLElement {
         pane,
       ];
     }
-    return [this._customPicker(), pane];
+    return [this._customPicker(proposed), pane];
   }
 
   // the relationship radio group (a single column inside the right pane).
@@ -5905,10 +5917,11 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // the Custom picker — parametric Hue + Chroma. Dedicated sliders (not this.slider) so they touch
-  // newPalCustom, not the doc/undo stack, and refresh the preview + diagrams in place (no full
-  // render — a full render would recreate the range input mid-drag and kill the native drag).
-  _customPicker() {
+  // the Custom picker — a native color picker + parametric Hue/Chroma sliders. Picking a color seeds
+  // hue/chroma from it (CAM16 recovery); the sliders fine-tune. Both touch newPalCustom (not the
+  // doc/undo stack) and refresh the preview + diagrams in place (a full render would recreate the
+  // range input mid-drag / detach the OS color panel) — the sliders re-sync on the picker's `change`.
+  _customPicker(proposed) {
     const c = this.newPalCustom || (this.newPalCustom = { hue: 210, chroma: 55 });
     const slider = (label, key, min, max, fmtFn) => {
       const readout = h("b", {}, fmtFn(c[key]));
@@ -5928,17 +5941,37 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "newpal-custom" },
-      h("p", { class: "newpal-note" }, "Set the palette's hue and chroma directly. The ramp builds from these the same way every palette does."),
+      h("p", { class: "newpal-note" }, "Pick a color, or set hue and chroma directly. The ramp builds from these the same way every palette does."),
+      h(
+        "div",
+        { class: "field newpal-color-field" },
+        h("label", {}, "Color"),
+        h("input", {
+          type: "color",
+          class: "newpal-color-input",
+          "data-fk": "npc:color",
+          "aria-label": "Pick a color",
+          value: (proposed && proposed.hex) || "#888888",
+          // live: recover hue/chroma from the picked color + refresh the preview in place (don't
+          // rebuild the input mid-pick — that would detach the OS color panel).
+          oninput: (e) => { const s = seedFromKeyColor(hexToOklch(e.target.value)); if (s) { c.hue = s.hue; c.chroma = s.chroma; this._refreshNewPalPreview(); } },
+          // settle: full render so the Hue/Chroma sliders move to reflect the picked color.
+          onchange: () => this.render(),
+        }),
+      ),
       slider("Hue", "hue", 0, 360, (v) => fmt(v) + "°"),
       slider("Chroma", "chroma", 0, 100, (v) => fmt(v) + "%"),
     );
   }
 
   // the proposed-palette preview: the proposed Dominant swatch, the Primary it's derived relative to
-  // (Relative only — the priority anchor), and the full generated ramp — the colors before committing.
+  // (Relative only — the priority anchor), the priority chain of the remaining context, and the full
+  // generated ramp — the colors before committing.
   _newPalPreviewPane(view, proposed) {
     if (!proposed) return h("div", { class: "newpal-preview-pane empty" }, h("small", {}, "Select a palette to derive from"));
-    const primary = this.newPalTab === "relative" ? this._primaryContextHex(view) : null;
+    const isRel = this.newPalTab === "relative";
+    const chain = isRel ? this._orderedContext(view).map((i) => view.palettes[i].key) : [];
+    const ord = ["Primary (anchor)", "Secondary", "Tertiary", "Quaternary"];
     return h(
       "div",
       { class: "newpal-preview-pane" },
@@ -5947,8 +5980,24 @@ class HctApp extends HTMLElement {
         "div",
         { class: "newpal-pp-swatches" },
         this._ppSwatch("Dominant", proposed.hex),
-        primary ? this._ppSwatch("Primary", primary, "the priority color this relationship pivots on") : false,
+        chain.length ? this._ppSwatch("Primary", chain[0], "the priority color this relationship pivots on") : false,
       ),
+      // priority chain (Relative): the ordered context — primary first, then secondary/tertiary — so
+      // the priority order driving the relationship is visible, not just the single anchor.
+      isRel && chain.length > 1
+        ? h(
+            "div",
+            { class: "newpal-pp-chain" },
+            h("small", {}, "Context priority"),
+            h(
+              "div",
+              { class: "newpal-pp-chain-row" },
+              ...chain.map((hex, i) =>
+                h("span", { class: "newpal-pp-chain-sw" + (i === 0 ? " primary" : ""), style: `background:${hex}`, title: ord[i] || `#${i + 1}` }),
+              ),
+            ),
+          )
+        : false,
       h(
         "div",
         { class: "newpal-ramp" },

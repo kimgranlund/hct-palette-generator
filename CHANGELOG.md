@@ -10,6 +10,13 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-25
 
+#### Added
+- **New-Palette modal polish:** the **Custom** tab gains a native **color picker** (pick a color and
+  the palette's hue + chroma are recovered from it; the sliders still fine-tune), and the **Relative**
+  preview now shows the **priority chain** — the ordered context colors (primary marked, then
+  secondary / tertiary…) — so the priority order driving the relationship is visible, not just the
+  single anchor.
+
 #### Changed
 - Renamed the **"Surveys"** feature to **"Color Categories"** throughout — the gallery label/nav and
   the **internal code**: `src/ui/surveys/` → `src/ui/categories/`, `docs/spec/colors/surveys/` →
