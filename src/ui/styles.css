@@ -495,11 +495,24 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 }
 .ramp-row .drag-handle:hover { color: var(--ink); background: var(--line); }
 .ramp-row .drag-handle:active { cursor: grabbing; }
-nonoun-color-tokens.reordering { cursor: grabbing; }
-nonoun-color-tokens.reordering .ramp-row { transition: transform .08s ease; }
-/* drop indicator — a tinted edge on the row the drop will land before/after */
-.ramp-row.drop-before { box-shadow: 0 -3px 0 -1px var(--accent); }
-.ramp-row.drop-after { box-shadow: 0 3px 0 -1px var(--accent); }
+nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabbing !important; }
+/* the lifted CLONE of the dragged row — a ghost that tracks the cursor, viewport-fixed, above all.
+   JS sets its width/height + a translate() transform; it never intercepts pointers (so the row under
+   the cursor is still hit-testable). */
+.ramp-row.drag-ghost {
+  position: fixed; left: 0; top: 0; margin: 0; z-index: 1000;
+  pointer-events: none; opacity: .9;
+  border-color: var(--accent);
+  outline: 1px solid var(--accent); outline-offset: 0;
+  box-shadow: var(--shadow-lg);
+}
+/* the DROP placeholder — a dashed, accent-tinted ghost the exact size of the dragged row, inserted
+   at the landing slot so the list visibly parts to show where the drop will go. */
+.drop-ghost {
+  box-sizing: border-box; pointer-events: none;
+  border: 2px dashed var(--accent); border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
 .ramp-strip { display: flex; box-shadow: var(--shadow); border-radius: 6px; overflow: hidden; width: fit-content; }
 .ramp-strip i {
   width: 26px; height: 40px; display: block; position: relative;

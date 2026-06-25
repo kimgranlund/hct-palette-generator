@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 1.35 — 2026-06-25 — ghost-based palette drag-to-reorder (lifted clone + drop placeholder)
+
+Palette reorder now has the canonical "lift + part" feedback. `_beginReorder` builds a **floating
+clone** of the dragged row (`_buildDragGhost`) — a `.drag-ghost` appended to the HOST (so
+`position:fixed` is viewport-relative, not clipped by the transformed canvas scene), tracking the
+cursor via `transform: translate()`; the source row collapses (`display:none`) and a same-height
+**`.drop-ghost` placeholder** is inserted at the landing slot (`_positionPlaceholder`), so the list
+parts to show where the drop lands (replacing the old `.drop-before/.drop-after` edge line). The
+hit-test excludes the collapsed source (zero-height filter). All the visual layer is guarded so the
+headless DOM shim (no `cloneNode`/layout) runs the reorder LOGIC unchanged — the existing reorder
+verifier still passes. `_teardownDragGhost` cleans up on release/cancel. A real-browser smoke check
+drives a handle-drag and asserts the clone + placeholder appear, then clear on release.
+
 ## 1.34 — 2026-06-25 — New-Palette modal polish: Custom color picker + Relative priority chain
 
 The **Custom** tab gains a native **`<input type="color">`** picker — picking a color recovers the

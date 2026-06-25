@@ -8,6 +8,14 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ## [Unreleased]
 
+### 2026-06-25
+
+#### Changed
+- **Palette drag-to-reorder is now ghost-based.** Dragging a row's ⋮⋮ handle lifts a **floating clone**
+  that tracks the cursor, the source row collapses, and a **dashed placeholder** opens at the landing
+  slot so the list visibly parts to show where the drop will go — replacing the thin drop-edge line.
+  The reorder logic (one undo step, selection follows the moved palette) is unchanged.
+
 ## [1.2.0] — 2026-06-25
 
 Renames **Surveys → Color Categories** (the gallery label *and* the internal code), adds a **color

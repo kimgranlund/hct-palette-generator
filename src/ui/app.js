@@ -2775,6 +2775,12 @@ class HctApp extends HTMLElement {
     if (handle && handle.setPointerCapture) {
       try { handle.setPointerCapture(e.pointerId); } catch {}
     }
+    // find the source ROW for the grabbed handle (parentNode walk — works in the browser AND the
+    // headless DOM shim, which has no Element.closest / attribute selectors).
+    let srcRow = handle;
+    while (srcRow && !(srcRow.classList && srcRow.classList.contains("ramp-row"))) srcRow = srcRow.parentNode;
+    this._reorder.srcRow = srcRow || null;
+    this._buildDragGhost(e, srcRow); // lift a floating clone + drop a placeholder (browser only; no-ops in the shim)
     this._reorderMove = (ev) => this._onReorderMove(ev);
     this._reorderUp = (ev) => this._onReorderUp(ev);
     document.addEventListener("pointermove", this._reorderMove);
@@ -2783,14 +2789,71 @@ class HctApp extends HTMLElement {
     this.classList.add("reordering");
   }
 
+  // _buildDragGhost — the visual lift. Clones the dragged row into a viewport-fixed "ghost" that
+  // tracks the cursor, and replaces the source row with a same-size dashed PLACEHOLDER so the list
+  // visibly parts to show where the drop will land. Appended to the HOST (not the transformed canvas
+  // scene) so `position:fixed` is viewport-relative. Guarded: in the headless DOM shim (no cloneNode /
+  // real layout) it returns early, leaving the reorder LOGIC unchanged.
+  _buildDragGhost(e, srcRow) {
+    const st = this._reorder;
+    if (!srcRow || typeof srcRow.cloneNode !== "function" || typeof srcRow.getBoundingClientRect !== "function") return;
+    const rect = srcRow.getBoundingClientRect();
+    if (!rect || !rect.width) return;
+    st.grabDx = (e.clientX ?? rect.left) - rect.left;
+    st.grabDy = (e.clientY ?? rect.top) - rect.top;
+    const ghost = srcRow.cloneNode(true);
+    ghost.classList.add("drag-ghost");
+    ghost.classList.remove("sel"); // the lifted clone isn't the selection ring
+    ghost.style.width = rect.width + "px";
+    ghost.style.height = rect.height + "px";
+    ghost.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+    this.appendChild(ghost);
+    st.ghostEl = ghost;
+    const ph = document.createElement("div");
+    ph.className = "drop-ghost";
+    ph.style.height = rect.height + "px";
+    st.placeholderEl = ph;
+    // drop the placeholder into the source's slot, then collapse the source — the lift is immediate.
+    if (srcRow.parentNode) srcRow.parentNode.insertBefore(ph, srcRow);
+    srcRow.style.display = "none";
+  }
+
+  // _positionPlaceholder — move the placeholder to the current insertion slot (before/after the row
+  // under the cursor), so the surrounding rows reflow to open the gap where the drop will land.
+  _positionPlaceholder(target, rects) {
+    const st = this._reorder;
+    const ph = st && st.placeholderEl;
+    if (!ph || !ph.parentNode) return;
+    const hit = rects.find((r) => r.pi === target.pi);
+    if (!hit || !hit.el || !hit.el.parentNode) return;
+    const ref = target.before ? hit.el : hit.el.nextSibling;
+    if (ref === ph) return; // already there — don't reinsert before itself
+    hit.el.parentNode.insertBefore(ph, ref);
+  }
+
+  // _teardownDragGhost — remove the floating clone + placeholder and un-hide the source row. The
+  // subsequent render() rebuilds the stack anyway; this just keeps the frame clean before it.
+  _teardownDragGhost() {
+    const st = this._reorder;
+    if (!st) return;
+    if (st.ghostEl && st.ghostEl.parentNode) st.ghostEl.parentNode.removeChild(st.ghostEl);
+    if (st.placeholderEl && st.placeholderEl.parentNode) st.placeholderEl.parentNode.removeChild(st.placeholderEl);
+    if (st.srcRow && st.srcRow.style) st.srcRow.style.display = "";
+    st.ghostEl = null; st.placeholderEl = null;
+  }
+
   // _onReorderMove — hit-test the row under the pointer, compute insert-before/after
   // by the row midpoint, and paint a single drop indicator on that row.
   _onReorderMove(ev) {
     const st = this._reorder;
     if (!st) return;
     this._reordering = true;
-    ev.preventDefault();
-    const rects = this._rowRects();
+    if (ev.preventDefault) ev.preventDefault();
+    // the floating clone tracks the cursor (anchored under the original grab point).
+    if (st.ghostEl) st.ghostEl.style.transform = `translate(${(ev.clientX ?? 0) - (st.grabDx || 0)}px, ${(ev.clientY ?? 0) - (st.grabDy || 0)}px)`;
+    // hit-test against the VISIBLE rows only — exclude the collapsed source (zero-height) so the
+    // hidden row never wins the test (in the shim, rows keep their height, so all are considered).
+    const rects = this._rowRects().filter((r) => r.bottom - r.top > 1);
     if (!rects.length) return;
     const y = ev.clientY;
     let target = null;
@@ -2802,10 +2865,8 @@ class HctApp extends HTMLElement {
     st.dropPi = target.pi;
     st.before = target.before;
     st.moved = true;
-    // paint indicator
-    for (const r of rects) r.el.classList.remove("drop-before", "drop-after");
-    const hit = rects.find((r) => r.pi === target.pi);
-    if (hit) hit.el.classList.add(target.before ? "drop-before" : "drop-after");
+    // open the gap at the insertion slot (the placeholder ghost); the old edge-line classes are gone.
+    this._positionPlaceholder(target, rects);
   }
 
   // _onReorderUp — finalize. Translate (dropPi, before) into a destination index in
@@ -2817,6 +2878,7 @@ class HctApp extends HTMLElement {
     document.removeEventListener("pointerup", this._reorderUp);
     document.removeEventListener("pointercancel", this._reorderUp);
     this.classList.remove("reordering");
+    this._teardownDragGhost(); // remove the floating clone + placeholder, un-hide the source row
     this._reorder = null;
     // NOTE: leave this._reordering TRUE if a move happened — the row's onclick
     // fires right after this pointerup and must be suppressed; it (or the next
