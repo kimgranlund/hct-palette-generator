@@ -1,6 +1,6 @@
 {
   "name": "nonoun-color-tokens",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Color Tokens by NONOUN — a perceptually-even color-palette + semantic-token generator built on the HCT color space (pure engine, web component, Figma plugin).",
   "type": "module",
   "license": "MIT",

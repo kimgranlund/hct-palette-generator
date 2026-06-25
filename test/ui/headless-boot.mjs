@@ -657,6 +657,15 @@ app.applyToFigma(true);
 globalThis.confirm = realConfirm;
 ok(posted && posted.pluginMessage && posted.pluginMessage.type === "apply" && posted.pluginMessage.rebuildSemantic === true,
   "(x) applyToFigma(true) (Regroup) posts rebuildSemantic:true");
+// the Regroup button lives in the Figma TAB's sub-bar (beside Binder plugin), NOT the drawer footer.
+app.exportOpen = true; app.exportTab = "figma"; app.render(); flushRaf();
+const figmaBarX = app.querySelector(".figma-bar");
+const footX = app.querySelector(".foot-actions");
+const hasClassX = (root, cls) => !!root && walk(root, (e) => e.classList && e.classList.contains(cls)).length > 0;
+ok(hasClassX(figmaBarX, "figma-regroup"), "(x) the Regroup button renders inside the Figma tab's sub-bar (.figma-bar)");
+ok(!hasClassX(footX, "figma-regroup"), "(x) the Regroup button is NOT in the drawer footer anymore");
+ok(hasClassX(figmaBarX, "figma-plugin-btn"), "(x) Regroup sits beside the Binder plugin button (same .figma-bar)");
+app.exportOpen = false;
 globalThis.parent = realParent;
 app.setInFigma(false);
 

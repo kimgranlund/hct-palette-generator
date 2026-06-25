@@ -7371,6 +7371,17 @@ class HctApp extends HTMLElement {
                   title: "Download the HCT Semantic Binder plugin (manifest.json + code.js). In Figma: Plugins → Development → Import plugin from manifest — it aliases each semantic role to its raw variable so editing a raw color cascades.",
                   onclick: () => this.downloadFigmaPlugin(),
                 }),
+                // Opt-in (inside Figma only): re-create Color Modes so it adopts the grouped order
+                // (Figma won't reorder existing variables on a normal apply). Lives here, beside the
+                // Binder plugin, because it's a Figma-tab action — re-creates vars, so bound layers
+                // need reconnecting.
+                this.inFigma
+                  ? btn([icon("arrows-clockwise"), "Regroup"], {
+                      cls: "figma-regroup",
+                      title: "Rebuild the Color Modes variables in grouped order (regular · containers · surfaces · scrims). Re-creates them, so layers bound to them will need reconnecting. Color Primitives are untouched.",
+                      onclick: () => this.applyToFigma(true),
+                    })
+                  : false,
               ),
             )
           : false,
@@ -7412,15 +7423,7 @@ class HctApp extends HTMLElement {
                   onclick: () => this.applyToFigma(),
                 })
               : false,
-            // Opt-in: re-create Color Modes so it adopts the grouped order (Figma won't reorder
-            // existing variables on a normal apply). Re-creates them — bound layers need reconnecting.
-            this.inFigma
-              ? btn([icon("arrows-clockwise"), "Regroup"], {
-                  cls: "figma-regroup",
-                  title: "Rebuild the Color Modes variables in grouped order (regular · containers · surfaces · scrims). Re-creates them, so layers bound to them will need reconnecting. Color Primitives are untouched.",
-                  onclick: () => this.applyToFigma(true),
-                })
-              : false,
+            // (Regroup moved to the Figma tab's sub-bar, beside the Binder plugin button.)
             // ONE download action — every format in its own folder + the config, as a single .zip.
             btn([icon("download"), "Download All"], { variant: "primary", title: "Download every format (css-hex, css-oklch, json, dtcg, figma, ui3) in its own folder + the config, as one .zip", onclick: () => this.downloadAllZip(view) }),
           ),
