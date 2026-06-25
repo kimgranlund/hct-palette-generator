@@ -8,6 +8,12 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-25
+
+Renames **Surveys → Color Categories** (the gallery label *and* the internal code), adds a **color
+picker** and a **priority chain** to the New-Palette modal, drops the "Survey" wording from the curated
+eyebrows, and hardens the CI smoke harness against cold-runner flakes.
+
 ### 2026-06-25
 
 #### Added
