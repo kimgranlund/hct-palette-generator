@@ -1147,6 +1147,21 @@ ok(app.doc.palettes.length === npBeforeBlocked, "(np7b) Create is a no-op when R
 app.closeNewPalette(); flushRaf();
 ok(app.newPalOpen === false, "(np7c) closeNewPalette dismisses the modal");
 
+// the modal is header-draggable: a drag offsets newPalDrag from centre; reopening recenters.
+app.openNewPalette(); flushRaf();
+ok(app.newPalDrag && app.newPalDrag.x === 0 && app.newPalDrag.y === 0, "(np8) opening centers the modal (drag offset 0,0)");
+app._beginNewPalDrag({ clientX: 100, clientY: 100, target: {}, preventDefault() {} });
+doc.dispatch("pointermove", { clientX: 140, clientY: 170 });
+ok(app.newPalDrag.x === 40 && app.newPalDrag.y === 70, `(np8b) a header-drag offsets the modal (got ${app.newPalDrag.x},${app.newPalDrag.y})`);
+ok((app.querySelector(".newpal").style.transform || "").includes("40px"), "(np8c) the offset is applied to the dialog transform in place");
+doc.dispatch("pointerup", {});
+app.openNewPalette(); flushRaf();
+ok(app.newPalDrag.x === 0 && app.newPalDrag.y === 0, "(np8d) reopening recenters (drag reset)");
+// chips are swatch-only now — the palette name is the title (hover), not inline text.
+const npChip = app.querySelector(".newpal-chip");
+ok(npChip && !!npChip.getAttribute("title") && (npChip.textContent || "") === "", "(np8e) context chips are swatch-only (name in title, no inline text)");
+app.closeNewPalette(); flushRaf();
+
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {
   console.error("HEADLESS BOOT FAIL:");

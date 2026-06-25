@@ -11,12 +11,13 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 ### 2026-06-25
 
 #### Added
-- **"New palette" derivation modal** — "+ Palette" now opens a centered dialog that *derives* a
-  palette instead of adding a default. Three modes: **Relative** (a color-theory relationship —
-  extend / complete / contrast / bridge / anchor / recontextualize — computed from the palettes you
-  include via a "Derive from" strip), **Environmental** (a neutral/environment tone: chroma-weighted
-  mean hue + a clamped low chroma), and **Custom** (pick hue + chroma directly). Status palettes
-  (success/warning/error/…) are excluded from the derivation context by default.
+- **"New palette" derivation modal** — "+ Palette" now opens a large, **draggable** dialog (drag it
+  by the header) that *derives* a palette instead of adding a default. Three modes: **Relative** (a
+  color-theory relationship — extend / complete / contrast / bridge / anchor / recontextualize —
+  computed from the palettes you include via a "Derive from" strip of swatches), **Environmental** (a
+  neutral/environment tone: chroma-weighted mean hue + a clamped low chroma), and **Custom** (pick hue
+  + chroma directly). The "Derive from" strip is **swatch-only** (palette name on hover); status
+  palettes (success/warning/error/…) are excluded from the derivation context by default.
 
 ## [1.0.0] — 2026-06-24
 

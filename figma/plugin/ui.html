@@ -880,7 +880,8 @@ dialog.drawer::backdrop { background: rgba(10,14,22,.34); }
    and a live preview. Unlike the drawer it's centered, not edge-pinned. ── */
 dialog.newpal {
   position: fixed; inset: 0; margin: auto;
-  width: 540px; max-width: 92vw; max-height: 88vh;
+  width: min(860px, 94vw); height: min(82vh, 760px);
+  max-width: 94vw; max-height: 90vh;
   padding: 0; border: none; border-radius: var(--r-lg);
   background: var(--panel); color: var(--ink);
   box-shadow: var(--shadow-lg);
@@ -888,42 +889,44 @@ dialog.newpal {
 }
 dialog.newpal:not([open]) { display: none; }
 dialog.newpal::backdrop { background: rgba(10,14,22,.34); }
-.newpal-ctx { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+/* the header is the drag handle — move cursor everywhere except its buttons. */
+.newpal-head { cursor: move; user-select: none; touch-action: none; }
+.newpal-head button { cursor: pointer; }
+.newpal-ctx { padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .newpal-ctx.muted { opacity: .5; }
-.newpal-ctx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.newpal-ctx-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .newpal-ctx-head b { font-size: 12px; }
 .newpal-ctx-head small { color: var(--ink-dim); font-size: 11px; }
-.newpal-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* swatch-only chips — the palette name is the title (hover tooltip), no inline text. */
+.newpal-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .newpal-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 9px 4px 5px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--panel-2);
-  color: var(--ink-dim); font-size: 11.5px; font-weight: 550;
+  width: 32px; height: 32px; padding: 0; flex: none;
+  border-radius: var(--r-sm); border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  opacity: .42; transition: opacity .12s, box-shadow .12s; /* excluded reads dimmer */
 }
-.newpal-chip:hover:not(:disabled) { border-color: var(--line-2); color: var(--ink); }
-.newpal-chip.on { border-color: var(--accent); color: var(--ink); background: var(--panel); }
+.newpal-chip:hover:not(:disabled) { opacity: .75; }
+.newpal-chip.on { opacity: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .newpal-chip:disabled { cursor: default; }
-.newpal-chip-sw { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); flex: none; }
-.newpal-chip.on .newpal-chip-sw { box-shadow: 0 0 0 2px var(--accent); }
-.newpal-seg { margin: 10px 14px 0; }
-.newpal-body { padding: 12px 14px; overflow: auto; flex: 1; min-height: 0; }
-.newpal-rels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.newpal-seg { margin: 12px 16px 0; }
+.newpal-body { padding: 14px 16px; overflow: auto; flex: 1; min-height: 0; }
+.newpal-rels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .newpal-rel {
-  display: flex; flex-direction: column; gap: 3px; text-align: left;
-  padding: 9px 11px; border-radius: var(--r-sm);
+  display: flex; flex-direction: column; gap: 4px; text-align: left;
+  padding: 13px 15px; border-radius: var(--r-sm);
   border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
 }
 .newpal-rel:hover { border-color: var(--line-2); }
 .newpal-rel.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--panel); }
-.newpal-rel-label { font-size: 12.5px; }
-.newpal-rel-hint { color: var(--ink-dim); font-size: 11px; line-height: 1.4; }
-.newpal-note { color: var(--ink-dim); font-size: 12px; line-height: 1.55; margin: 0 0 10px; }
-.newpal-readout { font-size: 12px; color: var(--ink); margin: 0; }
+.newpal-rel-label { font-size: 13px; }
+.newpal-rel-hint { color: var(--ink-dim); font-size: 11.5px; line-height: 1.45; }
+.newpal-note { color: var(--ink-dim); font-size: 12.5px; line-height: 1.6; margin: 0 0 12px; max-width: 64ch; }
+.newpal-readout { font-size: 12.5px; color: var(--ink); margin: 0; }
 .newpal-readout b { font-variant-numeric: tabular-nums; }
-.newpal-custom .field { margin-bottom: 12px; }
+.newpal-custom .field { margin-bottom: 16px; }
 .newpal-foot {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-top: 1px solid var(--line);
+  padding: 12px 16px; border-top: 1px solid var(--line);
 }
 .newpal-preview { display: flex; align-items: center; gap: 8px; }
 .newpal-preview small { color: var(--ink-dim); font-size: 11px; }
@@ -4159,6 +4162,7 @@ class HctApp extends HTMLElement {
     this.newPalRel = "extend"; // selected Relative relationship
     this.newPalCtx = null; // Set<number> of included palette indices
     this.newPalCustom = null; // { hue, chroma } for the Custom tab (seeded on open)
+    this.newPalDrag = { x: 0, y: 0 }; // drag offset from the centered position (header-drag)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
     this.search = "";
@@ -5576,6 +5580,7 @@ class HctApp extends HTMLElement {
     const ps = this.doc.palettes || [];
     this.newPalCtx = new Set(ps.map((_, i) => i).filter((i) => ps[i].on !== false && !this._isSystemPalette(ps[i].name)));
     if (!this.newPalCustom) this.newPalCustom = { hue: 210, chroma: 55 };
+    this.newPalDrag = { x: 0, y: 0 }; // reset to centered each open (offset from margin:auto centre)
     this.newPalOpen = true;
     this.render();
   }
@@ -5585,6 +5590,26 @@ class HctApp extends HTMLElement {
     const ctx = this.newPalCtx || (this.newPalCtx = new Set());
     if (ctx.has(i)) ctx.delete(i); else ctx.add(i);
     this.render();
+  }
+
+  // _beginNewPalDrag — drag the modal by its header. The dialog is centered via `inset:0;
+  // margin:auto`, so we offset from centre with a live `transform: translate()` (set in place,
+  // no re-render → smooth) and remember the offset in newPalDrag so the next render re-applies it.
+  // A drag that starts on a header control (the close button) is ignored.
+  _beginNewPalDrag(e) {
+    if (e.target && e.target.closest && e.target.closest("button")) return;
+    const d = this.querySelector(".newpal");
+    if (!d) return;
+    const sx = e.clientX, sy = e.clientY;
+    const base = { ...(this.newPalDrag || { x: 0, y: 0 }) };
+    const move = (ev) => {
+      this.newPalDrag = { x: base.x + (ev.clientX - sx), y: base.y + (ev.clientY - sy) };
+      d.style.transform = `translate(${this.newPalDrag.x}px, ${this.newPalDrag.y}px)`;
+    };
+    const up = () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+    if (e.preventDefault) e.preventDefault();
   }
 
   // _syncNewPal — mirror _syncDrawer for the New-Palette <dialog>: re-promote to the top layer
@@ -5669,22 +5694,25 @@ class HctApp extends HTMLElement {
       { id: "environmental", label: "Environmental" },
       { id: "custom", label: "Custom" },
     ];
+    const drag = this.newPalDrag || { x: 0, y: 0 };
     return h(
       "dialog",
       {
         class: "newpal",
         "aria-label": "New palette",
+        style: `transform: translate(${drag.x}px, ${drag.y}px)`,
         onclick: (e) => { if (e.target === e.currentTarget) this.closeNewPalette(); },
         oncancel: (e) => { e.preventDefault(); this.closeNewPalette(); },
       },
+      // header doubles as the drag handle (move the whole modal); the close button is excluded.
       h(
         "div",
-        { class: "drawer-head" },
+        { class: "drawer-head newpal-head", onpointerdown: (e) => this._beginNewPalDrag(e) },
         h("h3", {}, icon("plus"), "New palette"),
         h("div", { class: "spacer" }),
         btn(icon("x"), { ariaLabel: "Close", onclick: () => this.closeNewPalette() }),
       ),
-      // "Derive from" strip — tap a chip to include/exclude that palette as context (A/B only).
+      // "Derive from" strip — swatch-only chips (name on hover); tap to include/exclude (A/B only).
       h(
         "div",
         { class: "newpal-ctx" + (needsCtx ? "" : " muted") },
@@ -5695,19 +5723,16 @@ class HctApp extends HTMLElement {
           ...ps.map((p, i) => {
             const vp = view.palettes[i];
             const on = ctx.has(i);
-            return h(
-              "button",
-              {
-                type: "button",
-                class: "newpal-chip" + (on ? " on" : ""),
-                "aria-pressed": on ? "true" : "false",
-                disabled: needsCtx ? undefined : true,
-                title: p.name + (on ? " — included" : " — excluded"),
-                onclick: () => this._toggleCtx(i),
-              },
-              h("span", { class: "newpal-chip-sw", style: `background:${vp ? vp.key : "#888"}` }),
-              h("span", { class: "newpal-chip-name" }, p.name),
-            );
+            return h("button", {
+              type: "button",
+              class: "newpal-chip" + (on ? " on" : ""),
+              "aria-pressed": on ? "true" : "false",
+              "aria-label": p.name + (on ? " (included)" : " (excluded)"),
+              disabled: needsCtx ? undefined : true,
+              title: p.name, // the palette name on hover (the swatch carries no text)
+              style: `background:${vp ? vp.key : "#888"}`,
+              onclick: () => this._toggleCtx(i),
+            });
           }),
         ),
       ),

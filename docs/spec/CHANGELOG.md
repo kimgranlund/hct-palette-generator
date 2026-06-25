@@ -2,11 +2,14 @@
 
 ## 1.30 — 2026-06-25 — "New palette" derivation modal (relative / environmental / custom)
 
-"+ Palette" now opens a centered top-layer **`<dialog class="newpal">`** that **derives** a palette
-instead of dropping a default. A **"Derive from"** strip toggles which existing palettes feed the
-derivation (status palettes — success/warning/error/danger/critical/info — start **excluded**, since
-they carry meaning, not character); each included palette contributes its vivid identity color as an
-OKLCH sample. Three modes (segmented tabs):
+"+ Palette" now opens a large, **header-draggable** centered top-layer **`<dialog class="newpal">`**
+(`min(860px, 94vw)` × `min(82vh, 760px)`; dragging offsets it from centre via a live
+`transform: translate()`, reset to centre on each open) that **derives** a palette instead of dropping
+a default. A **"Derive from"** strip of **swatch-only chips** (the palette name is the hover title —
+no inline text) toggles which existing palettes feed the derivation (status palettes —
+success/warning/error/danger/critical/info — start **excluded**, since they carry meaning, not
+character; included reads full-opacity with an accent ring, excluded reads dimmed); each included
+palette contributes its vivid identity color as an OKLCH sample. Three modes (segmented tabs):
 
 - **Relative** — a color-theory relationship over the samples: `extend` (analogous, +30° off the
   chroma-weighted-mean hue), `complete` (fill the largest open gap), `contrast` (complement, vivid),
@@ -21,8 +24,8 @@ Relative/Environmental compute a **target OKLCH** (`engine/derive.mjs`, validate
 target as the palette's **dominant key color**; Custom sets hue+chroma straight. The new palette is
 appended + selected. Pure-additive: no engine/contract/persist-schema change (it composes existing
 machinery). Covered by `(np)` headless assertions (context pre-seed + system exclusion, the three
-modes, the no-context block) and two real-browser smoke checks (centered top-layer dialog, the strip
-+ all six relationships).
+modes, the no-context block, header-drag offset + swatch-only chips) and real-browser smoke checks
+(centered top-layer dialog, the strip + all six relationships, swatch-only chips, header-draggable).
 
 ## 1.29 — 2026-06-25 — Download-All ships `figma-aliased/` (OD-004 cascade test artifact)
 

@@ -90,9 +90,15 @@ try {
   await evalJS(`${el}.openNewPalette()`); await sleep(400);
   ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.newpal");if(!d||!d.open)return false;const r=d.getBoundingClientRect();return Math.abs((r.left+r.right)/2 - innerWidth/2) < 2 && Math.abs((r.top+r.bottom)/2 - innerHeight/2) < 2})()`), "New-Palette modal opens centered in the top layer");
   ok(await evalJS(`${el}.querySelectorAll(".newpal-chip").length >= 1 && ${el}.querySelectorAll(".newpal-rel").length === 6`), "modal shows the context strip + all 6 Relative relationships");
+  // swatch-only chips: no inline text, the palette name lives in the title (hover tooltip).
+  ok(await evalJS(`(()=>{const c=${el}.querySelector(".newpal-chip");return !!c.getAttribute("title") && c.textContent.trim()===""})()`), "context chips are swatch-only (name in title)");
   const npShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "new-palette.png"), Buffer.from(npShot.data, "base64"));
   console.log("  · screenshot → smoke-out/new-palette.png");
+  // the modal is draggable by its header — synthesize a header-drag and confirm it offsets.
+  await evalJS(`(()=>{const a=${el};a._beginNewPalDrag({clientX:200,clientY:200,target:{},preventDefault(){}});document.dispatchEvent(new PointerEvent('pointermove',{clientX:260,clientY:240}));document.dispatchEvent(new PointerEvent('pointerup',{}));})()`);
+  await sleep(120);
+  ok(await evalJS(`/translate\\(\\s*60px\\s*,\\s*40px\\s*\\)/.test(${el}.querySelector("dialog.newpal").style.transform)`), "New-Palette modal is draggable by its header (offsets via transform)");
   await evalJS(`${el}.closeNewPalette()`); await sleep(150);
 } catch (e) {
   fails.push("smoke threw: " + e.message);

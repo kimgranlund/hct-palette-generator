@@ -305,6 +305,7 @@ class HctApp extends HTMLElement {
     this.newPalRel = "extend"; // selected Relative relationship
     this.newPalCtx = null; // Set<number> of included palette indices
     this.newPalCustom = null; // { hue, chroma } for the Custom tab (seeded on open)
+    this.newPalDrag = { x: 0, y: 0 }; // drag offset from the centered position (header-drag)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
     this.search = "";
@@ -1722,6 +1723,7 @@ class HctApp extends HTMLElement {
     const ps = this.doc.palettes || [];
     this.newPalCtx = new Set(ps.map((_, i) => i).filter((i) => ps[i].on !== false && !this._isSystemPalette(ps[i].name)));
     if (!this.newPalCustom) this.newPalCustom = { hue: 210, chroma: 55 };
+    this.newPalDrag = { x: 0, y: 0 }; // reset to centered each open (offset from margin:auto centre)
     this.newPalOpen = true;
     this.render();
   }
@@ -1731,6 +1733,26 @@ class HctApp extends HTMLElement {
     const ctx = this.newPalCtx || (this.newPalCtx = new Set());
     if (ctx.has(i)) ctx.delete(i); else ctx.add(i);
     this.render();
+  }
+
+  // _beginNewPalDrag — drag the modal by its header. The dialog is centered via `inset:0;
+  // margin:auto`, so we offset from centre with a live `transform: translate()` (set in place,
+  // no re-render → smooth) and remember the offset in newPalDrag so the next render re-applies it.
+  // A drag that starts on a header control (the close button) is ignored.
+  _beginNewPalDrag(e) {
+    if (e.target && e.target.closest && e.target.closest("button")) return;
+    const d = this.querySelector(".newpal");
+    if (!d) return;
+    const sx = e.clientX, sy = e.clientY;
+    const base = { ...(this.newPalDrag || { x: 0, y: 0 }) };
+    const move = (ev) => {
+      this.newPalDrag = { x: base.x + (ev.clientX - sx), y: base.y + (ev.clientY - sy) };
+      d.style.transform = `translate(${this.newPalDrag.x}px, ${this.newPalDrag.y}px)`;
+    };
+    const up = () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+    if (e.preventDefault) e.preventDefault();
   }
 
   // _syncNewPal — mirror _syncDrawer for the New-Palette <dialog>: re-promote to the top layer
@@ -1815,22 +1837,25 @@ class HctApp extends HTMLElement {
       { id: "environmental", label: "Environmental" },
       { id: "custom", label: "Custom" },
     ];
+    const drag = this.newPalDrag || { x: 0, y: 0 };
     return h(
       "dialog",
       {
         class: "newpal",
         "aria-label": "New palette",
+        style: `transform: translate(${drag.x}px, ${drag.y}px)`,
         onclick: (e) => { if (e.target === e.currentTarget) this.closeNewPalette(); },
         oncancel: (e) => { e.preventDefault(); this.closeNewPalette(); },
       },
+      // header doubles as the drag handle (move the whole modal); the close button is excluded.
       h(
         "div",
-        { class: "drawer-head" },
+        { class: "drawer-head newpal-head", onpointerdown: (e) => this._beginNewPalDrag(e) },
         h("h3", {}, icon("plus"), "New palette"),
         h("div", { class: "spacer" }),
         btn(icon("x"), { ariaLabel: "Close", onclick: () => this.closeNewPalette() }),
       ),
-      // "Derive from" strip — tap a chip to include/exclude that palette as context (A/B only).
+      // "Derive from" strip — swatch-only chips (name on hover); tap to include/exclude (A/B only).
       h(
         "div",
         { class: "newpal-ctx" + (needsCtx ? "" : " muted") },
@@ -1841,19 +1866,16 @@ class HctApp extends HTMLElement {
           ...ps.map((p, i) => {
             const vp = view.palettes[i];
             const on = ctx.has(i);
-            return h(
-              "button",
-              {
-                type: "button",
-                class: "newpal-chip" + (on ? " on" : ""),
-                "aria-pressed": on ? "true" : "false",
-                disabled: needsCtx ? undefined : true,
-                title: p.name + (on ? " — included" : " — excluded"),
-                onclick: () => this._toggleCtx(i),
-              },
-              h("span", { class: "newpal-chip-sw", style: `background:${vp ? vp.key : "#888"}` }),
-              h("span", { class: "newpal-chip-name" }, p.name),
-            );
+            return h("button", {
+              type: "button",
+              class: "newpal-chip" + (on ? " on" : ""),
+              "aria-pressed": on ? "true" : "false",
+              "aria-label": p.name + (on ? " (included)" : " (excluded)"),
+              disabled: needsCtx ? undefined : true,
+              title: p.name, // the palette name on hover (the swatch carries no text)
+              style: `background:${vp ? vp.key : "#888"}`,
+              onclick: () => this._toggleCtx(i),
+            });
           }),
         ),
       ),
