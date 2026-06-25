@@ -8,6 +8,11 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-25
+
+Adds the **New-Palette derivation modal**, a derived **`neutral`** leading every survey preset,
+opt-in **WCAG-safe on-colors**, and a **real-browser smoke test** in CI.
+
 ### 2026-06-25
 
 #### Added
@@ -34,6 +39,8 @@ they landed on `main` and reference the squash-merged PR that introduced them.
   path. (#63)
 
 #### Changed
+- The Figma **"Regroup"** action moved into the **Figma export tab** (beside the Binder plugin
+  button), out of the drawer footer — it's a Figma-tab action, so it lives with the other Figma ones.
 - **Tooling:** CI now runs a **real-browser smoke test** (headless Chrome over CDP, zero new deps) on
   every PR, driving gallery → survey → editor → export dialog. Node bumped to 22 (the smoke harness
   needs a global `WebSocket`). (#61)

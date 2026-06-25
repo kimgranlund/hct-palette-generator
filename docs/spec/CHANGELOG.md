@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.32 — 2026-06-25 — Figma "Regroup" moves into the Figma export tab
+
+The opt-in **"Regroup"** action (re-creates `Color Modes` in canonical grouped order) moved from the
+export drawer's **footer** (`.foot-actions`, beside Apply Variables / Download All) into the **Figma
+tab's sub-bar** (`.figma-bar-row`), right beside the **Binder plugin** button — it's a Figma-tab,
+in-Figma action, so it belongs with the other Figma controls rather than the always-on footer. Still
+gated on `inFigma`; behavior unchanged (`applyToFigma(true)` → `rebuildSemantic`). `(x)` headless
+assertions check it now renders inside `.figma-bar` and no longer in `.foot-actions`. Tagged the
+**v1.1.0** release (package.json + root CHANGELOG).
+
 ## 1.31 — 2026-06-25 — every survey preset leads with a derived `neutral` palette
 
 Each of the 336 survey presets now **prepends a `neutral` / environment palette** derived from its
