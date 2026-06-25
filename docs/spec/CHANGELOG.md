@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.29 — 2026-06-25 — Download-All ships `figma-aliased/` (OD-004 cascade test artifact)
+
+The Download-All `.zip` now includes a **`figma-aliased/`** folder alongside the default `figma/`:
+the same Light/Dark/raw tokens but with `com.figma.aliasData` targeting the `Color Primitives`
+collection (the `figmaBundle` shape the plugin posts), plus a `README.txt`. It exists so the
+**plugin-free native-import cascade can be tested by hand** — the open OD-004 question. The default
+`figma/` stays resolved (ADR-002); the plugin stays the reliable cascade. Step-by-step validation
+procedure: `references/od-004-plugin-free-import-test.md`. `(ee)` zip test updated (15 entries; the
+aliased leaves carry `aliasData`). No engine/contract change.
+
 ## 1.28 — 2026-06-25 — opt-in WCAG-safe on-colors (`onColorMode: "contrast"`) — OD-001
 
 A new `onColorMode` control adds an opt-in **`"contrast"`** mode (default stays **`"fixed"`**, ADR-003):

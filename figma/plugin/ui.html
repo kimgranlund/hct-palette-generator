@@ -3745,6 +3745,26 @@ const SETS_KEY = STORAGE_KEY + "-sets";
 // plugin the config lives IN the file on the document's root pluginData (round-tripped over the bridge).
 const PROJECT_KEY = STORAGE_KEY + "-project";
 
+// README shipped inside the Download-All zip's experimental figma-aliased/ folder (OD-004).
+const ALIASED_README = `figma-aliased/ — EXPERIMENTAL plugin-free cascade (OD-004)
+==========================================================
+Same tokens as ../figma/, but the Light/Dark variables carry com.figma.aliasData so they
+ALIAS the raw primitives instead of embedding resolved colors — i.e. editing a Color
+Primitive cascades to every semantic role, WITHOUT the NONOUN plugin.
+
+This native-import path is UNVERIFIED end-to-end. The ../figma/ (resolved) files always
+import cleanly; the NONOUN Figma plugin is the reliable cascade. Use this only to test
+native import, and import the primitives FIRST.
+
+To test (Figma → Local variables → Import):
+  1. Import palette.tokens.json   → creates the "Color Primitives" collection.
+  2. Import Light_tokens.json then Dark_tokens.json → creates "Color Modes".
+  3. Open a semantic variable (e.g. primary). It should show as an ALIAS to a
+     Color Primitives variable (not a flat color), and editing that primitive should
+     update it. If it imports as resolved colors (no alias) or errors on import, the
+     cascade did not resolve — use the plugin instead.
+`;
+
 // One-time storage-key migration: the key prefix was renamed "hct-palette-state-v1" -> "nonoun-color-tokens"
 // (the product rename, CHANGELOG 1.12). Copy any sets/config saved under the OLD keys into the new ones so a
 // returning user keeps their work. Idempotent (only fills an ABSENT new key) and tolerates a throwing
@@ -6845,6 +6865,17 @@ class HctApp extends HTMLElement {
       { name: `shadcn/${s}.css`, data: ex.shadcn },
       { name: `nonoun-color-tokens-${s}-config.json`, data: JSON.stringify(serialize(this.doc), null, 2) },
     ];
+    // figma-aliased/ — the SAME tokens, but the Light/Dark leaves carry com.figma.aliasData targeting
+    // the "Color Primitives" collection (figmaBundle). For TESTING plugin-free import / the live cascade
+    // (OD-004, unverified end-to-end). The default figma/ files (resolved) always import; the plugin is
+    // the reliable cascade. See figma-aliased/README.txt.
+    const aliased = this.figmaBundle();
+    files.push(
+      { name: "figma-aliased/palette.tokens.json", data: JSON.stringify(aliased["palette.tokens.json"], null, 2) },
+      { name: "figma-aliased/Light_tokens.json", data: JSON.stringify(aliased["Light_tokens.json"], null, 2) },
+      { name: "figma-aliased/Dark_tokens.json", data: JSON.stringify(aliased["Dark_tokens.json"], null, 2) },
+      { name: "figma-aliased/README.txt", data: ALIASED_README },
+    );
     const bytes = zipStore(files);
     this.downloadBytes(bytes, `nonoun-color-tokens-${s}.zip`, "application/zip");
   }
