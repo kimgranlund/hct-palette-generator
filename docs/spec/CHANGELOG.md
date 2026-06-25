@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.31 — 2026-06-25 — every survey preset leads with a derived `neutral` palette
+
+Each of the 336 survey presets now **prepends a `neutral` / environment palette** derived from its
+own character colors — the same rule as the New-Palette modal's Environmental tab (1.30):
+`deriveNeutral` over the 6 character palettes' key colors (status palettes — danger/warning/success —
+excluded), then `seedFromKeyColor`. Baked into **`scripts/gen-surveys.mjs`** (`deriveNeutralPalette`,
+importing `deriveNeutral` from the engine + `seedFromKeyColor` from the model) so the neutral travels
+with the data, shows in the gallery tiles, and serializes. Preset order is now `neutral,
+primary-base, primary-muted, secondary-base, secondary-muted, accent-base, accent-muted, danger,
+warning, success` (**10/preset**, was 9). The Lake Baikal preset reproduces `color-neutral-derivation.md`'s
+worked example exactly (OKLCH ≈ `[0.66, 0.009, 48°]`). The leading neutral carries no curated
+`colorName`/story (so it doesn't appear in the Story tab — intentional). The seeded `Default` set is
+not a survey and is intentionally left unchanged. `(hh)` headless assertions bumped to 10/neutral-first
++ a low-chroma-neutral check; `(st8)` + the lift probe re-pointed past the leading neutral. No
+engine/contract change (it composes 1.30's `deriveNeutral`).
+
 ## 1.30 — 2026-06-25 — "New palette" derivation modal (relative / environmental / custom)
 
 "+ Palette" now opens a large, **header-draggable** centered top-layer **`<dialog class="newpal">`**

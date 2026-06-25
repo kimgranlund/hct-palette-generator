@@ -18,6 +18,10 @@ they landed on `main` and reference the squash-merged PR that introduced them.
   neutral/environment tone: chroma-weighted mean hue + a clamped low chroma), and **Custom** (pick hue
   + chroma directly). The "Derive from" strip is **swatch-only** (palette name on hover); status
   palettes (success/warning/error/…) are excluded from the derivation context by default.
+- **Survey presets lead with a derived `neutral`** — all 336 gallery presets now prepend a
+  neutral/environment palette derived from their own character colors (the same rule as the modal's
+  Environmental mode), baked into the survey generator so it travels with the data and shows on the
+  tiles. 10 palettes/preset (was 9).
 
 ## [1.0.0] — 2026-06-24
 
