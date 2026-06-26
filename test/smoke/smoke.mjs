@@ -133,6 +133,14 @@ try {
   ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.drawer");return !!d && d.open && Math.round(d.getBoundingClientRect().height) === innerHeight})()`), "export drawer opens as a full-height <dialog>");
   await evalJS(`${el}.toggleDrawer(false)`); await sleep(200);
 
+  // Apply-to-Figma consent gate: a centered "back up your variables first" road-block before writing.
+  await evalJS(`(()=>{try{localStorage.removeItem("nonoun-color-tokens-apply-consent-v1")}catch(e){};${el}.setInFigma(true);${el}.requestApplyToFigma(false);})()`); await sleep(300);
+  ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.apply-gate");if(!d||!d.open)return false;const r=d.getBoundingClientRect();return Math.abs((r.left+r.right)/2-innerWidth/2)<2 && !!${el}.querySelector(".apply-gate-warn")})()`), "Apply-to-Figma consent gate opens (centered, back-up warning) before posting");
+  const gateShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "apply-gate.png"), Buffer.from(gateShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/apply-gate.png");
+  await evalJS(`(()=>{${el}.closeApplyGate();${el}.setInFigma(false);})()`); await sleep(150);
+
   const shot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "editor.png"), Buffer.from(shot.data, "base64"));
   console.log("  · screenshot → smoke-out/editor.png");

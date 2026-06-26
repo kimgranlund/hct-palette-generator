@@ -665,7 +665,30 @@ const hasClassX = (root, cls) => !!root && walk(root, (e) => e.classList && e.cl
 ok(hasClassX(figmaBarX, "figma-regroup"), "(x) the Regroup button renders inside the Figma tab's sub-bar (.figma-bar)");
 ok(!hasClassX(footX, "figma-regroup"), "(x) the Regroup button is NOT in the drawer footer anymore");
 ok(hasClassX(figmaBarX, "figma-plugin-btn"), "(x) Regroup sits beside the Binder plugin button (same .figma-bar)");
-app.exportOpen = false;
+app.exportOpen = false; app.render(); flushRaf();
+
+// ── (xg) apply gate: requestApplyToFigma road-blocks with a backup-consent modal before posting ──
+try { localStorage.removeItem("nonoun-color-tokens-apply-consent-v1"); } catch {}
+app.applyGateOpen = false; posted = null;
+app.requestApplyToFigma(false);
+ok(app.applyGateOpen === true && posted === null, "(xg) requestApplyToFigma opens the consent gate and does NOT post yet");
+ok(!!app.querySelector(".apply-gate"), "(xg) the apply-gate <dialog> is in the tree");
+app.applyGateDontShow = false; app.confirmApplyGate();
+ok(posted && posted.pluginMessage && posted.pluginMessage.type === "apply" && !posted.pluginMessage.rebuildSemantic, "(xg) confirming the gate posts the apply");
+ok(app._applyConsented() === false, "(xg) consent NOT persisted without 'don't show again'");
+posted = null; app.requestApplyToFigma(false);
+ok(app.applyGateOpen === true, "(xg) still gated on the next apply until consented");
+app.applyGateDontShow = true; app.confirmApplyGate();
+ok(app._applyConsented() === true && posted && posted.pluginMessage.type === "apply", "(xg) 'don't show again' persists consent + posts");
+app.applyGateOpen = false; posted = null; app.requestApplyToFigma(false);
+ok(app.applyGateOpen === false && posted && posted.pluginMessage.type === "apply", "(xg) once consented, a normal apply skips the gate (posts directly)");
+posted = null; app.requestApplyToFigma(true);
+ok(app.applyGateOpen === true && posted === null, "(xg) the destructive Regroup ALWAYS re-shows the gate, even when consented");
+app.confirmApplyGate();
+ok(posted && posted.pluginMessage.rebuildSemantic === true, "(xg) confirming the Regroup gate posts rebuildSemantic:true");
+ok(app._applyConsented() === true, "(xg) Regroup confirm does NOT change the apply consent");
+try { localStorage.removeItem("nonoun-color-tokens-apply-consent-v1"); } catch {}
+
 globalThis.parent = realParent;
 app.setInFigma(false);
 

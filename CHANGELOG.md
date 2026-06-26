@@ -10,6 +10,14 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-26
 
+#### Added
+- **"Back up your variables first" consent gate** before "Apply Variables → Figma" (and Regroup). A
+  centered modal explains that applying creates/overwrites the `Color Primitives` + `Color Modes`
+  variable collections (same-named variables are overwritten — which can intentionally re-skin bound
+  components), nudges you to **duplicate the file first**, and links to **how mappings work**. It's
+  **cookieable** ("Don't show again", remembered per user/version) for normal apply; the destructive
+  **Regroup always re-warns**. Doubles as Figma's required explicit-consent-before-modifying gate.
+
 #### Changed
 - The Figma plugin's in-file config key `hct-config` → **`nonoun-color-tokens-config`** (aligns with
   `SETS_KEY`'s `nonoun-color-tokens-*` naming). `readConfig` falls back to the legacy `hct-config` key,
