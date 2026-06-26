@@ -8,6 +8,14 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ## [Unreleased]
 
+### 2026-06-26
+
+#### Docs
+- **README refresh** — regenerated the hero from the current engine and **pinned the preview to the
+  perceptual distribution** (`gen-preview.mjs`), so the "perceptually-even" caption holds regardless of
+  the default; added a **Compose new palettes** feature bullet (the derivation modal + drag-reorder);
+  framed the hero as the perceptual export.
+
 ### 2026-06-25
 
 #### Changed

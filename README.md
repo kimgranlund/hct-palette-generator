@@ -16,12 +16,12 @@ It ships three ways: a **Vite web app**, a single dependency-free **`<nonoun-col
 component**, and a **Figma plugin** that writes the palette straight into the file's variable
 collections.
 
-<!-- Hero: regenerate with `npm run gen:preview` (rendered straight from the engine via projectView). -->
-![The 8 default palettes — perceptually-even tonal ramps, 050 → 950](docs/img/palette-preview.svg)
+<!-- Hero: regenerate with `npm run gen:preview` — rendered straight from the engine (projectView) in the PERCEPTUAL distribution. -->
+![The 8 default palettes — perceptual tonal ramps, 050 → 950](docs/img/palette-preview.svg)
 
-> The image above is the tool's **real output** — the eight default palettes rendered straight from
-> the engine (no mockup). Note the perceptually-even steps, the in-gamut deep ends, and `Warning`'s
-> deliberately lifted light end. Regenerate any time with `npm run gen:preview`.
+> The image above is the tool's **real output** — the eight default palettes in the **perceptual**
+> distribution, rendered straight from the engine (no mockup): perceptually-even steps, in-gamut deep
+> ends, and `Warning`'s deliberately lifted light end. Regenerate any time with `npm run gen:preview`.
 
 ## What it does
 
@@ -33,6 +33,11 @@ collections.
 - **Key colors.** Pin exact brand colors (a `dominant` and optional `supportive`, stored losslessly in
   OKLCH); the ramp is re-derived around them through the perceptual lens, so a palette keeps its real
   source color while every other stop stays even.
+- **Compose new palettes.** Derive a new palette from the ones you already have — a **Relative**
+  color-theory relationship (extend / complement / contrast / bridge / anchor / recontextualize, pivoting
+  on your primary), an **Environmental** neutral (the set's chroma-weighted-mean hue at a restrained
+  chroma), or a **Custom** pick (a native color picker, or hue + chroma) — with a hue × chroma plot and a
+  live ramp preview before you commit. Drag palettes by their handle to reorder.
 - **37-role semantic layer.** From each palette the engine derives the full role set — accents,
   on-colors, surfaces (dim/bright/low/high), outlines, containers, scrims, and inverse — resolved for
   **Light and Dark** in one pass.

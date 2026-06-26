@@ -17,7 +17,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, "../docs/img/palette-preview.svg");
 
 // ── The real projection ───────────────────────────────────────────────────────
-const view = projectView(defaultDocument());
+// The hero deliberately showcases the PERCEPTUAL distribution (the headline feature), pinned here so
+// the "perceptually-even" caption holds regardless of what DEFAULT_CONTROLS.toneMode happens to be.
+const doc = defaultDocument();
+doc.toneMode = "perceptual";
+const view = projectView(doc);
 const palettes = view.palettes.filter((p) => p.on); // enabled only, in doc order
 const stops = palettes[0].ramp.map((s) => s.stop); // the 19 display stops
 
