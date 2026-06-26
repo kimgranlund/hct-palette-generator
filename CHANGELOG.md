@@ -10,6 +10,11 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-26
 
+#### Changed
+- The Figma plugin's in-file config key `hct-config` → **`nonoun-color-tokens-config`** (aligns with
+  `SETS_KEY`'s `nonoun-color-tokens-*` naming). `readConfig` falls back to the legacy `hct-config` key,
+  so files saved before the rename still load and migrate forward on the next save.
+
 #### Docs
 - **README refresh** — regenerated the hero from the current engine and **pinned the preview to the
   perceptual distribution** (`gen-preview.mjs`), so the "perceptually-even" caption holds regardless of
