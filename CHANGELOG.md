@@ -14,7 +14,9 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 - **Palette drag-to-reorder is now ghost-based.** Dragging a row's ⋮⋮ handle lifts a **floating clone**
   that tracks the cursor, the source row collapses, and a **dashed placeholder** opens at the landing
   slot so the list visibly parts to show where the drop will go — replacing the thin drop-edge line.
-  The reorder logic (one undo step, selection follows the moved palette) is unchanged.
+  The drop slot is decided relative to that placeholder (the proposed placement) with a **10px
+  deadzone**, so it only reslots when the cursor moves clearly past the placeholder's edge — no jitter
+  from the reflow. The reorder logic (one undo step, selection follows the moved palette) is unchanged.
 
 ## [1.2.0] — 2026-06-25
 

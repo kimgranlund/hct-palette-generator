@@ -98,6 +98,19 @@ try {
     const dragShot = await send("Page.captureScreenshot", { format: "png" });
     writeFileSync(resolve(OUT, "drag-reorder.png"), Buffer.from(dragShot.data, "base64"));
     console.log("  · screenshot → smoke-out/drag-reorder.png");
+    // 10px drop sensitivity: the placeholder (proposed placement) is the hit area — a move within 10px
+    // of its bottom edge does NOT reslot; past 10px it does. anchor = the data-pi the drop lands before.
+    const phInfo = () => evalJS(`(()=>{const p=${el}.querySelector(".drop-ghost");if(!p)return null;const r=p.getBoundingClientRect();let n=p.nextSibling;while(n&&!(n.classList&&n.classList.contains("ramp-row")&&n.getAttribute&&n.getAttribute("data-pi")!=null))n=n.nextSibling;return {bottom:Math.round(r.bottom),anchor:(n?n.getAttribute("data-pi"):"end")}})()`);
+    const dragTo = (yy) => evalJS(`document.dispatchEvent(new PointerEvent("pointermove",{clientX:${dragPt.x},clientY:${yy},bubbles:true,cancelable:true}))`);
+    const p0 = await phInfo();
+    if (p0) {
+      await dragTo(p0.bottom + 5); await sleep(70);
+      const p1 = await phInfo();
+      ok(p1 && p1.anchor === p0.anchor, `within 10px of the placeholder edge the drop slot is stable (anchor ${p0.anchor})`);
+      await dragTo(p0.bottom + 40); await sleep(70);
+      const p2 = await phInfo();
+      ok(p2 && p2.anchor !== p0.anchor, `moving >10px past the edge reslots the drop (anchor ${p0.anchor} → ${p2 && p2.anchor})`);
+    }
     await evalJS(`document.dispatchEvent(new PointerEvent("pointerup",{bubbles:true,cancelable:true}))`); await sleep(120);
     ok(await evalJS(`!${el}.querySelector(".drag-ghost") && !${el}.querySelector(".drop-ghost")`), "releasing the drag removes the clone + placeholder");
   }

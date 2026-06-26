@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.36 — 2026-06-25 — reorder drop hit area = the placeholder, with a 10px deadzone
+
+The drop slot is now decided relative to the **placeholder** (the proposed placement), not a fresh
+row-midpoint hit-test each move. `_onReorderMove` steps the placeholder one row toward the cursor only
+while the cursor is past the placeholder's edge by **>10px** (`SENS`), re-reading rects each step (a
+bounded loop, to keep up with a fast flick); within the ±10px band it stays put. This kills the jitter
+the midpoint test had — the placeholder reflows the list, which moved the midpoints under the cursor.
+`_syncDropFromPlaceholder` reads `dropPi`/`before` from the placeholder's live DOM neighbors (skipping
+the collapsed source). The headless shim (no placeholder) keeps the midpoint fall-back, so the reorder
+verifier is unchanged; a smoke check asserts a sub-10px move holds the slot and a larger one reslots.
+
 ## 1.35 — 2026-06-25 — ghost-based palette drag-to-reorder (lifted clone + drop placeholder)
 
 Palette reorder now has the canonical "lift + part" feedback. `_beginReorder` builds a **floating

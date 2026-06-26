@@ -6727,17 +6727,20 @@ class HctApp extends HTMLElement {
     srcRow.style.display = "none";
   }
 
-  // _positionPlaceholder — move the placeholder to the current insertion slot (before/after the row
-  // under the cursor), so the surrounding rows reflow to open the gap where the drop will land.
-  _positionPlaceholder(target, rects) {
+  // _syncDropFromPlaceholder — read the committed drop (dropPi/before) from the placeholder's live DOM
+  // position: it drops BEFORE the next real row, or AFTER the previous one if it's at the very end. The
+  // collapsed source row (data-pi === src) is skipped so it never reads as the target.
+  _syncDropFromPlaceholder() {
     const st = this._reorder;
     const ph = st && st.placeholderEl;
     if (!ph || !ph.parentNode) return;
-    const hit = rects.find((r) => r.pi === target.pi);
-    if (!hit || !hit.el || !hit.el.parentNode) return;
-    const ref = target.before ? hit.el : hit.el.nextSibling;
-    if (ref === ph) return; // already there — don't reinsert before itself
-    hit.el.parentNode.insertBefore(ph, ref);
+    const isRow = (n) => n && n.classList && n.classList.contains("ramp-row") && n.getAttribute && n.getAttribute("data-pi") != null && Number(n.getAttribute("data-pi")) !== st.src;
+    let next = ph.nextSibling;
+    while (next && !isRow(next)) next = next.nextSibling;
+    if (next) { st.dropPi = Number(next.getAttribute("data-pi")); st.before = true; return; }
+    let prev = ph.previousSibling;
+    while (prev && !isRow(prev)) prev = prev.previousSibling;
+    if (prev) { st.dropPi = Number(prev.getAttribute("data-pi")); st.before = false; }
   }
 
   // _teardownDragGhost — remove the floating clone + placeholder and un-hide the source row. The
@@ -6751,31 +6754,49 @@ class HctApp extends HTMLElement {
     st.ghostEl = null; st.placeholderEl = null;
   }
 
-  // _onReorderMove — hit-test the row under the pointer, compute insert-before/after
-  // by the row midpoint, and paint a single drop indicator on that row.
+  // _onReorderMove — the floating clone tracks the cursor 1:1; the DROP slot is decided relative to
+  // the PLACEHOLDER's own position (the proposed placement) with a 10px deadzone, so it only reslots
+  // when the cursor moves clearly past the placeholder's edge — stable, never jittering from the
+  // reflow. Headless (no placeholder) falls back to the row-midpoint hit-test so the verifier holds.
   _onReorderMove(ev) {
     const st = this._reorder;
     if (!st) return;
     this._reordering = true;
+    st.moved = true;
     if (ev.preventDefault) ev.preventDefault();
-    // the floating clone tracks the cursor (anchored under the original grab point).
-    if (st.ghostEl) st.ghostEl.style.transform = `translate(${(ev.clientX ?? 0) - (st.grabDx || 0)}px, ${(ev.clientY ?? 0) - (st.grabDy || 0)}px)`;
-    // hit-test against the VISIBLE rows only — exclude the collapsed source (zero-height) so the
-    // hidden row never wins the test (in the shim, rows keep their height, so all are considered).
+    const y = ev.clientY;
+    // the floating clone follows the cursor (anchored under the original grab point).
+    if (st.ghostEl) st.ghostEl.style.transform = `translate(${(ev.clientX ?? 0) - (st.grabDx || 0)}px, ${(y ?? 0) - (st.grabDy || 0)}px)`;
+
+    // Browser path — the hit area is the placeholder (proposed placement) ± SENS px. Step the
+    // placeholder one row toward the cursor while it's past the deadzone (bounded, to keep up with a
+    // fast flick), re-reading rects each step since each move reflows the list.
+    const SENS = 10; // px the cursor must pass the placeholder edge before the drop reslots
+    if (st.placeholderEl && typeof st.placeholderEl.getBoundingClientRect === "function") {
+      for (let guard = 0; guard < 64; guard++) {
+        const ph = st.placeholderEl.getBoundingClientRect();
+        const rows = this._rowRects().filter((r) => r.bottom - r.top > 1); // visible rows (not the collapsed source)
+        const above = rows.filter((r) => r.bottom <= ph.top + 2).pop();    // row immediately above the placeholder
+        const below = rows.find((r) => r.top >= ph.bottom - 2);            // row immediately below it
+        if (above && y < ph.top - SENS) { st.placeholderEl.parentNode.insertBefore(st.placeholderEl, above.el); continue; }
+        if (below && y > ph.bottom + SENS) { st.placeholderEl.parentNode.insertBefore(st.placeholderEl, below.el.nextSibling); continue; }
+        break; // cursor is within the proposed slot's hit area — stable
+      }
+      this._syncDropFromPlaceholder();
+      return;
+    }
+
+    // Headless / no placeholder — row-midpoint hit-test (unchanged) so the reorder verifier still works.
     const rects = this._rowRects().filter((r) => r.bottom - r.top > 1);
     if (!rects.length) return;
-    const y = ev.clientY;
     let target = null;
     for (const r of rects) {
       if (y < r.mid) { target = { pi: r.pi, before: true }; break; }
-      target = { pi: r.pi, before: false }; // past the last midpoint -> after last
+      target = { pi: r.pi, before: false };
     }
     if (!target) target = { pi: rects[rects.length - 1].pi, before: false };
     st.dropPi = target.pi;
     st.before = target.before;
-    st.moved = true;
-    // open the gap at the insertion slot (the placeholder ghost); the old edge-line classes are gone.
-    this._positionPlaceholder(target, rects);
   }
 
   // _onReorderUp — finalize. Translate (dropPi, before) into a destination index in
