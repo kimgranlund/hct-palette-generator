@@ -982,6 +982,38 @@ dialog.newpal::backdrop { background: rgba(10,14,22,.34); }
 .newpal-preview small { color: var(--ink-dim); font-size: 11px; }
 .newpal-sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background-clip: padding-box; flex: none; }
 
+/* ── Apply-to-Figma consent gate — a centered top-layer <dialog> shown before Apply/Regroup, warning
+   to back up variables first (Figma consent gate + destructive-overwrite protection). ── */
+dialog.apply-gate {
+  position: fixed; inset: 0; margin: auto;
+  width: min(460px, 92vw); max-height: 88vh;
+  padding: 0; border: none; border-radius: var(--r-lg);
+  background: var(--panel); color: var(--ink); box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+dialog.apply-gate:not([open]) { display: none; }
+dialog.apply-gate::backdrop { background: rgba(10,14,22,.34); }
+.apply-gate-body { padding: 14px 16px; overflow: auto; }
+.apply-gate-lede { font-size: 12.5px; line-height: 1.6; color: var(--ink); margin: 0 0 12px; }
+.apply-gate-warn {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; margin: 0 0 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--c-warning-outline, light-dark(#e6c200, #6b5a00));
+  background: color-mix(in srgb, var(--c-warning-500, #d4a200) 12%, transparent);
+  font-size: 12px; line-height: 1.5;
+}
+.apply-gate-warn svg { flex: none; margin-top: 1px; color: var(--c-warning-600, #b88a00); }
+.apply-gate-learn { font-size: 12px; color: var(--ink-dim); margin: 0 0 12px; }
+.linklike {
+  color: var(--accent); font: inherit; font-size: inherit; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer; background: none; border: 0; padding: 0;
+}
+.linklike:hover { color: var(--accent); filter: brightness(1.1); }
+.apply-gate-dontshow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); cursor: pointer; }
+.apply-gate-dontshow input { width: 14px; height: 14px; accent-color: var(--accent); }
+.apply-gate-foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.apply-gate-foot .spacer { flex: 1; }
+
 /* ── responsive toolbars — the plugin window can be narrow; toolbars must never overflow ── */
 /* never break a button's own label across lines (no 3-line "⚑ Add Variables → Figma"). */
 .app-header button, .canvas-header button, .drawer-foot button, .drawer-head button { white-space: nowrap; }
@@ -4214,6 +4246,11 @@ class HctApp extends HTMLElement {
     this.newPalCtx = null; // Set<number> of included palette indices
     this.newPalCustom = null; // { hue, chroma } for the Custom tab (seeded on open)
     this.newPalDrag = { x: 0, y: 0 }; // drag offset from the centered position (header-drag)
+    // Apply-to-Figma consent gate (back up your variables first). Cookieable for normal apply; the
+    // destructive Regroup always re-shows. See requestApplyToFigma / renderApplyGate.
+    this.applyGateOpen = false;
+    this.applyGateRebuild = false; // the pending action: false = apply, true = regroup
+    this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
     this.search = "";
@@ -4569,6 +4606,7 @@ class HctApp extends HTMLElement {
     this._restoreFocus(focus);
     this._syncDrawer(); // (re)open/close the native <dialog> to match exportOpen (top layer)
     this._syncNewPal(); // same, for the New-Palette modal
+    this._syncApplyGate(); // same, for the Apply-to-Figma consent gate
   }
 
   // _syncDrawer — reconcile the native export <dialog> with this.exportOpen AFTER each render.
@@ -5086,6 +5124,7 @@ class HctApp extends HTMLElement {
       this.renderAppFooter(),
       this.renderDrawer(view),
       this.renderNewPalette(view),
+      this.renderApplyGate(),
       this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
     );
   }
@@ -7530,7 +7569,7 @@ class HctApp extends HTMLElement {
                   ? btn([icon("arrows-clockwise"), "Regroup"], {
                       cls: "figma-regroup",
                       title: "Rebuild the Color Modes variables in grouped order (regular · containers · surfaces · scrims). Re-creates them, so layers bound to them will need reconnecting. Color Primitives are untouched.",
-                      onclick: () => this.applyToFigma(true),
+                      onclick: () => this.requestApplyToFigma(true),
                     })
                   : false,
               ),
@@ -7571,7 +7610,7 @@ class HctApp extends HTMLElement {
                   variant: "primary",
                   cls: "figma-apply",
                   title: "Create/update the Color Primitives + Color Modes (Light/Dark) variable collections directly in this Figma file",
-                  onclick: () => this.applyToFigma(),
+                  onclick: () => this.requestApplyToFigma(),
                 })
               : false,
             // (Regroup moved to the Figma tab's sub-bar, beside the Binder plugin button.)
@@ -7684,12 +7723,35 @@ class HctApp extends HTMLElement {
   // applyToFigma — post the current DTCG bundle to the plugin sandbox (code.js), which
   // creates/updates the raw-colors + Light/Dark variable collections. A safe no-op outside
   // a Figma plugin: parent === window and nothing listens for the pluginMessage envelope.
+  // requestApplyToFigma — the GATED entry the Apply / Regroup buttons call. Shows a "back up your
+  // variables first" road-block (explicit consent + destructive-overwrite warning) before touching
+  // the file. Normal apply is cookieable ("don't show again"); the destructive Regroup ALWAYS warns.
+  requestApplyToFigma(rebuild = false) {
+    if (!rebuild && this._applyConsented()) { this.applyToFigma(false); return; }
+    this.applyGateRebuild = !!rebuild;
+    this.applyGateDontShow = false;
+    this.applyGateOpen = true;
+    this.render();
+  }
+  closeApplyGate() { this.applyGateOpen = false; this.render(); }
+  // confirm the gate: persist consent (normal apply only) + run the real apply.
+  confirmApplyGate() {
+    const rebuild = this.applyGateRebuild;
+    if (!rebuild && this.applyGateDontShow) this._setApplyConsent();
+    this.applyGateOpen = false;
+    this.applyToFigma(rebuild);
+  }
+  // consent is a per-USER preference (not doc-bound) → localStorage, versioned so a material change to
+  // apply-behavior can re-surface the warning by bumping the key. (Figma's iframe localStorage may be
+  // session-scoped — re-warning once per session for a destructive action is acceptable / safe.)
+  _applyConsentKey() { return "nonoun-color-tokens-apply-consent-v1"; }
+  _applyConsented() { try { return localStorage.getItem(this._applyConsentKey()) === "1"; } catch { return false; } }
+  _setApplyConsent() { try { localStorage.setItem(this._applyConsentKey(), "1"); } catch { /* storage blocked */ } }
+
   applyToFigma(rebuild = false) {
     // rebuild = the opt-in "Regroup" path: re-create the Color Modes collection so it adopts the
     // canonical grouped order (Figma keeps existing variables' positions on a normal update). It
-    // re-creates the semantic variables, so confirm first — bound layers will detach.
-    if (rebuild && typeof confirm === "function" &&
-        !confirm("Rebuild the Color Modes variables in grouped order?\n\nThis deletes and re-creates the semantic variables, so any layers or styles bound to them will need reconnecting. (Color Primitives are untouched.)")) return;
+    // re-creates the semantic variables — bound layers detach (warned in the apply gate).
     try {
       // Send the variables AND the exact params together — code.js embeds the config in the file
       // (root pluginData) so a later read reproduces this state losslessly, not approximately.
@@ -7698,6 +7760,73 @@ class HctApp extends HTMLElement {
     } catch {
       /* not in a frame / blocked — nothing to apply to */
     }
+  }
+
+  // _syncApplyGate — reconcile the gate <dialog> with applyGateOpen (mirrors _syncDrawer/_syncNewPal).
+  _syncApplyGate() {
+    const d = this.querySelector(".apply-gate");
+    if (!d || typeof d.showModal !== "function") return;
+    if (this.applyGateOpen && !d.open) { try { d.showModal(); } catch { /* not attached */ } }
+    else if (!this.applyGateOpen && d.open) { try { d.close(); } catch { /* already closed */ } }
+  }
+
+  // renderApplyGate — the "back up your variables first" consent road-block shown before Apply/Regroup.
+  // A Figma review gate (explicit awareness before modifying the file) AND destructive-overwrite
+  // protection (Apply can overwrite same-named variables that components are bound to).
+  renderApplyGate() {
+    const rebuild = this.applyGateRebuild;
+    const MAPPINGS_DOC = "https://nonoun.io/docs/mappings";
+    return h(
+      "dialog",
+      {
+        class: "apply-gate",
+        "aria-label": rebuild ? "Regroup Color Modes" : "Apply variables to Figma",
+        onclick: (e) => { if (e.target === e.currentTarget) this.closeApplyGate(); },
+        oncancel: (e) => { e.preventDefault(); this.closeApplyGate(); },
+      },
+      h(
+        "div",
+        { class: "drawer-head" },
+        h("h3", {}, icon("warning"), rebuild ? "Regroup Color Modes" : "Apply variables to this file"),
+        h("div", { class: "spacer" }),
+        btn(icon("x"), { ariaLabel: "Close", onclick: () => this.closeApplyGate() }),
+      ),
+      h(
+        "div",
+        { class: "apply-gate-body" },
+        h("p", { class: "apply-gate-lede" }, rebuild
+          ? "Regroup deletes and re-creates the Color Modes variables so they adopt the grouped order. Any layers or styles bound to them will detach and need reconnecting. (Color Primitives are untouched.)"
+          : "This creates or updates the Color Primitives + Color Modes variable collections in this file. Variables with the same names are overwritten — which can re-skin components already bound to them (sometimes exactly what you want)."),
+        h(
+          "div",
+          { class: "apply-gate-warn" },
+          icon("warning", { size: 16 }),
+          h("div", {}, h("b", {}, "Back up your file first."), " Duplicate the file (or the collections) before applying, so you can roll back if a mapping overwrites something you meant to keep."),
+        ),
+        h("p", { class: "apply-gate-learn" },
+          "Re-routing semantic tokens onto existing variables? ",
+          h("button", { type: "button", class: "linklike", onclick: () => { try { window.open(MAPPINGS_DOC, "_blank", "noopener"); } catch {} } }, "Learn how mappings work →"),
+        ),
+        // "Don't show again" — normal apply only; the destructive Regroup always warns.
+        rebuild ? false : h(
+          "label",
+          { class: "apply-gate-dontshow" },
+          h("input", {
+            type: "checkbox",
+            checked: this.applyGateDontShow ? true : undefined,
+            onchange: (e) => { this.applyGateDontShow = !!e.target.checked; },
+          }),
+          h("span", {}, "Don't show this again"),
+        ),
+      ),
+      h(
+        "div",
+        { class: "apply-gate-foot" },
+        h("div", { class: "spacer" }),
+        btn("Cancel", { onclick: () => this.closeApplyGate() }),
+        btn(rebuild ? "Regroup variables" : "Apply variables", { variant: "primary", cls: "apply-gate-go", onclick: () => this.confirmApplyGate() }),
+      ),
+    );
   }
 
   // ── project source of truth (config round-trip I/O) ───────────────────────────────────
