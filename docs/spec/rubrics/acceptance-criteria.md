@@ -25,7 +25,7 @@
   ≥ chroma at 950 for a saturated palette).
 
 ## AC-S · Semantic system
-- **AC-S1** `semanticRoles(n)` returns exactly **37** roles for every palette.
+- **AC-S1** `semanticRoles(n)` returns exactly **53** roles for every palette.
 - **AC-S2** Exactly **7** roles are scrims, all on base 500 (`scrimWeakest…scrimStrongest`).
 - **AC-S3** `on{N}` light===dark===`050` and `on{N}Variant` light===dark===`200` for every
   palette.

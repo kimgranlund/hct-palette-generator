@@ -27,7 +27,7 @@ Can a user import the tokens into Figma **without the plugin** and get the live 
    - **Expect:** a **`Color Primitives`** collection with one `Value`-mode COLOR variable per
      stop/scrim (`{family}/050` … `{family}/950`, `{family}/500-{step}`).
 3. **Import** `figma-aliased/Light_tokens.json`, then `figma-aliased/Dark_tokens.json`.
-   - **Expect:** a **`Color Modes`** collection with `Light` + `Dark` modes and the 37 semantic
+   - **Expect:** a **`Color Modes`** collection with `Light` + `Dark` modes and the 53 semantic
      variables per palette.
 4. Inspect a semantic variable — e.g. `primary/primary` or `primary/surface`:
    - **PASS:** its Light and Dark values show as an **alias** (a chip pointing at a `Color Primitives`

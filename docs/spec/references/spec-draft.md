@@ -44,7 +44,7 @@ Figma. Hue and chroma come from **CAM16**; tone is **CIELAB L\***. It is not a b
 picker and not a build-time pipeline — it is an interactive generator whose output is a set
 of portable token artifacts.
 
-Core operations: (1) compute in-gamut tonal ramps per palette; (2) map ramps to a 37-role
+Core operations: (1) compute in-gamut tonal ramps per palette; (2) map ramps to a 53-role
 semantic layer with light/dark modes; (3) export to five formats; (4) optionally bind a live
 raw→semantic cascade in Figma via a companion plugin.
 
@@ -83,7 +83,7 @@ keep mode-switching in a dedicated semantic layer.
 |-------|------|----------|----------|-----------|
 | Engine | CAM16↔sRGB, L\*, gamut search | sRGB / HCT inputs | in-gamut RGB per (hue, chroma, tone) | anchors drift past tolerance |
 | Tonal generation | curves, skew/lift, chroma+damping | engine, global+palette controls | per-stop {tone, chroma, rgb} | a stop exceeds the gamut ceiling |
-| Semantic mapping | the 37-role table | per-stop colors | role→ref mappings + resolved leaves | role table diverges across impls |
+| Semantic mapping | the 53-role table | per-stop colors | role→ref mappings + resolved leaves | role table diverges across impls |
 | Export | format serializers | semantic + raw | CSS / JSON / DTCG zip / UI3 | a ref doesn't resolve to a primitive |
 
 Full detail per layer: `references/knowledge-01..05`. An auxiliary engine module, `derive.mjs`
@@ -106,7 +106,7 @@ sideW = max(0, 1 + (dampBias/100)·sign(stop−500))), clamp `min(target·m, gam
 lmin 5, lmax 100, damp 80, dampCurve 1.5, dampAmp 0, dampBias 0.
 
 ## 7. Data Model 📐
-Canonical machine-readable form: `data/role-table.json` (`constants`, `roleTable` 37 rows,
+Canonical machine-readable form: `data/role-table.json` (`constants`, `roleTable` 53 rows,
 `defaults` 8 palettes).
 
 ```ts
@@ -145,7 +145,7 @@ Field-table convention and clamp ranges: `knowledge-02` §2 and `hydrate()` vali
 
 ## 8. Semantic Token System 📐
 See `references/knowledge-03-semantic-system.md`. Two layers (flat raw + semantic
-`light-dark()`, ADR-005); 37 roles/palette; on-colors fixed to `050`/`200` (ADR-003,
+`light-dark()`, ADR-005); 53 roles/palette; on-colors fixed to `050`/`200` (ADR-003,
 OD-001); 7 scrim roles on base 500 (ADR-004, OD-002); surface Dim/Bright (non-mirror) vs
 Low/High (mirror).
 
@@ -162,7 +162,7 @@ table as the generator (parity). (Collections renamed from `semantic-colors` / `
 ## 11. UI / Interaction 📐
 A **gallery** hub (Your Palettes + **Color Categories** — 7 curated categories × 48 = 336 presets,
 lazy-loaded) opens a set into the **editor**: a live canvas of palette rows + a right-pane inspector
-(per-palette hue/chroma/cusp-pull/edge-hue/skew/lift, global tonal controls, the 37-role mapping) and a
+(per-palette hue/chroma/cusp-pull/edge-hue/skew/lift, global tonal controls, the 53-role mapping) and a
 left analysis rail (L\*×C plot, tone + chroma curves, contrast readout, hue wheel). **Compose a new
 palette** via the New-Palette modal (`knowledge-06`: Relative / Environmental / Custom + live preview).
 **Reorder** palette rows by dragging the ⋮⋮ handle — a lifted clone + a dashed drop placeholder (10px
@@ -209,8 +209,8 @@ designers work in familiar numbers without changing the output color math.
 ## 15. Current Status
 
 - **Complete:** engine (verified to anchors); tonal generation (5 curves, skew/lift,
-  damping); 37-role semantic layer; 5 export formats; companion plugin; persistence; parity
-  across artifact/`gen.js`/plugin at 37 roles.
+  damping); 53-role semantic layer; 5 export formats; companion plugin; persistence; parity
+  across artifact/`gen.js`/plugin at 53 roles.
 - **In progress:** spec hardening (this document) for spec-author enhancement.
 - **Not yet addressed:** automated accessibility surfacing in-app; configurable palette set;
   aliased-cascade export without the plugin (OD-004).
@@ -221,14 +221,14 @@ designers work in familiar numbers without changing the output color math.
 |-----|----------|
 | `references/knowledge-01-color-engine.md` | matrices, CAM16 fwd/inv, VC, gamut, anchors |
 | `references/knowledge-02-tonal-scale.md` | stops, curves, `toneAt`, chroma+damping |
-| `references/knowledge-03-semantic-system.md` | two layers, 37 roles, on-colors, scrims, surfaces |
+| `references/knowledge-03-semantic-system.md` | two layers, 53 roles, on-colors, scrims, surfaces |
 | `references/knowledge-04-export-formats.md` | 5 formats, shapes, Figma import constraints |
 | `references/knowledge-05-figma-plugin.md` | cascade binder, parity, run/failure modes |
 | `references/knowledge-06-palette-derivation.md` | the "New Palette" engine (`derive.mjs`): Relative / Environmental / Custom |
 | `color-neutral-derivation.md` | the neutral/environment rule (hue + max chroma) |
 | `references/decision-records.md` | ADR-001…010 (fenced choices) |
 | `references/glossary.md` | project vocabulary |
-| `data/role-table.json` | canonical 37-role table + defaults + constants |
+| `data/role-table.json` | canonical 53-role table + defaults + constants |
 | `data/verification-anchors.json` | engine roundtrip anchors |
 | `rubrics/quality-rubric.md` | spec scoring (spec-author 10 dims + project checks) |
 | `rubrics/acceptance-criteria.md` | runnable acceptance predicates |

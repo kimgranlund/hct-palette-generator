@@ -25,10 +25,10 @@ const want3 = ["palette.tokens.json", "Light_tokens.json", "Dark_tokens.json"];
 if (want3.some((k) => !(k in dtcg)) || Object.keys(dtcg).length !== 3) FAIL("dtcg-shape", `keys = ${Object.keys(dtcg)}`);
 for (const k of want3) try { JSON.parse(JSON.stringify(dtcg[k])); } catch { FAIL("dtcg-shape", `${k} not JSON-serializable`); }
 
-// ── hpg-export-leaf-valid (>= 37 x enabled resolved leaves per mode; each well-formed) ────
+// ── hpg-export-leaf-valid (>= 53 x enabled resolved leaves per mode; each well-formed) ────
 for (const file of ["Light_tokens.json", "Dark_tokens.json"]) {
   const ls = leaves(dtcg[file]);
-  if (ls.length < 37 * enabledCount(C(ALL))) FAIL("leaf-valid", `${file} has ${ls.length} leaves < 37×${enabledCount(C(ALL))}`);
+  if (ls.length < 53 * enabledCount(C(ALL))) FAIL("leaf-valid", `${file} has ${ls.length} leaves < 53×${enabledCount(C(ALL))}`);
   for (const lf of ls) {
     const v = lf.$value;
     if (!v || v.colorSpace !== "srgb") { FAIL("leaf-valid", `leaf colorSpace != srgb`); break; }

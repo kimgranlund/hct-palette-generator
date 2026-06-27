@@ -132,7 +132,7 @@ if (applyBundle) {
         }
       }
       if (bad > 0) FAIL("cascade", `${bad} semantic mode-values are not aliased to a created raw var`);
-      if (aliased !== semExpect * 2) FAIL("cascade", `${aliased} aliased mode-values, expected ${semExpect * 2} (37 roles × palettes × 2 modes)`);
+      if (aliased !== semExpect * 2) FAIL("cascade", `${aliased} aliased mode-values, expected ${semExpect * 2} (53 roles × palettes × 2 modes)`);
     }
 
     // ── IDEMPOTENT re-apply: a 2nd run finds-or-creates → updates in place, never doubles ──

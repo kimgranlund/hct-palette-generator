@@ -14,7 +14,7 @@
 `data/role-table.json` is the **canonical** role table; all three must match it.
 
 ## Checks
-- **P1 — Role count.** `semanticRoles('primary').length === 37` in all three and in
+- **P1 — Role count.** `semanticRoles('primary').length === 53` in all three and in
   `data/role-table.json`.
 - **P2 — Role keys.** The ordered set of `key`s is identical across all three.
 - **P3 — Refs.** For every role, `light`/`dark` refs match `data/role-table.json` exactly

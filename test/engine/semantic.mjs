@@ -24,8 +24,8 @@ const validPrim = (ref) => {
   return EXPORT_STOPS.includes(parseInt(ref, 10));
 };
 
-// ── hpg-semantic-roles: exactly 37 roles; exactly 7 scrims, all on the 500 ramp (alpha% = step/10) ─
-if (ROLES.length !== 37) FAIL("roles", `got ${ROLES.length} roles, want 37`);
+// ── hpg-semantic-roles: exactly 53 roles; exactly 7 scrims, all on the 500 ramp (alpha% = step/10) ─
+if (ROLES.length !== 53) FAIL("roles", `got ${ROLES.length} roles, want 53`);
 const scrims = ROLES.filter((r) => /^scrim/.test(r.key));
 if (scrims.length !== 7) FAIL("roles", `got ${scrims.length} scrim roles, want 7`);
 for (const s of scrims) {

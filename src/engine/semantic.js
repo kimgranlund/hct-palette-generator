@@ -1,4 +1,4 @@
-// semantic-mapping — the 37 semantic token roles per palette.
+// semantic-mapping — the 53 semantic token roles per palette.
 //
 // Two-layer model: raw primitives are mode-independent; the light/dark FLIP
 // lives only here in the semantic layer. Each role declares a `light` ref and a
@@ -70,7 +70,7 @@ export function refKey(ref) {
 }
 
 /**
- * Build the canonical 37-role semantic table for a palette.
+ * Build the canonical 49-role semantic table for a palette.
  * @param {string} paletteName lowercase palette name (e.g. "primary")
  * @returns {{ key: string, suffix: string, light: string, dark: string }[]}
  */
@@ -90,22 +90,65 @@ export function semanticRoles(paletteName) {
   role(`${n}Low`, '-low', '350', '700');
   role(`${n}High`, '-high', '650', '400');
 
+  // 1b. ACCENT INTERACTION STATES — tonal offsets along the palette's own ramp, so they stay in-gamut
+  //     and consistent across every palette for free. Emphasis grows by DARKENING on light surfaces and
+  //     LIGHTENING on dark (mode-mirrored): hover = prime ±1 step, active = prime ±2 (same direction, so
+  //     pressed reads "more" than hover). DISABLED is NOT a tonal sibling — there is no neutral/desaturate
+  //     primitive in the per-palette ref model, so it is a faint translucent wash of the palette's own 500
+  //     (a low-alpha scrim reads inert over any surface; light === dark, like outline/container).
+  role(`${n}Hover`, '-hover', '650', '350'); // prime +1 step toward emphasis (darker light / lighter dark)
+  role(`${n}Active`, '-active', '750', '250'); // prime +2 steps — pressed is "more" than hover
+  role(`${n}Disabled`, '-disabled', '500-200', '500-200'); // faint 20% wash — inert, mode-independent
+
   // 2. ON-ACCENT — name-prefixed; fixed to the light end in BOTH modes (OD-001).
   role(`on${N}`, `-on-${n}`, '50', '50');
   role(`on${N}Variant`, `-on-${n}-variant`, '200', '200');
 
+  // 2b. ON-ACCENT INTERACTION STATES — the label color on each state fill. Hover/Active TRACK the base
+  //     on-color (the same fixed light end by default; applyOnColorContrast re-points them against their
+  //     OWN state fill — 650/350 hover, 750/250 active — in "contrast" mode). DISABLED deliberately opts
+  //     OUT of the contrast guarantee: a translucent label over the faint fill, intentionally sub-4.5:1
+  //     so the control reads inert.
+  role(`on${N}Hover`, `-on-${n}-hover`, '50', '50');
+  role(`on${N}Active`, `-on-${n}-active`, '50', '50');
+  role(`on${N}Disabled`, `-on-${n}-disabled`, '500-400', '500-400'); // translucent inert label
+
   // 3. ON-SURFACE — shared keys (NOT name-prefixed).
   role('onSurface', '-on-surface', '950', '50');
   role('onSurfaceVariant', '-on-surface-variant', '750', '250');
+  // placeholder — input/field placeholder text: one mirrored step MORE muted than onSurfaceVariant
+  // (650/350 vs 750/250), so it reads as a secondary hint yet still clears a legibility floor against the
+  // field surface. A SOLID stop, NOT a translucent wash — translucent placeholder text is the classic a11y
+  // failure. Like the other on-surface text it is fixed per mode (it is not contrast-repointed).
+  role('placeholder', '-placeholder', '650', '350');
 
   // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).
   role('outline', '-outline', '500-600', '500-600');
   role('outlineVariant', '-outline-variant', '500-300', '500-300');
 
+  // 4b. OUTLINE INTERACTION STATES — shared; one strength stronger per state (hover +1, active +2 on the
+  //     500 ramp), disabled a faint border. Mode-independent like the base outline.
+  role('outlineHover', '-outline-hover', '500-700', '500-700');
+  role('outlineActive', '-outline-active', '500-800', '500-800');
+  role('outlineDisabled', '-outline-disabled', '500-200', '500-200');
+
+  // 4c. OUTLINE-VARIANT INTERACTION STATES — the weaker divider's states, parallel to 4b but one emphasis
+  //     step fainter throughout: base 300 → hover 400 → active 500 (+1/+2 on the 500 ramp), disabled the
+  //     faintest border (100, collapsed toward the surface). Shared + mode-independent like outlineVariant.
+  role('outlineVariantHover', '-outline-variant-hover', '500-400', '500-400');
+  role('outlineVariantActive', '-outline-variant-active', '500-500', '500-500');
+  role('outlineVariantDisabled', '-outline-variant-disabled', '500-100', '500-100');
+
   // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).
   role('container', '-container', '500-200', '500-200');
   role('containerLow', '-container-low', '500-100', '500-100');
   role('containerHigh', '-container-high', '500-300', '500-300');
+
+  // 5b. CONTAINER INTERACTION STATES — shared; one strength stronger per state (hover +1, active +2),
+  //     disabled the faintest. Mode-independent like the base container.
+  role('containerHover', '-container-hover', '500-300', '500-300');
+  role('containerActive', '-container-active', '500-400', '500-400');
+  role('containerDisabled', '-container-disabled', '500-100', '500-100');
 
   // 6. INVERSE — shared.
   role('inverseSurface', '-inverse-surface', '900', '100');
@@ -180,16 +223,26 @@ export function applyRoleOverrides(roles, overrides) {
  */
 export function applyOnColorContrast(roles, n, lumOf, onColorMode) {
   if (onColorMode !== 'contrast') return roles;
-  const onMain = `-on-${n}`, onVar = `-on-${n}-variant`;
   const wcag = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   const pick = (fillRef, ends) => {
     const f = lumOf(fillRef);
     return wcag(lumOf(ends[0]), f) >= wcag(lumOf(ends[1]), f) ? ends[0] : ends[1];
   };
+  // suffix -> { fill: [lightFillRef, darkFillRef], ends }: each on-color flips to the END (light vs dark
+  // extreme) that maximizes WCAG contrast against the SPECIFIC fill it sits on. Prime/variant ride the
+  // base accent (550/450); the interaction-state on-colors ride their own state fills (hover 650/350,
+  // active 750/250) so the label stays consistent with its base in this mode. `-on-{n}-disabled` is
+  // deliberately ABSENT — disabled opts out of the contrast guarantee (it stays the inert translucent label).
+  const M = {
+    [`-on-${n}`]: { fill: ['550', '450'], ends: ['050', '950'] },
+    [`-on-${n}-variant`]: { fill: ['550', '450'], ends: ['200', '800'] },
+    [`-on-${n}-hover`]: { fill: ['650', '350'], ends: ['050', '950'] },
+    [`-on-${n}-active`]: { fill: ['750', '250'], ends: ['050', '950'] },
+  };
   return roles.map((r) => {
-    const ends = r.suffix === onMain ? ['050', '950'] : r.suffix === onVar ? ['200', '800'] : null;
-    if (!ends) return r;
-    return { ...r, light: pick('550', ends), dark: pick('450', ends) };
+    const m = M[r.suffix];
+    if (!m) return r;
+    return { ...r, light: pick(m.fill[0], m.ends), dark: pick(m.fill[1], m.ends) };
   });
 }
 

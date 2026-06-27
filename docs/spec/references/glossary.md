@@ -25,7 +25,7 @@
 | **Scrim primitive** | A *raw* semi-transparent overlay token: the palette's 500 color at alpha% = step/10, named `{base}-{step}` (e.g. `500-200` = 500 @ 20%). A valid **ref target**, like a solid stop. |
 | **Scrim role** | A *semantic role* (`scrimWeakest…scrimStrongest`, 7 per palette) whose ref points at a **scrim primitive** on the 500 ramp. NOT itself a ref target — only scrim *primitives* are. Do not conflate with *scrim primitive*. |
 | **On-color** | Foreground (text/icon) color meant to sit on a fill. `on{N}` → the 50 stop and `on{N}Variant` → the 200 stop, fixed in both modes (ADR-003). |
-| **Role** | A named semantic token (e.g. `surfaceDim`, `outline`). 37 roles per palette. |
+| **Role** | A named semantic token (e.g. `surfaceDim`, `outline`). 53 roles per palette. |
 | **Raw / primitive** | A mode-independent base token a ref resolves *to*: a solid export stop or a **scrim primitive** (`{base}-{step}`). Never a role. |
 | **Semantic / `--c-*`** | A role token that carries the light/dark flip via `light-dark()`, aliasing two primitives. |
 | **Mode** | Light or Dark. The flip lives only in the semantic layer. |
@@ -36,4 +36,4 @@
 | **VC (viewing conditions)** | Fixed CAM16 parameters derived once at load (`makeVC`); not user-controllable. |
 | **Prime fill** | The `{n}` (prime) role's color: stop 550 in light, 450 in dark. On-colors are evaluated against it. |
 | **Cascade** | Raw edit propagating to semantic. Provided by the plugin (alias-by-reference), not by JSON import. |
-| **Parity** | The requirement that the artifact, `gen.js`, and the plugin share an identical 37-role table and engine behavior. |
+| **Parity** | The requirement that the artifact, `gen.js`, and the plugin share an identical 53-role table and engine behavior. |
