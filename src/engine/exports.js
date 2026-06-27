@@ -200,7 +200,7 @@ function derivePalette(palette, controls, overrides) {
     return { rgb: byStop.get(base), frac: step / 1000 };
   };
 
-  // The 37 semantic roles, with each ref pre-resolved to a concrete color for
+  // The 49 semantic roles, with each ref pre-resolved to a concrete color for
   // BOTH modes. semanticRoles is keyed on the slug (so keys are name-prefixed).
   // on-color policy: "contrast" mode flips the accent on-colors to the better-contrasting end
   // BEFORE per-doc overrides (so an explicit override still wins). No-op in the default "fixed" mode.

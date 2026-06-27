@@ -28,7 +28,7 @@ const dangling = (targets || []).filter((t) => !CANON.has(t));
 if (dangling.length) FAIL("bindings", `${dangling.length} dangling target(s), e.g. ${dangling.slice(0, 3).join(", ")}`);
 // non-vacuity: a full plan covers every role's light+dark across all palettes
 const plan = P.bindingPlan(NAMES);
-if (!Array.isArray(plan) || plan.length !== 37 * NAMES.length) FAIL("bindings", `bindingPlan length ${plan && plan.length}, want ${37 * NAMES.length}`);
+if (!Array.isArray(plan) || plan.length !== 53 * NAMES.length) FAIL("bindings", `bindingPlan length ${plan && plan.length}, want ${53 * NAMES.length}`);
 
 // ── hpg-plugin-offline: manifest parses + declares NO network access (current Figma manifest format:
 //    networkAccess.allowedDomains = ["none"]); code.js syntactically valid ─

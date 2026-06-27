@@ -41,7 +41,7 @@ Mark each. **Any FAIL blocks delivery.**
 - [ ] Display vs export stop sets are both enumerated.
 
 ### B3 — Semantic system
-- [ ] The full 37-role table is present or referenced as machine-readable data.
+- [ ] The full 53-role table is present or referenced as machine-readable data.
 - [ ] Two-layer rule stated: raw flat, semantic carries the flip.
 - [ ] On-color rule (`050`/`200`, both modes) stated WITH the contrast caveat (OD-001).
 - [ ] Scrim rule (7 roles on the 500 ramp, `500-{step}`) stated.

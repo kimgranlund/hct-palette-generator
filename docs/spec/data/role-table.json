@@ -76,7 +76,7 @@
       950
     ]
   },
-  "rolesPerPalette": 37,
+  "rolesPerPalette": 53,
   "roleTable": [
     {
       "key": "primary",
@@ -109,6 +109,24 @@
       "dark": "400"
     },
     {
+      "key": "primaryHover",
+      "suffix": "-hover",
+      "light": "650",
+      "dark": "350"
+    },
+    {
+      "key": "primaryActive",
+      "suffix": "-active",
+      "light": "750",
+      "dark": "250"
+    },
+    {
+      "key": "primaryDisabled",
+      "suffix": "-disabled",
+      "light": "500-200",
+      "dark": "500-200"
+    },
+    {
       "key": "onPrimary",
       "suffix": "-on-primary",
       "light": "50",
@@ -119,6 +137,24 @@
       "suffix": "-on-primary-variant",
       "light": "200",
       "dark": "200"
+    },
+    {
+      "key": "onPrimaryHover",
+      "suffix": "-on-primary-hover",
+      "light": "50",
+      "dark": "50"
+    },
+    {
+      "key": "onPrimaryActive",
+      "suffix": "-on-primary-active",
+      "light": "50",
+      "dark": "50"
+    },
+    {
+      "key": "onPrimaryDisabled",
+      "suffix": "-on-primary-disabled",
+      "light": "500-400",
+      "dark": "500-400"
     },
     {
       "key": "onSurface",
@@ -133,6 +169,12 @@
       "dark": "250"
     },
     {
+      "key": "placeholder",
+      "suffix": "-placeholder",
+      "light": "650",
+      "dark": "350"
+    },
+    {
       "key": "outline",
       "suffix": "-outline",
       "light": "500-600",
@@ -143,6 +185,42 @@
       "suffix": "-outline-variant",
       "light": "500-300",
       "dark": "500-300"
+    },
+    {
+      "key": "outlineHover",
+      "suffix": "-outline-hover",
+      "light": "500-700",
+      "dark": "500-700"
+    },
+    {
+      "key": "outlineActive",
+      "suffix": "-outline-active",
+      "light": "500-800",
+      "dark": "500-800"
+    },
+    {
+      "key": "outlineDisabled",
+      "suffix": "-outline-disabled",
+      "light": "500-200",
+      "dark": "500-200"
+    },
+    {
+      "key": "outlineVariantHover",
+      "suffix": "-outline-variant-hover",
+      "light": "500-400",
+      "dark": "500-400"
+    },
+    {
+      "key": "outlineVariantActive",
+      "suffix": "-outline-variant-active",
+      "light": "500-500",
+      "dark": "500-500"
+    },
+    {
+      "key": "outlineVariantDisabled",
+      "suffix": "-outline-variant-disabled",
+      "light": "500-100",
+      "dark": "500-100"
     },
     {
       "key": "container",
@@ -161,6 +239,24 @@
       "suffix": "-container-high",
       "light": "500-300",
       "dark": "500-300"
+    },
+    {
+      "key": "containerHover",
+      "suffix": "-container-hover",
+      "light": "500-300",
+      "dark": "500-300"
+    },
+    {
+      "key": "containerActive",
+      "suffix": "-container-active",
+      "light": "500-400",
+      "dark": "500-400"
+    },
+    {
+      "key": "containerDisabled",
+      "suffix": "-container-disabled",
+      "light": "500-100",
+      "dark": "500-100"
     },
     {
       "key": "inverseSurface",

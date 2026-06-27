@@ -3982,7 +3982,7 @@ class HctApp extends HTMLElement {
       "div",
       {},
       h("h3", { class: "insp-title" }, icon("roles"), "Roles"),
-      h("div", { class: "insp-sub" }, `${p ? p.name : ""} — 37 semantic roles · light / dark refs`),
+      h("div", { class: "insp-sub" }, `${p ? p.name : ""} — 53 semantic roles · light / dark refs`),
       // (the live component preview is pinned at the bottom of the pane on every
       // tab — see .seg-example / exampleCard — so the Roles panel no longer repeats
       // it here at the top.)

@@ -20,7 +20,7 @@ if (!v || !Array.isArray(v.palettes) || v.palettes.length !== 8) FAIL("model", `
 else for (const p of v.palettes) {
   if (!Array.isArray(p.ramp) || p.ramp.length === 0) { FAIL("model", `${p.name} ramp empty`); break; }
   if (!p.ramp[0] || typeof p.ramp[0].hex !== "string" || !/^#[0-9A-Fa-f]{6}/.test(p.ramp[0].hex)) { FAIL("model", `${p.name} ramp swatch has no hex`); break; }
-  if (!Array.isArray(p.roles) || p.roles.length !== 37) { FAIL("model", `${p.name} has ${p.roles && p.roles.length} roles, want 37`); break; }
+  if (!Array.isArray(p.roles) || p.roles.length !== 53) { FAIL("model", `${p.name} has ${p.roles && p.roles.length} roles, want 53`); break; }
   if (!p.roles[0] || !p.roles[0].lightHex || !p.roles[0].darkHex) { FAIL("model", `${p.name} role missing light/darkHex`); break; }
 }
 

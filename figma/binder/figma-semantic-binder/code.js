@@ -41,7 +41,7 @@ function refKey(ref) {
   return s.slice(0, dash).padStart(3, "0") + s.slice(dash);
 }
 
-// roleTable(n) — the 37 roles for a palette, name-substituted exactly as semantic.js /
+// roleTable(n) — the 53 roles for a palette, name-substituted exactly as semantic.js /
 // bind-plan.mjs produce them: accent + on-accent keys carry the palette name; shared roles do
 // not. Refs are the canonical values from data/role-table.json (validated semantic-mapping).
 // `key` is the semantic variable name part ("{n}/{key}"); `light`/`dark` feed targetName.
@@ -55,22 +55,53 @@ function roleTable(n) {
     { key: n + "Low", suffix: "-low", light: "350", dark: "700" },
     { key: n + "High", suffix: "-high", light: "650", dark: "400" },
 
+    // 1b. ACCENT INTERACTION STATES — hover/active are prime ±1/±2 steps (mode-mirrored); disabled a
+    //     faint translucent wash (no neutral primitive in the per-palette ref model). Lockstep w/ semantic.js.
+    { key: n + "Hover", suffix: "-hover", light: "650", dark: "350" },
+    { key: n + "Active", suffix: "-active", light: "750", dark: "250" },
+    { key: n + "Disabled", suffix: "-disabled", light: "500-200", dark: "500-200" },
+
     // 2. ON-ACCENT — name-prefixed; fixed to the light end in BOTH modes (OD-001).
     { key: "on" + N, suffix: "-on-" + n, light: "50", dark: "50" },
     { key: "on" + N + "Variant", suffix: "-on-" + n + "-variant", light: "200", dark: "200" },
 
+    // 2b. ON-ACCENT INTERACTION STATES — hover/active track the base on-color; disabled is a translucent
+    //     inert label (opts out of the contrast guarantee). Lockstep w/ semantic.js.
+    { key: "on" + N + "Hover", suffix: "-on-" + n + "-hover", light: "50", dark: "50" },
+    { key: "on" + N + "Active", suffix: "-on-" + n + "-active", light: "50", dark: "50" },
+    { key: "on" + N + "Disabled", suffix: "-on-" + n + "-disabled", light: "500-400", dark: "500-400" },
+
     // 3. ON-SURFACE — shared.
     { key: "onSurface", suffix: "-on-surface", light: "950", dark: "50" },
     { key: "onSurfaceVariant", suffix: "-on-surface-variant", light: "750", dark: "250" },
+    // placeholder — field placeholder text: one mirrored step MORE muted than onSurfaceVariant (650/350);
+    // a SOLID stop (translucent placeholder text is the classic a11y failure), fixed per mode.
+    { key: "placeholder", suffix: "-placeholder", light: "650", dark: "350" },
 
     // 4. OUTLINE — shared; on the 500 scrim ramp (light === dark).
     { key: "outline", suffix: "-outline", light: "500-600", dark: "500-600" },
     { key: "outlineVariant", suffix: "-outline-variant", light: "500-300", dark: "500-300" },
 
+    // 4b. OUTLINE INTERACTION STATES — one strength stronger per state; disabled a faint border.
+    { key: "outlineHover", suffix: "-outline-hover", light: "500-700", dark: "500-700" },
+    { key: "outlineActive", suffix: "-outline-active", light: "500-800", dark: "500-800" },
+    { key: "outlineDisabled", suffix: "-outline-disabled", light: "500-200", dark: "500-200" },
+
+    // 4c. OUTLINE-VARIANT INTERACTION STATES — the weaker divider's states, one emphasis step fainter than
+    //     4b throughout (base 300 → hover 400 → active 500; disabled the faintest 100). Mode-independent.
+    { key: "outlineVariantHover", suffix: "-outline-variant-hover", light: "500-400", dark: "500-400" },
+    { key: "outlineVariantActive", suffix: "-outline-variant-active", light: "500-500", dark: "500-500" },
+    { key: "outlineVariantDisabled", suffix: "-outline-variant-disabled", light: "500-100", dark: "500-100" },
+
     // 5. CONTAINER — shared; on the 500 scrim ramp (light === dark).
     { key: "container", suffix: "-container", light: "500-200", dark: "500-200" },
     { key: "containerLow", suffix: "-container-low", light: "500-100", dark: "500-100" },
     { key: "containerHigh", suffix: "-container-high", light: "500-300", dark: "500-300" },
+
+    // 5b. CONTAINER INTERACTION STATES — one strength stronger per state; disabled the faintest.
+    { key: "containerHover", suffix: "-container-hover", light: "500-300", dark: "500-300" },
+    { key: "containerActive", suffix: "-container-active", light: "500-400", dark: "500-400" },
+    { key: "containerDisabled", suffix: "-container-disabled", light: "500-100", dark: "500-100" },
 
     // 6. INVERSE — shared.
     { key: "inverseSurface", suffix: "-inverse-surface", light: "900", dark: "100" },

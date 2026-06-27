@@ -587,7 +587,7 @@ const fv = _pv(app.doc);
 ok(fv.exports.figma && !!fv.exports.figma.light && !!fv.exports.figma.dark && !!fv.exports.figma.raw, "(s1) projectView exposes figma.light/dark/raw");
 ok(fv.exports.figma.light !== fv.exports.figma.dark, "(s2) the Light and Dark files differ");
 ok(JSON.parse(fv.exports.figma.light).$extensions["com.figma.modeName"] === "Light" && JSON.parse(fv.exports.figma.dark).$extensions["com.figma.modeName"] === "Dark", "(s3) each file carries its Figma mode name");
-ok(Object.keys(JSON.parse(fv.exports.figma.light).danger || {}).filter((k) => k !== "$extensions").length === 37, "(s4) the Light file has all 37 roles per palette");
+ok(Object.keys(JSON.parse(fv.exports.figma.light).danger || {}).filter((k) => k !== "$extensions").length === 53, "(s4) the Light file has all 53 roles per palette");
 app.exportOpen = true; app.exportTab = "figma"; app.render(); flushRaf();
 const bar = app.querySelector(".figma-files");
 const fileBtns = bar ? bar.children.filter((c) => c.tagName === "BUTTON") : [];

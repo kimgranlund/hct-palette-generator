@@ -1,13 +1,13 @@
 # Knowledge 03 — Semantic Token System
 
-> Topic: the two-layer token model and the 37 semantic roles per palette. This is the
+> Topic: the two-layer token model and the 53 semantic roles per palette. This is the
 > section most prone to silent drift across the three implementations — the full role
 > table is the canonical contract in `data/role-table.json`.
 
 ## Table of Contents
 1. Two-layer architecture
 2. Reference grammar
-3. The 37 roles (groups)
+3. The 53 roles (groups)
 4. On-colors (the `050` decision)
 5. Scrims
 6. Surface ramps (mirror vs non-mirror)
@@ -47,7 +47,7 @@ A role's `light` / `dark` field is a **ref**, one of:
 `refKey(ref)` pads to 3 digits and preserves the scrim suffix: `"50"→"050"`,
 `"500-200"→"500-200"`. Used for token names and CSS `var()` references everywhere.
 
-## 3. The 37 roles (groups)
+## 3. The 53 roles (groups)
 
 Full table with exact `light`/`dark` refs: `data/role-table.json` → `roleTable`. Grouped:
 
@@ -128,6 +128,6 @@ and easy to get wrong:
 
 The role table exists in three places — the artifact's `semanticRoles(n)`, `gen.js`'s
 `semanticRoles(n)`, and the plugin's `semanticRoles(n)`. They **must** be identical:
-37 roles/palette, same keys, same refs. `rubrics/parity-checklist.md` defines the check.
+53 roles/palette, same keys, same refs. `rubrics/parity-checklist.md` defines the check.
 A divergence already happened once (the artifact silently lost `surfaceHighest`, 36 vs 37);
 parity is an acceptance gate, not a nicety.

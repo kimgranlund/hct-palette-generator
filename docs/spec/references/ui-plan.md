@@ -19,7 +19,7 @@ the arrangement moved). Supersedes the "3 lenses on one canvas" decision:
   app-chrome `◐`) · Fit · zoom% · + Palette (replaced the lens toggle). **Two `◐` toggles** now: app
   chrome theme (header, dogfooded) vs canvas preview (canvas-header).
 - **right-pane → segmented `[ Palette │ Global │ Roles ]`** (was a single inspector) — Palette = selected
-  palette's controls; Global = global controls; Roles = the 37-role table + a small semantic preview.
+  palette's controls; Global = global controls; Roles = the 53-role table + a small semantic preview.
 - **Bugs fixed:** gallery search no longer steals focus on type (the `<input>` is stable; only the tile
   grid re-renders); canvas pan now works (pointer-capture `translate()`, origin-centered, a 4px drag
   threshold keeps a pan from firing row-select, wheel zoom about the cursor).
@@ -31,7 +31,7 @@ Built into `capability.system.ui-app` + the single-file bundle. The wireframes/r
 
 ```yaml
 intent: >
-  Let a design-system author generate perceptually-even, in-gamut palettes + a 37-role
+  Let a design-system author generate perceptually-even, in-gamut palettes + a 53-role
   semantic layer, judge their quality, and export to code/Figma.
 posture: [creating, configuring, analyzing]      # a creative editor — NOT a dashboard
 role: [design-system-author]                      # single role → no role-collapse
@@ -116,7 +116,7 @@ surface:
       └──────────────── C →
 ```
 
-**Semantic** — a live UI preview painted by the 37 roles; ◐ flips every `--c-*` via `light-dark()`:
+**Semantic** — a live UI preview painted by the 53 roles; ◐ flips every `--c-*` via `light-dark()`:
 ```
 [ Ramps │ Analysis │ SEMANTIC ]   (light ◐)
  ┌ surface ────────────────────────┐
