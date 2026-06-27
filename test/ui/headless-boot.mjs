@@ -1307,10 +1307,12 @@ app.commit((d) => { d.accentRef = "mode"; }); // restore default
 app.closeSettings(); flushRaf();
 ok(app.settingsOpen === false, "(set) closeSettings dismisses the modal");
 
-// ── (ty) Typography modal: treatment + body base → live specimen + token download ──
-app.openTypography(); flushRaf();
-ok(app.typeOpen === true && !!app.querySelector(".typo"), "(ty) openTypography shows the Typography <dialog>");
-ok(app.querySelectorAll(".typo-cat").length === 4 && app.querySelectorAll(".typo-sample").length >= 6, "(ty) the specimen shows the 4 voices (Display/Heading/Body/UI)");
+// ── (ty) Typography SECTION: the switcher flips this.section → full 21-step canvas specimen + inspector ──
+app.setSection("typography"); flushRaf();
+ok(app.section === "typography" && !!app.querySelector(".type-spec"), "(ty) the section switcher enters Typography (the canvas specimen renders)");
+ok(app.querySelectorAll(".type-spec-line").length === 23 && app.querySelectorAll(".type-spec-group").length === 4, `(ty) the canvas shows the FULL specimen — 23 steps (Display 5·Heading 5·Body 5·UI 8) across 4 voices (got ${app.querySelectorAll(".type-spec-line").length} lines / ${app.querySelectorAll(".type-spec-group").length} groups)`);
+ok(app.querySelectorAll(".an-card").length >= 4, `(ty) the left rail shows the type analysis cards (got ${app.querySelectorAll(".an-card").length})`);
+ok(!!app.querySelector(".tyi-voices") || !!app.querySelector(".insp-title"), "(ty) the right pane shows the Typography inspector");
 const { typeScale: tScale } = await import("../../src/engine/type.mjs");
 const { brandKit: bkTy } = await import("../../src/ui/model.mjs");
 app.commit((d) => { d.type = { treatment: "luxury", bodyBase: 18 }; }); flushRaf();
@@ -1318,14 +1320,18 @@ const tysc = tScale(app.doc.type);
 ok(tysc.treatment === "luxury" && tysc.categories.Body.MD.size === 18, `(ty) treatment + base apply (treatment ${tysc.treatment}, body MD ${tysc.categories.Body.MD.size})`);
 ok(hydSet(serSet(app.doc)).type.treatment === "luxury" && hydSet(serSet(app.doc)).type.bodyBase === 18, "(ty) the type config round-trips through persist");
 ok(bkTy(app.doc).type && bkTy(app.doc).type.categories.Body && bkTy(app.doc).type.treatment === "luxury", "(ty) brandKit carries the type scale (the MCP serves it)");
+// the canvas Specimen·Tokens toggle drops the live faces to metrics-only
+app.setTypeSpecMode("tokens"); flushRaf();
+ok((app.querySelector(".type-spec") || { classList: { contains: () => false } }).classList.contains("is-tokens"), "(ty) the Specimen·Tokens toggle switches the canvas to metrics-only");
+app.setTypeSpecMode("specimen"); flushRaf();
 let typeZip = null; const realDBty = app.downloadBytes.bind(app);
 app.downloadBytes = (bytes, name) => { typeZip = { bytes, name }; };
 app.downloadTypeTokens();
 ok(typeZip && /type-tokens\.zip$/.test(typeZip.name) && typeZip.bytes && typeZip.bytes.length > 200, `(ty) downloadTypeTokens emits a .zip (${typeZip && typeZip.name})`);
 app.downloadBytes = realDBty;
 app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore default
-app.closeTypography(); flushRaf();
-ok(app.typeOpen === false, "(ty) closeTypography dismisses the modal");
+app.setSection("color"); flushRaf();
+ok(app.section === "color" && !app.querySelector(".type-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(ty) returning to Color restores the ramp canvas (color untouched)");
 
 // ── (geo) Geometry modal: treatment + base height → live size ramp + dimension-token download ──
 app.openGeometry(); flushRaf();

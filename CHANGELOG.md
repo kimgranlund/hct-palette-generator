@@ -10,6 +10,20 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-27
 
+#### Added
+- **Typography is now a first-class editor SECTION (not a modal).** A persistent App-Header switcher
+  **« Color · Typography · Geometry »** routes the whole editor between sections of the *same* set. The
+  Typography section reuses the three-pane shell: the **center canvas** shows the **full 23-step specimen**
+  (Display · Heading · Body · UI — every step, vs the old modal's 8) live in the real fonts, pannable /
+  zoomable, with a **Specimen · Tokens** toggle; the **left rail** shows type **analysis** (modular-scale
+  curve, optical-tracking curve, leading, font-role pairings); the **right pane** is the type **inspector**
+  (treatment + body-base controls, a read-only per-voice summary, a live brand-coloured example, and the
+  token download). The Typography **modal is retired**. Color behavior is unchanged (the section branches
+  are guarded; the color canvas/inspector/analysis are byte-identical). Geometry's tab lands on a
+  placeholder with a one-click into its existing editor (its section follows in the next phase). Phase 2 of
+  the three-system workbench IA — designed via a multi-agent team (4 parallel designers + synthesis) and
+  adversarially reviewed before merge.
+
 #### Changed
 - **Settings is now a page, not a toast.** Rebuilt as a left **section-nav** (grouped, labeled — Tokens ·
   App · About) + a right content area with a page header and label-left / control-right rows, sized like a

@@ -1072,20 +1072,9 @@ dialog.settings::backdrop { background: rgba(10,14,22,.34); }
 }
 .settings-foot .spacer { flex: 1; }
 
-/* ── Typography modal — type-scale treatment picker + live specimen + export. ── */
-dialog.typo {
-  position: fixed; inset: 0; margin: auto;
-  width: min(720px, 94vw); height: min(82vh, 760px); max-width: 94vw; max-height: 90vh;
-  padding: 0; border: none; border-radius: var(--r-lg);
-  background: var(--panel); color: var(--ink); box-shadow: var(--shadow-lg);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-dialog.typo:not([open]) { display: none; }
-dialog.typo::backdrop { background: rgba(10,14,22,.34); }
-.typo-controls { display: flex; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.typo-controls .field { flex: 1; margin: 0; }
-.typo-note { color: var(--ink-dim); font-size: 12px; line-height: 1.55; margin: 12px 16px 0; }
-.typo-specimen { padding: 14px 16px; overflow: auto; flex: 1; min-height: 0; }
+/* ── Typography specimen lines — used by the Typography section's in-pane Specimen tab (.tyi-specimen).
+   The modal chrome (dialog.typo / .typo-controls / .typo-note / .typo-foot) was retired with the section;
+   these bare specimen-line classes are KEPT (reused by typeSpecimenTab / _typeSample). ── */
 .typo-cat { margin-bottom: 20px; }
 .typo-cat-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .typo-cat-head b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-dim); }
@@ -1094,8 +1083,80 @@ dialog.typo::backdrop { background: rgba(10,14,22,.34); }
 .typo-step { flex: none; width: 92px; color: var(--ink-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .typo-sample { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .typo-cat:nth-child(3) .typo-sample { white-space: normal; }
-.typo-foot { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
-.typo-foot .spacer { flex: 1; }
+
+/* ── Typography SECTION (the editor section: switcher · specimen canvas · analysis · inspector) ── */
+/* editor-section switcher — the centered « Color · Typography · Geometry » tablist in the app-header */
+.app-header .section-seg { margin: 0; }
+.app-header .section-seg button { flex: 0 0 auto; padding: 5px 16px; }
+/* a right-pane header that isn't a tablist (Geometry stub inspector) reuses .pane-label */
+.section-inspector-label { border-bottom: 1px solid var(--line); }
+/* placeholder scene for a not-yet-built section (Geometry, this phase) */
+.canvas-area.is-stub { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: default; overflow: auto; }
+.stub-note { color: var(--ink-dim); font-size: 13px; max-width: 36ch; text-align: center; line-height: 1.5; }
+.canvas-header .stub-head-label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* Typography specimen — the full 21-step scale as a pannable canvas scene (parallel to .ramp-stack).
+   Lives inside .canvas-scene, so it pans/zooms with the viewport. Colors resolve via --ink* against the
+   canvas-area color-scheme, so it tracks the canvas preview light/dark. */
+.type-spec { display: flex; flex-direction: column; gap: 22px; padding: 16px 20px; width: 720px; max-width: 720px; }
+.type-spec-head { display: flex; align-items: baseline; gap: 10px; }
+.type-spec-head b { font-size: 14px; color: var(--ink); }
+.type-spec-head small { color: var(--ink-dim); font-size: 12px; }
+.type-spec-note { color: var(--ink-dim); font-size: 12px; line-height: 1.55; margin: 0; }
+.type-spec-group { display: flex; flex-direction: column; gap: 10px; }
+.type-spec-grouphead { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+.type-spec-grouphead b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-dim); }
+.type-spec-grouphead small { color: var(--ink-faint); font-size: 11px; }
+.type-spec-count { margin-left: auto; color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.type-spec-line { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--r); border: 1px solid transparent; background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.type-spec-line:hover { border-color: var(--line); }
+.type-spec-line.tokens { padding: 6px 8px; }
+.type-spec-meta { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+.type-spec-token { font-family: var(--mono, ui-monospace, monospace); font-size: 10.5px; color: var(--ink-dim); background: color-mix(in srgb, var(--line) 60%, transparent); padding: 1px 5px; border-radius: 4px; }
+.type-spec-dims { color: var(--ink-faint); }
+.type-spec-render { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.type-spec-render.para { white-space: normal; overflow: visible; max-width: 640px; }
+.type-spec.is-tokens .type-spec-line { background: transparent; }
+
+/* typography analysis — four-voice series (display·heading·body·ui), shared palette */
+.ty-line { fill: none; stroke-width: 1.5; }
+.ty-dot { stroke: none; }
+.ty-s0 { stroke: var(--accent); fill: var(--accent); }
+.ty-s1 { stroke: var(--ink-dim); fill: var(--ink-dim); }
+.ty-s2 { stroke: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); fill: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
+.ty-s3 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }
+.an-leg-mark.ty { background: var(--ink-faint); }
+.an-leg-mark.ty.s0 { background: var(--accent); }
+.an-leg-mark.ty.s1 { background: var(--ink-dim); }
+.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
+.an-leg-mark.ty.s3 { background: var(--ink-faint); }
+.ty-roles { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
+.ty-role { display: flex; align-items: baseline; gap: 8px; font-size: 10.5px; }
+.ty-role .ty-role-k { width: 54px; color: var(--ink-dim); flex: none; }
+.ty-role .ty-role-fam { color: var(--ink); font-size: 12px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Typography inspector (right pane) — reuses .insp-* / .seg-* / .example-card / .field / .typo-* */
+.insp-sub.tyi-note { margin-top: 2px; }
+.insp-sub.tyi-future { margin-top: 2px; opacity: .85; }
+.tyi-voices { display: flex; flex-direction: column; gap: 10px; }
+.tyi-voices-head { display: flex; align-items: baseline; justify-content: space-between; }
+.tyi-voices-head small { color: var(--ink-dim); font-size: 11px; }
+.tyi-voice { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.tyi-voice-name { display: flex; align-items: baseline; justify-content: space-between; font-weight: 650; font-size: 13px; }
+.tyi-voice-font { color: var(--ink-dim); font-weight: 400; font-size: 11px; }
+.tyi-voice-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; margin: 8px 0 0; }
+.tyi-voice-stats > div { display: flex; align-items: baseline; justify-content: space-between; }
+.tyi-voice-stats dt { color: var(--ink-dim); font-size: 11px; margin: 0; }
+.tyi-voice-stats dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tyi-fonts { display: flex; flex-direction: column; gap: 8px; }
+.tyi-font-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.tyi-font-role { color: var(--ink-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; flex: none; }
+.tyi-font-name { font-size: 18px; text-align: right; line-height: 1.2; }
+.tyi-specimen { display: flex; flex-direction: column; gap: 16px; }
+.tyi-example { display: flex; flex-direction: column; gap: 8px; }
+.tyi-ex-head { margin: 0; }
+.tyi-ex-body { margin: 0; }
+.tyi-example .ex-btn { align-self: flex-start; margin-top: 4px; }
 
 /* ── Geometry modal — shares the typo dialog shell; the specimen is live mock controls on the ramp ── */
 dialog.geom {
@@ -4795,6 +4856,8 @@ class HctApp extends HTMLElement {
     this.panesRight = true; // right inspector shown
     this.canvasTheme = "system"; // canvas preview color-scheme: system (follow OS) | light | dark — INDEPENDENT of app chrome ◐
     this.canvasView = "palettes"; // canvas content: palettes (the ramps) | scrims | mapping (the role→raw table)
+    this.section = "color"; // editor section: color | typography | geometry — ui-session, routes the whole editor (never persisted)
+    this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (metrics only) — type-section sub-state
     this.stopsMode = "core"; // palette ramp density: core (19 display stops) | extended (25 EXPORT_STOPS)
     this.mapTextMode = false; // Mapping table raw-token editor: false = select menu, true = free text input
     this.viewport = { panX: 0, panY: 0, zoom: 1 };
@@ -4819,8 +4882,8 @@ class HctApp extends HTMLElement {
     this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
     this.settingsOpen = false; // the Settings page (token-mapping + app prefs)
     this.settingsSection = "mapping"; // which Settings nav item is active (left-nav page layout)
-    this.typeOpen = false; // the Typography modal (type-scale treatment + specimen + export)
     this.geomOpen = false; // the Geometry modal (dimensional treatment + size ramp + export)
+    this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
     this.search = "";
@@ -4928,6 +4991,7 @@ class HctApp extends HTMLElement {
   }
 
   _liveRefreshNow() {
+    if (this.section !== "color") return; // type/geom have no live color-drag; their panes refresh on full render()
     const view = projectView(this.doc);
     this._view = view;
 
@@ -5178,7 +5242,6 @@ class HctApp extends HTMLElement {
     this._syncNewPal(); // same, for the New-Palette modal
     this._syncApplyGate(); // same, for the Apply-to-Figma consent gate
     this._syncSettings(); // same, for the Settings modal
-    this._syncTypography(); // same, for the Typography modal
     this._syncGeometry(); // same, for the Geometry modal
   }
 
@@ -5699,7 +5762,6 @@ class HctApp extends HTMLElement {
       this.renderNewPalette(view),
       this.renderApplyGate(),
       this.renderSettings(),
-      this.renderTypography(),
       this.renderGeometry(),
       this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
     );
@@ -5738,16 +5800,50 @@ class HctApp extends HTMLElement {
         },
       }),
       h("div", { class: "spacer" }),
-      // trailing strip: undo · redo · scheme · new · export.
+      // the persistent editor-section tablist « Color · Typography · Geometry », centered between
+      // the doc name and the trailing action cluster (a .spacer on each side keeps it centered).
+      this.sectionSwitcher(),
+      h("div", { class: "spacer" }),
+      // trailing strip: undo · redo · scheme · settings · new · export.
       btn(icon("arrow-counter-clockwise"), { cls: "undo-btn", title: "Undo (⌘Z)", ariaLabel: "Undo", disabled: !this.canUndo(), onclick: () => this.undo() }),
       btn(icon("arrow-clockwise"), { cls: "redo-btn", title: "Redo (⇧⌘Z)", ariaLabel: "Redo", disabled: !this.canRedo(), onclick: () => this.redo() }),
       this.themeBtn(),
-      btn(icon("type"), { cls: "type-btn", title: "Typography — type scale + treatments", ariaLabel: "Typography", onclick: () => this.openTypography() }),
-      btn(icon("ruler"), { cls: "geom-btn", title: "Geometry — size ramp + dimensional tokens", ariaLabel: "Geometry", onclick: () => this.openGeometry() }),
       btn(icon("gear"), { cls: "settings-btn", title: "Settings — token mapping & preferences", ariaLabel: "Settings", onclick: () => this.openSettings() }),
       btn([icon("plus"), "New"], { onclick: () => this.createSet() }),
       btn([icon("export"), "Export"], { variant: "primary", cls: "export-open-btn", title: "Open export drawer", onclick: () => this.toggleDrawer(true) }),
     );
+  }
+
+  // sectionSwitcher — the persistent editor-section tablist « Color · Typography · Geometry ».
+  // Routes the whole editor (each pane branches on this.section); reuses the one segmented control
+  // (roving tabindex + Arrow keys baked in). A tablist matching the existing canvas-view switcher.
+  sectionSwitcher() {
+    return this.segmented(
+      [
+        { id: "color", label: "Color", title: "Color — palettes, scrims & semantic roles" },
+        { id: "typography", label: "Typography", title: "Typography — type scale, treatments & the full specimen" },
+        { id: "geometry", label: "Geometry", title: "Geometry — size ramp & dimensional tokens (preview)" },
+      ],
+      this.section,
+      (id) => this.setSection(id),
+      // a tablist (aria-selected), matching the existing canvas-view switcher; no aria-controls (the
+      // section panels aren't formal tabpanels — claiming control of a role=group would be a contradiction).
+      { cls: "section-seg", ariaLabel: "Editor section", idPrefix: "section" },
+    );
+  }
+
+  // setSection — switch the active editor section. Color is byte-identical to today; the shared viewport
+  // is the one crossover, so we STASH the color pan/zoom on leave and RESTORE it on return (the old modal
+  // overlaid color without touching the viewport — this preserves that round-trip). Type/geom scenes
+  // start centered (fit).
+  setSection(id) {
+    if (id === this.section) return;
+    if (this.section === "color") this._colorViewport = this.viewport; // preserve the color pan/zoom
+    this.section = id;
+    if (id !== "color") this.fit(); // type/geom scenes don't pan/zoom — start centered
+    else if (this._colorViewport) this.viewport = this._colorViewport; // restore color's transform on return
+    if (id === "typography") ensureTypeFonts(); // lazily inject the Google Fonts, as the old modal did
+    this.render();
   }
 
   // toggleLeftPane / toggleRightPane — collapse/expand a side pane (the .editor grid track → 0).
@@ -5825,17 +5921,23 @@ class HctApp extends HTMLElement {
     const idx = this.selectedIndex();
     const vp = view.palettes[idx];
     const name = vp ? vp.name : "";
-
+    // section routing — Color shows palette analysis; Typography its scale diagnostics; Geometry a stub.
+    const isColor = this.section === "color";
+    const label = isColor ? "Analysis" : this.section === "typography" ? "Type" : "Geometry";
+    const body =
+      this.section === "color" ? this.analysisCards(view)
+      : this.section === "typography" ? this.typeAnalysisCards(view)
+      : [h("div", { class: "empty-note" }, "Geometry analysis — coming next.")];
     return h(
       "aside",
       { class: "left-pane" },
-      h("div", { class: "pane-label" }, "Analysis", h("span", { class: "an-sel" }, name),
+      h("div", { class: "pane-label" }, label, isColor ? h("span", { class: "an-sel" }, name) : false,
         // while OPEN the left toggle hugs this header's inner (canvas-side) edge; once
         // collapsed it is rendered in the canvas-header instead (see renderCanvasHeader).
         this.panesLeft ? this.paneToggle("left") : false),
       // .an-body wraps just the graph cards so liveRefresh can rebuild them in
       // place (replaceChildren) without touching the pane label or the pane shell.
-      h("div", { class: "an-body" }, ...this.analysisCards(view)),
+      h("div", { class: "an-body" }, ...body),
     );
   }
 
@@ -5858,6 +5960,119 @@ class HctApp extends HTMLElement {
       card("Contrast — on-colors vs fills (≥4.5:1)", this.graphContrast(view, idx)),
       card("Hue wheel — all enabled palettes", this.graphHueWheel(view)),
     ];
+  }
+
+  // ── Typography analysis (left rail, READ-ONLY) ────────────────────────────────────────
+  // The type analog of analysisCards(): cards computed from typeScale(doc.type). No inputs — pure
+  // diagnostics of the resolved scale. `view` is accepted for dispatch parity but unused (typography
+  // is doc-driven, not palette-view-driven). Reuses .an-card / .an-svg / legend().
+  typeAnalysisCards(view) {
+    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
+    const cats = ["Display", "Heading", "Body", "UI"];
+    const series = cats
+      .map((c) => ({ cat: c, steps: Object.entries(scale.categories[c] || {}).map(([name, s]) => ({ name, ...s })) }))
+      .filter((x) => x.steps.length);
+    return [
+      card("Modular scale — size (px) per step", this.graphTypeScale(series)),
+      card("Optical tracking — letter-spacing vs size", this.graphTypeTracking(series)),
+      card("Leading — line-height ÷ size per step", this.graphTypeLeading(series)),
+      card("Font roles — family per voice", this.graphTypeRoles(scale)),
+    ];
+  }
+
+  // four-voice size series, X = step index within the voice (normalized so the geometric growth is
+  // comparable across voices of different length), Y = size px.
+  graphTypeScale(series) {
+    if (!series.length) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 132, pad = 24;
+    const maxSize = Math.max(8, ...series.flatMap((g) => g.steps.map((s) => s.size))) * 1.05;
+    const X = (i, n) => pad + (n <= 1 ? 0 : i / (n - 1)) * (W - pad - 8);
+    const Y = (px) => (H - pad + 8) - (px / maxSize) * (H - pad - 8);
+    const paths = series.map((g, gi) => {
+      const n = g.steps.length;
+      const d = "M" + g.steps.map((s, i) => `${X(i, n).toFixed(1)},${Y(s.size).toFixed(1)}`).join(" L");
+      const dots = g.steps.map((s, i) => `<circle class="ty-dot ty-s${gi}" cx="${X(i, n).toFixed(1)}" cy="${Y(s.size).toFixed(1)}" r="1.6"/>`).join("");
+      return `<path class="ty-line ty-s${gi}" d="${d}"/>${dots}`;
+    }).join("");
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <line class="lc-axis" x1="${pad}" y1="8" x2="${pad}" y2="${H - pad + 8}"/>
+        <line class="lc-axis" x1="${pad}" y1="${H - pad + 8}" x2="${W - 6}" y2="${H - pad + 8}"/>
+        <text x="2" y="14">px</text>
+        <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
+        ${paths}
+      </svg>`;
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+  }
+
+  // letter-spacing (px) vs size (px); a dashed unity line marks tracking = 0.
+  graphTypeTracking(series) {
+    if (!series.length) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 124, pad = 26;
+    const all = series.flatMap((g) => g.steps);
+    const maxSize = Math.max(8, ...all.map((s) => s.size)) * 1.05;
+    const tr = all.map((s) => s.letterSpacing);
+    const tMax = Math.max(0.5, ...tr), tMin = Math.min(-0.5, ...tr), tSpan = (tMax - tMin) || 1;
+    const X = (px) => pad + (px / maxSize) * (W - pad - 8);
+    const Y = (t) => 8 + ((tMax - t) / tSpan) * (H - pad - 8);
+    const zeroY = Y(0).toFixed(1);
+    const paths = series.map((g, gi) => {
+      const sorted = [...g.steps].sort((a, b) => a.size - b.size);
+      const d = "M" + sorted.map((s) => `${X(s.size).toFixed(1)},${Y(s.letterSpacing).toFixed(1)}`).join(" L");
+      const dots = sorted.map((s) => `<circle class="ty-dot ty-s${gi}" cx="${X(s.size).toFixed(1)}" cy="${Y(s.letterSpacing).toFixed(1)}" r="1.6"/>`).join("");
+      return `<path class="ty-line ty-s${gi}" d="${d}"/>${dots}`;
+    }).join("");
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <line class="lc-axis" x1="${pad}" y1="8" x2="${pad}" y2="${H - pad + 8}"/>
+        <line class="lc-axis" x1="${pad}" y1="${H - pad + 8}" x2="${W - 6}" y2="${H - pad + 8}"/>
+        <line class="dg-unity" x1="${pad}" y1="${zeroY}" x2="${W - 6}" y2="${zeroY}"/>
+        <text x="2" y="${(+zeroY - 3).toFixed(1)}">0</text>
+        <text x="2" y="14">px</text>
+        <text x="${W - 30}" y="${H - pad + 18}">size→</text>
+        ${paths}
+      </svg>`;
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+  }
+
+  // leading ratio = lineHeight ÷ size per step (tight at display, loose at body). X = step index per voice.
+  graphTypeLeading(series) {
+    if (!series.length) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 124, pad = 26;
+    const ratios = series.flatMap((g) => g.steps.map((s) => s.lineHeight / s.size));
+    const rMax = Math.max(1.7, ...ratios) * 1.02, rMin = Math.min(0.95, ...ratios), rSpan = (rMax - rMin) || 1;
+    const X = (i, n) => pad + (n <= 1 ? 0 : i / (n - 1)) * (W - pad - 8);
+    const Y = (r) => 8 + ((rMax - r) / rSpan) * (H - pad - 8);
+    const paths = series.map((g, gi) => {
+      const n = g.steps.length;
+      const d = "M" + g.steps.map((s, i) => `${X(i, n).toFixed(1)},${Y(s.lineHeight / s.size).toFixed(1)}`).join(" L");
+      const dots = g.steps.map((s, i) => `<circle class="ty-dot ty-s${gi}" cx="${X(i, n).toFixed(1)}" cy="${Y(s.lineHeight / s.size).toFixed(1)}" r="1.6"/>`).join("");
+      return `<path class="ty-line ty-s${gi}" d="${d}"/>${dots}`;
+    }).join("");
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <line class="lc-axis" x1="${pad}" y1="8" x2="${pad}" y2="${H - pad + 8}"/>
+        <line class="lc-axis" x1="${pad}" y1="${H - pad + 8}" x2="${W - 6}" y2="${H - pad + 8}"/>
+        <text x="2" y="14">×</text>
+        <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
+        ${paths}
+      </svg>`;
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+  }
+
+  // font-role pairings — the 5 role→family assignments (no SVG; a small key, like the contrast bars).
+  graphTypeRoles(scale) {
+    const ROLES = [["display", "Display"], ["heading", "Heading"], ["body", "Body"], ["ui", "UI"], ["mono", "Mono"]];
+    return h(
+      "div",
+      { class: "ty-roles" },
+      ...ROLES.map(([role, label]) => {
+        const fam = scale.fonts[role] || "—";
+        const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
+        return h("div", { class: "ty-role" }, h("span", { class: "ty-role-k" }, label), h("span", { class: "ty-role-fam", style: `font-family:${fam}, ${generic}` }, fam));
+      }),
+    );
   }
 
   // legend — a small key under a multi-series graph (chips match the SVG strokes:
@@ -6662,6 +6877,19 @@ class HctApp extends HTMLElement {
 
   // ── center column ────────────────────────────────────────────────────────────
   renderCenter(view) {
+    // section routing — each section owns its center (header + canvas); color is unchanged.
+    if (this.section === "typography") {
+      return h("div", { class: "center" },
+        this.renderTypeCanvasHeader(),
+        this.renderTypeCanvas(view),
+        this.renderCanvasFooter());
+    }
+    if (this.section === "geometry") {
+      return h("div", { class: "center" },
+        this.renderStubCanvasHeader("Geometry"),
+        this.renderStubCanvas("geometry"),
+        this.renderCanvasFooter());
+    }
     return h(
       "div",
       { class: "center" },
@@ -6814,6 +7042,79 @@ class HctApp extends HTMLElement {
       requestAnimationFrame(() => this.applyTransform());
     }
     return area;
+  }
+
+  setTypeSpecMode(v) { this.typeSpecMode = v; this.render(); }
+
+  // renderTypeCanvasHeader — the Typography section's own canvas header: pane toggles + the
+  // Specimen·Tokens mode segment + the reused fit/scheme/zoom controls. It deliberately omits the
+  // color-only Palettes/Scrims/Mapping + stops segments and the "+ Palette" button.
+  renderTypeCanvasHeader() {
+    return h(
+      "div",
+      { class: "canvas-header" },
+      !this.panesLeft ? this.paneToggle("left") : false,
+      this.segmented(
+        [
+          { id: "specimen", label: "Specimen", title: "Live faces — render each step in the real font" },
+          { id: "tokens", label: "Tokens", title: "Metrics only — token name · size/line · weight · tracking" },
+        ],
+        this.typeSpecMode,
+        (id) => this.setTypeSpecMode(id),
+        { cls: "canvas-seg", ariaLabel: "Type specimen mode", role: "group", idPrefix: "tspec" },
+      ),
+      h("div", { class: "spacer" }),
+      btn(icon("crosshair"), {
+        title: "Fit — reset the canvas view to centre at 100%",
+        ariaLabel: "Fit — reset the canvas view to centre at 100%",
+        onclick: () => { this.fit(); this.render(); },
+      }),
+      this.canvasThemeBtn(),
+      btn(icon("minus"), { ariaLabel: "Zoom out", onclick: () => this.zoomBy(-1) }),
+      h("span", { class: "zoom-readout", role: "status", "aria-live": "polite", "aria-label": "Zoom level" }, Math.round(this.viewport.zoom * 100) + "%"),
+      btn(icon("plus"), { ariaLabel: "Zoom in", onclick: () => this.zoomBy(1) }),
+      !this.panesRight ? this.paneToggle("right") : false,
+    );
+  }
+
+  // renderTypeCanvas — the Typography center: the full specimen scene in the same pannable/zoomable
+  // .canvas-area + .canvas-scene shell the color ramps use (wirePanZoom + applyTransform), painted in
+  // the canvas preview scheme.
+  renderTypeCanvas(view) {
+    const area = h(
+      "div",
+      {
+        class: "canvas-area type-canvas canvas-scheme-" + this.resolvedCanvasScheme(),
+        role: "group",
+        "aria-label": "Typography specimen — drag to pan, wheel to zoom, double-click to reset",
+      },
+      h("div", { class: "canvas-scene" }, this.renderTypographyScene(view)),
+    );
+    this.wirePanZoom(area);
+    requestAnimationFrame(() => this.applyTransform());
+    return area;
+  }
+
+  // renderStubCanvasHeader / renderStubCanvas — a placeholder for a section whose editor isn't built
+  // yet (Geometry, this phase). The stub carries an explicit button into the proven Geometry modal, so
+  // the tab is discoverable and nothing is lost.
+  renderStubCanvasHeader(label) {
+    return h(
+      "div",
+      { class: "canvas-header" },
+      !this.panesLeft ? this.paneToggle("left") : false,
+      h("span", { class: "stub-head-label" }, label),
+      h("div", { class: "spacer" }),
+      !this.panesRight ? this.paneToggle("right") : false,
+    );
+  }
+  renderStubCanvas(which) {
+    return h(
+      "div",
+      { class: "canvas-area is-stub", role: "group", "aria-label": "Section placeholder" },
+      h("div", { class: "stub-note" }, "The Geometry section is coming next. For now, open the Geometry editor to tune the size ramp and dimensional tokens."),
+      btn([icon("ruler"), "Open Geometry editor"], { variant: "primary", onclick: () => this.openGeometry() }),
+    );
   }
 
   // wirePanZoom — pointer-based pan/zoom on the canvas inner content layer.
@@ -7037,6 +7338,70 @@ class HctApp extends HTMLElement {
     const stack = h("div", { class: "ramp-stack" }, ...rows, ...offRows);
     this._wireReorder(stack); // pointer-drag the ⋮⋮ handle to reorder palettes
     return stack;
+  }
+
+  // renderTypographyScene — the canvas "Typography" view: the FULL specimen (all 21 steps — Display 5,
+  // Heading 5, Body 5, UI 8), grouped by category, each step a live line in the treatment's real face at
+  // its size/lineHeight/letterSpacing/weight + a compact metrics readout. (The retired modal showed only
+  // 8 of 21.) Lives in the same pannable .canvas-scene as the ramps; paints in the canvas preview scheme
+  // (var(--ink*) flips with the area's color-scheme) and the treatment's fonts (ensureTypeFonts).
+  renderTypographyScene(view) {
+    ensureTypeFonts();
+    const cfg = this.doc.type || DEFAULT_TYPE;
+    const scale = typeScale(cfg);
+    const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
+    const tokensOnly = this.typeSpecMode === "tokens";
+    const SAMPLE = {
+      Display: "Yao Ming",
+      Heading: "Latest Stories",
+      Body: "Follow the latest updates, highlights, and analysis from across the league.",
+      UI: "26 PTS · 13 REB · 3 BLK · +9 +/−",
+    };
+    const PARA = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs — " +
+      "follow the latest updates, highlights, and deep analysis from across the league, then read on for the full story.";
+    const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const line = (cat, step) => {
+      const s = scale.categories[cat] && scale.categories[cat][step];
+      if (!s) return false;
+      const role = scale.roleOf[cat] || "body";
+      const fam = scale.fonts[role] || "Inter";
+      const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
+      const token = `type-${kebab(cat)}-${kebab(step)}`;
+      const faceStyle =
+        `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;` +
+        `letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}`;
+      const isPara = cat === "Body" && step === "XL";
+      return h(
+        "div",
+        { class: "type-spec-line" + (tokensOnly ? " tokens" : "") },
+        h(
+          "div",
+          { class: "type-spec-meta" },
+          h("code", { class: "type-spec-token" }, token),
+          h("span", { class: "type-spec-dims" }, `${s.size}/${s.lineHeight}`),
+          h("span", { class: "type-spec-dims" }, `w${s.weight}`),
+          h("span", { class: "type-spec-dims" }, `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing} tr`),
+        ),
+        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : SAMPLE[cat]),
+      );
+    };
+    const groups = ["Display", "Heading", "Body", "UI"].map((cat) => {
+      const steps = scale.categories[cat] ? Object.keys(scale.categories[cat]) : [];
+      const role = scale.roleOf[cat] || "body";
+      return h(
+        "div",
+        { class: "type-spec-group" },
+        h("div", { class: "type-spec-grouphead" }, h("b", {}, cat), h("small", {}, scale.fonts[role]), h("span", { class: "type-spec-count" }, `${steps.length} steps`)),
+        ...steps.map((step) => line(cat, step)),
+      );
+    });
+    return h(
+      "div",
+      { class: "type-spec" + (tokensOnly ? " is-tokens" : "") },
+      h("div", { class: "type-spec-head" }, h("b", {}, t.label), h("small", {}, `${cfg.bodyBase}px base · 21 steps`)),
+      h("p", { class: "type-spec-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, and leading are the system."),
+      ...groups,
+    );
   }
 
   // renderScrimsScene — the canvas "Scrims" view. Per ENABLED palette, the 7 scrim roles
@@ -7498,6 +7863,19 @@ class HctApp extends HTMLElement {
   // [ Palette | Global | Roles ] — three panels over the SELECTED palette. The
   // selection lives in ui-session state (this.segment); default is Palette.
   renderRightPane(view) {
+    // section routing — Typography/Geometry get their own inspector; Color's body (below) is unchanged.
+    if (this.section !== "color") {
+      const body = this.section === "typography"
+        ? this.renderTypeInspector(view)
+        : h("div", { class: "seg-body" }, h("div", { class: "empty-note" }, "Geometry inspector — coming next."));
+      if (this.section === "typography") return body; // renderTypeInspector returns the whole .right-pane
+      return h(
+        "aside",
+        { class: "right-pane" },
+        h("div", { class: "pane-head" }, this.panesRight ? this.paneToggle("right") : false, h("div", { class: "pane-label section-inspector-label" }, "Geometry")),
+        body,
+      );
+    }
     const hasStory = !!view.story;
     const seg = this.segment === "story" && !hasStory ? "palette" : this.segment; // story tab only when there is one
     let body;
@@ -7519,6 +7897,163 @@ class HctApp extends HTMLElement {
       // Pinned below the panel on EVERY tab: a live component preview wired to the
       // selected palette's roles (surface / onSurface / onSurfaceVariant + primary).
       h("div", { class: "seg-example" }, this.exampleCard(view)),
+    );
+  }
+
+  // ── Typography inspector (right pane) ─────────────────────────────────────────
+  // The type analog of renderRightPane: a .pane-head segmented tablist + a scrollable .seg-body + a
+  // pinned .seg-example live specimen. Binds ONLY to doc.type = {treatment, bodyBase} (the only type
+  // fields the engine + persist carry today). Per-voice tuning (ratio/leading/weight/tracking) is shown
+  // READ-ONLY from the treatment — editing it needs new doc.type fields in the engine AND the persist
+  // fuzz generator, so it is FLAGGED out-of-scope, not faked.
+  renderTypeInspector(view) {
+    ensureTypeFonts();
+    const seg = this.typeSegment === "fonts" || this.typeSegment === "specimen" ? this.typeSegment : "scale";
+    const body = seg === "fonts" ? this.typeFontsTab() : seg === "specimen" ? this.typeSpecimenTab(view) : this.typeScaleTab();
+    const tabs = [{ id: "scale", label: "Scale" }, { id: "fonts", label: "Fonts" }, { id: "specimen", label: "Specimen" }];
+    return h(
+      "aside",
+      { class: "right-pane" },
+      h("div", { class: "pane-head" },
+        this.panesRight ? this.paneToggle("right") : false,
+        this.segmented(tabs, seg, (id) => { this.typeSegment = id; this.render(); }, { ariaLabel: "Typography inspector", idPrefix: "tytab", controls: "tyi-panel" })),
+      h("div", { class: "seg-body", role: "tabpanel", id: "tyi-panel", "aria-labelledby": "tytab-" + seg }, body),
+      h("div", { class: "seg-example" }, this.typeExampleCard(view)),
+    );
+  }
+
+  // typeScaleTab — the only WRITABLE controls (treatment + body-base), then a READ-ONLY per-voice
+  // summary of what the treatment yields (ratio · leading · weight · tracking).
+  typeScaleTab() {
+    const cfg = this.doc.type || DEFAULT_TYPE;
+    const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
+    const scale = typeScale(cfg);
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("type"), "Type scale"),
+      h("div", { class: "insp-sub" }, "Choose a treatment + body size — fonts, tracking, weight & leading follow."),
+      field(
+        "Treatment",
+        h(
+          "select",
+          { "data-fk": "tyi:treatment", onchange: (e) => this.commit((d) => { d.type = { ...(d.type || DEFAULT_TYPE), treatment: e.target.value }; }) },
+          ...TYPE_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
+        ),
+      ),
+      this.slider("Body base", cfg.bodyBase, 12, 22, 1, (v) => fmt(v) + "px", (v) => this.editDrag((d) => { d.type = { ...(d.type || DEFAULT_TYPE), bodyBase: Math.round(v) }; })),
+      h("p", { class: "insp-sub tyi-note" }, t.note),
+      h(
+        "div",
+        { class: "tyi-voices" },
+        h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-voice"), h("small", {}, "from treatment · read-only")),
+        ...["Display", "Heading", "Body", "UI"].map((cName) => {
+          const p = t.categories[cName];
+          const md = scale.categories[cName] && scale.categories[cName].MD;
+          return h(
+            "div",
+            { class: "tyi-voice" },
+            h("div", { class: "tyi-voice-name" }, cName, h("span", { class: "tyi-voice-font" }, scale.fonts[scale.roleOf[cName]])),
+            h(
+              "dl",
+              { class: "tyi-voice-stats" },
+              h("div", {}, h("dt", {}, "Ratio"), h("dd", {}, fmt(p.ratio, 3))),
+              h("div", {}, h("dt", {}, "Leading"), h("dd", {}, fmt(p.leading, 2))),
+              h("div", {}, h("dt", {}, "Weight"), h("dd", {}, String(p.weight))),
+              h("div", {}, h("dt", {}, "Tracking"), h("dd", {}, (p.trackingEm > 0 ? "+" : "") + fmt(p.trackingEm, 3) + "em")),
+              md ? h("div", {}, h("dt", {}, "MD"), h("dd", {}, `${md.size}/${md.lineHeight}`)) : false,
+            ),
+          );
+        }),
+      ),
+      h("p", { class: "insp-sub tyi-future" }, "Per-voice tuning (ratio · leading · weight · tracking) is coming. Today these come from the treatment."),
+      h(
+        "div",
+        { class: "insp-actions" },
+        btn([icon("download"), "Download type tokens"], { title: "CSS utility classes + DTCG typography tokens, as a .zip", onclick: () => this.downloadTypeTokens() }),
+      ),
+    );
+  }
+
+  // typeFontsTab — the 5 role→family bindings the treatment resolves to (read-only; custom fonts later).
+  typeFontsTab() {
+    const cfg = this.doc.type || DEFAULT_TYPE;
+    const scale = typeScale(cfg);
+    const ROLE_LABEL = { display: "Display", heading: "Heading", body: "Body", ui: "UI", mono: "Mono" };
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("type"), "Fonts"),
+      h("div", { class: "insp-sub" }, "The families this treatment binds to each role."),
+      h(
+        "div",
+        { class: "tyi-fonts" },
+        ...Object.entries(scale.fonts).map(([role, family]) => {
+          const generic = role === "mono" || /mono/i.test(family) ? "monospace" : /serif/i.test(family) ? "serif" : "sans-serif";
+          return h(
+            "div",
+            { class: "tyi-font-row" },
+            h("span", { class: "tyi-font-role" }, ROLE_LABEL[role] || role),
+            h("span", { class: "tyi-font-name", style: `font-family:${family}, ${generic}` }, family),
+          );
+        }),
+      ),
+      h("p", { class: "insp-sub tyi-future" }, "Custom font families are a future step. Today fonts come bundled with the treatment."),
+      h(
+        "div",
+        { class: "insp-actions" },
+        btn([icon("download"), "Download type tokens"], { title: "CSS utility classes + DTCG typography tokens, as a .zip", onclick: () => this.downloadTypeTokens() }),
+      ),
+    );
+  }
+
+  // typeSpecimenTab — a compact in-pane specimen (the 8-of-21 SHOW set), so the inspector body itself
+  // shows the scale, not only the example. (The full 21-step specimen lives on the canvas.)
+  typeSpecimenTab(view) {
+    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const SAMPLE = { Display: "Yao Ming", Heading: "Latest Stories", Body: "Follow the latest updates, highlights, and analysis from across the league.", UI: "26 PTS · 13 REB · 3 BLK · +9 +/−" };
+    const SHOW = { Display: ["XL", "MD"], Heading: ["XL", "MD", "XS"], Body: ["LG", "MD", "XS"], UI: ["XL", "MD", "XS"] };
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("type"), "Specimen"),
+      h("div", { class: "insp-sub" }, "The resolved scale — 8 representative steps. The full 21-step specimen is on the canvas."),
+      h(
+        "div",
+        { class: "tyi-specimen" },
+        ...["Display", "Heading", "Body", "UI"].map((cat) =>
+          h(
+            "div",
+            { class: "typo-cat" },
+            h("div", { class: "typo-cat-head" }, h("b", {}, cat), h("small", {}, scale.fonts[scale.roleOf[cat]])),
+            ...SHOW[cat].map((step) => this._typeSample(scale, cat, step, SAMPLE[cat])),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // typeExampleCard — the pinned live card: a heading + paragraph in the brand fonts AND the selected
+  // palette's canvas colors (surface / onSurface / primary). Mirrors exampleCard's color resolution.
+  typeExampleCard(view) {
+    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const p = view.palettes[this.selectedIndex()];
+    const roles = (p && p.roles) || [];
+    const dark = this.resolvedCanvasScheme() === "dark";
+    const sl = slug((p && p.name) || "");
+    const byKey = {};
+    for (const r of roles) byKey[r.key] = r;
+    const pick = (role) => (role ? (dark ? role.darkHex : role.lightHex) : "transparent");
+    const main = roles.find((r) => r.suffix === "");
+    const onMain = roles.find((r) => r.suffix === "-on-" + sl);
+    const hStep = scale.categories.Heading.MD, bStep = scale.categories.Body.MD;
+    const fam = (cat) => { const fm = scale.fonts[scale.roleOf[cat]] || "Inter"; const g = /mono/i.test(fm) ? "monospace" : /serif/i.test(fm) ? "serif" : "sans-serif"; return `${fm}, ${g}`; };
+    return h(
+      "div",
+      { class: "example-card tyi-example", style: "background:" + pick(byKey.surface) },
+      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
+      h("p", { class: "tyi-ex-body", style: `color:${pick(byKey.onSurfaceVariant)};font-family:${fam("Body")};font-size:${bStep.size}px;line-height:${bStep.lineHeight}px;letter-spacing:${bStep.letterSpacing}px;font-weight:${bStep.weight}` }, "Follow the latest updates, highlights, and analysis from across the league."),
+      h("button", { class: "ex-btn", tabindex: "-1", style: "background:" + pick(main) + ";color:" + pick(onMain) }, "Read more"),
     );
   }
 
@@ -8611,15 +9146,7 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // ── Typography modal (type-scale treatment + live specimen + export) ──────────────────
-  openTypography() { ensureTypeFonts(); this.typeOpen = true; this.render(); }
-  closeTypography() { this.typeOpen = false; this.render(); }
-  _syncTypography() {
-    const d = this.querySelector(".typo");
-    if (!d || typeof d.showModal !== "function") return;
-    if (this.typeOpen && !d.open) { try { d.showModal(); } catch { /* not attached */ } }
-    else if (!this.typeOpen && d.open) { try { d.close(); } catch { /* already closed */ } }
-  }
+  // ── Typography token helpers (the section lives in renderTypeInspector / renderTypographyScene) ──
   // download the resolved type tokens (CSS utility classes + DTCG typography tokens) as one .zip.
   downloadTypeTokens() {
     const scale = typeScale(this.doc.type || DEFAULT_TYPE);
@@ -8644,76 +9171,6 @@ class HctApp extends HTMLElement {
       h("div", { class: "typo-sample", style: `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}` }, text),
     );
   }
-  renderTypography() {
-    const cfg = this.doc.type || DEFAULT_TYPE;
-    const scale = typeScale(cfg);
-    const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
-    const SAMPLE = { Display: "Yao Ming", Heading: "Latest Stories", Body: "Follow the latest updates, highlights, and analysis from across the league.", UI: "26 PTS · 13 REB · 3 BLK · +9 +/−" };
-    const SHOW = { Display: ["XL", "MD"], Heading: ["XL", "MD", "XS"], Body: ["LG", "MD", "XS"], UI: ["XL", "MD", "XS"] };
-    const baseReadout = h("b", {}, cfg.bodyBase + "px");
-    return h(
-      "dialog",
-      {
-        class: "typo",
-        "aria-label": "Typography",
-        onclick: (e) => { if (e.target === e.currentTarget) this.closeTypography(); },
-        oncancel: (e) => { e.preventDefault(); this.closeTypography(); },
-      },
-      h(
-        "div",
-        { class: "drawer-head" },
-        h("h3", {}, icon("type"), "Typography"),
-        h("div", { class: "spacer" }),
-        btn(icon("x"), { ariaLabel: "Close typography", onclick: () => this.closeTypography() }),
-      ),
-      h(
-        "div",
-        { class: "typo-controls" },
-        h(
-          "div",
-          { class: "field" },
-          h("label", { for: "typo-treatment" }, "Treatment"),
-          h(
-            "select",
-            { id: "typo-treatment", "aria-label": "Treatment", onchange: (e) => this.commit((d) => { d.type = { ...(d.type || DEFAULT_TYPE), treatment: e.target.value }; }) },
-            ...TYPE_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
-          ),
-        ),
-        h(
-          "div",
-          { class: "field" },
-          h("label", {}, "Body base", baseReadout),
-          h("input", {
-            type: "range", "data-fk": "typo:base", "aria-label": "Body base size",
-            min: 12, max: 22, step: 1, value: cfg.bodyBase,
-            oninput: (e) => { baseReadout.textContent = e.target.value + "px"; },
-            onchange: (e) => this.commit((d) => { d.type = { ...(d.type || DEFAULT_TYPE), bodyBase: parseInt(e.target.value, 10) }; }),
-          }),
-        ),
-      ),
-      h("p", { class: "typo-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, and leading are the system."),
-      h(
-        "div",
-        { class: "typo-specimen" },
-        ...["Display", "Heading", "Body", "UI"].map((cat) =>
-          h(
-            "div",
-            { class: "typo-cat" },
-            h("div", { class: "typo-cat-head" }, h("b", {}, cat), h("small", {}, scale.fonts[scale.roleOf[cat]])),
-            ...SHOW[cat].map((step) => this._typeSample(scale, cat, step, SAMPLE[cat])),
-          ),
-        ),
-      ),
-      h(
-        "div",
-        { class: "typo-foot" },
-        btn([icon("download"), "Download type tokens"], { title: "CSS utility classes + DTCG typography tokens, as a .zip", onclick: () => this.downloadTypeTokens() }),
-        h("div", { class: "spacer" }),
-        btn("Done", { variant: "primary", onclick: () => this.closeTypography() }),
-      ),
-    );
-  }
-
   // ── Geometry modal (dimensional treatment + live size ramp + export) ──────────────────
   openGeometry() { this.geomOpen = true; this.render(); }
   closeGeometry() { this.geomOpen = false; this.render(); }

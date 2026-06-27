@@ -157,10 +157,11 @@ try {
   console.log("  · screenshot → smoke-out/settings.png");
   await evalJS(`${el}.closeSettings()`); await sleep(120);
 
-  // Typography modal: treatment + live specimen (Display / Heading / Body / UI).
-  await evalJS(`${el}.openTypography()`); await sleep(300);
-  ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.typo");return !!d && d.open && ${el}.querySelectorAll(".typo-cat").length===4 && ${el}.querySelectorAll(".typo-sample").length>=6})()`), "Typography modal opens with the 4-voice specimen");
-  // opening Typography lazily injects the Google Fonts <link> so the specimen renders in the real faces.
+  // Typography SECTION: the app-header switcher flips this.section → the full 23-step canvas specimen.
+  await evalJS(`${el}.setSection("typography")`); await sleep(300);
+  ok(await evalJS(`(()=>{return ${el}.section==="typography" && ${el}.querySelectorAll(".type-spec-line").length===23 && ${el}.querySelectorAll(".type-spec-group").length===4})()`), "Typography section shows the full 23-step specimen (Display·Heading·Body·UI)");
+  ok(await evalJS(`(()=>{return !!${el}.querySelector(".tyi-voices") && ${el}.querySelectorAll(".an-card").length>=4})()`), "Typography section: right-pane inspector + left-rail analysis cards render");
+  // entering the section lazily injects the Google Fonts <link> so the specimen renders in the real faces.
   ok(await evalJS(`(()=>{const l=document.getElementById("nonoun-type-fonts");return !!l && l.rel==="stylesheet" && /fonts\\.googleapis\\.com\\/css2/.test(l.href)})()`), "Typography injects the Google Fonts stylesheet (Inter / Inter Tight / Source Serif 4 / JetBrains Mono)");
   // opportunistic: if the smoke env has network, confirm a referenced face actually loaded (non-fatal offline).
   await sleep(600);
@@ -169,7 +170,7 @@ try {
   const tyShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "typography.png"), Buffer.from(tyShot.data, "base64"));
   console.log("  · screenshot → smoke-out/typography.png");
-  await evalJS(`${el}.closeTypography()`); await sleep(120);
+  await evalJS(`${el}.setSection("color")`); await sleep(120);
 
   // Geometry modal: treatment + live size ramp (XS..2XL mock controls on the centering law).
   await evalJS(`${el}.openGeometry()`); await sleep(300);

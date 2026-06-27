@@ -1068,20 +1068,9 @@ dialog.settings::backdrop { background: rgba(10,14,22,.34); }
 }
 .settings-foot .spacer { flex: 1; }
 
-/* ── Typography modal — type-scale treatment picker + live specimen + export. ── */
-dialog.typo {
-  position: fixed; inset: 0; margin: auto;
-  width: min(720px, 94vw); height: min(82vh, 760px); max-width: 94vw; max-height: 90vh;
-  padding: 0; border: none; border-radius: var(--r-lg);
-  background: var(--panel); color: var(--ink); box-shadow: var(--shadow-lg);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-dialog.typo:not([open]) { display: none; }
-dialog.typo::backdrop { background: rgba(10,14,22,.34); }
-.typo-controls { display: flex; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.typo-controls .field { flex: 1; margin: 0; }
-.typo-note { color: var(--ink-dim); font-size: 12px; line-height: 1.55; margin: 12px 16px 0; }
-.typo-specimen { padding: 14px 16px; overflow: auto; flex: 1; min-height: 0; }
+/* ── Typography specimen lines — used by the Typography section's in-pane Specimen tab (.tyi-specimen).
+   The modal chrome (dialog.typo / .typo-controls / .typo-note / .typo-foot) was retired with the section;
+   these bare specimen-line classes are KEPT (reused by typeSpecimenTab / _typeSample). ── */
 .typo-cat { margin-bottom: 20px; }
 .typo-cat-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .typo-cat-head b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-dim); }
@@ -1090,8 +1079,80 @@ dialog.typo::backdrop { background: rgba(10,14,22,.34); }
 .typo-step { flex: none; width: 92px; color: var(--ink-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .typo-sample { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .typo-cat:nth-child(3) .typo-sample { white-space: normal; }
-.typo-foot { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
-.typo-foot .spacer { flex: 1; }
+
+/* ── Typography SECTION (the editor section: switcher · specimen canvas · analysis · inspector) ── */
+/* editor-section switcher — the centered « Color · Typography · Geometry » tablist in the app-header */
+.app-header .section-seg { margin: 0; }
+.app-header .section-seg button { flex: 0 0 auto; padding: 5px 16px; }
+/* a right-pane header that isn't a tablist (Geometry stub inspector) reuses .pane-label */
+.section-inspector-label { border-bottom: 1px solid var(--line); }
+/* placeholder scene for a not-yet-built section (Geometry, this phase) */
+.canvas-area.is-stub { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: default; overflow: auto; }
+.stub-note { color: var(--ink-dim); font-size: 13px; max-width: 36ch; text-align: center; line-height: 1.5; }
+.canvas-header .stub-head-label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* Typography specimen — the full 21-step scale as a pannable canvas scene (parallel to .ramp-stack).
+   Lives inside .canvas-scene, so it pans/zooms with the viewport. Colors resolve via --ink* against the
+   canvas-area color-scheme, so it tracks the canvas preview light/dark. */
+.type-spec { display: flex; flex-direction: column; gap: 22px; padding: 16px 20px; width: 720px; max-width: 720px; }
+.type-spec-head { display: flex; align-items: baseline; gap: 10px; }
+.type-spec-head b { font-size: 14px; color: var(--ink); }
+.type-spec-head small { color: var(--ink-dim); font-size: 12px; }
+.type-spec-note { color: var(--ink-dim); font-size: 12px; line-height: 1.55; margin: 0; }
+.type-spec-group { display: flex; flex-direction: column; gap: 10px; }
+.type-spec-grouphead { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+.type-spec-grouphead b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-dim); }
+.type-spec-grouphead small { color: var(--ink-faint); font-size: 11px; }
+.type-spec-count { margin-left: auto; color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.type-spec-line { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--r); border: 1px solid transparent; background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.type-spec-line:hover { border-color: var(--line); }
+.type-spec-line.tokens { padding: 6px 8px; }
+.type-spec-meta { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+.type-spec-token { font-family: var(--mono, ui-monospace, monospace); font-size: 10.5px; color: var(--ink-dim); background: color-mix(in srgb, var(--line) 60%, transparent); padding: 1px 5px; border-radius: 4px; }
+.type-spec-dims { color: var(--ink-faint); }
+.type-spec-render { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.type-spec-render.para { white-space: normal; overflow: visible; max-width: 640px; }
+.type-spec.is-tokens .type-spec-line { background: transparent; }
+
+/* typography analysis — four-voice series (display·heading·body·ui), shared palette */
+.ty-line { fill: none; stroke-width: 1.5; }
+.ty-dot { stroke: none; }
+.ty-s0 { stroke: var(--accent); fill: var(--accent); }
+.ty-s1 { stroke: var(--ink-dim); fill: var(--ink-dim); }
+.ty-s2 { stroke: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); fill: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
+.ty-s3 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }
+.an-leg-mark.ty { background: var(--ink-faint); }
+.an-leg-mark.ty.s0 { background: var(--accent); }
+.an-leg-mark.ty.s1 { background: var(--ink-dim); }
+.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
+.an-leg-mark.ty.s3 { background: var(--ink-faint); }
+.ty-roles { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
+.ty-role { display: flex; align-items: baseline; gap: 8px; font-size: 10.5px; }
+.ty-role .ty-role-k { width: 54px; color: var(--ink-dim); flex: none; }
+.ty-role .ty-role-fam { color: var(--ink); font-size: 12px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Typography inspector (right pane) — reuses .insp-* / .seg-* / .example-card / .field / .typo-* */
+.insp-sub.tyi-note { margin-top: 2px; }
+.insp-sub.tyi-future { margin-top: 2px; opacity: .85; }
+.tyi-voices { display: flex; flex-direction: column; gap: 10px; }
+.tyi-voices-head { display: flex; align-items: baseline; justify-content: space-between; }
+.tyi-voices-head small { color: var(--ink-dim); font-size: 11px; }
+.tyi-voice { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.tyi-voice-name { display: flex; align-items: baseline; justify-content: space-between; font-weight: 650; font-size: 13px; }
+.tyi-voice-font { color: var(--ink-dim); font-weight: 400; font-size: 11px; }
+.tyi-voice-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; margin: 8px 0 0; }
+.tyi-voice-stats > div { display: flex; align-items: baseline; justify-content: space-between; }
+.tyi-voice-stats dt { color: var(--ink-dim); font-size: 11px; margin: 0; }
+.tyi-voice-stats dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tyi-fonts { display: flex; flex-direction: column; gap: 8px; }
+.tyi-font-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.tyi-font-role { color: var(--ink-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; flex: none; }
+.tyi-font-name { font-size: 18px; text-align: right; line-height: 1.2; }
+.tyi-specimen { display: flex; flex-direction: column; gap: 16px; }
+.tyi-example { display: flex; flex-direction: column; gap: 8px; }
+.tyi-ex-head { margin: 0; }
+.tyi-ex-body { margin: 0; }
+.tyi-example .ex-btn { align-self: flex-start; margin-top: 4px; }
 
 /* ── Geometry modal — shares the typo dialog shell; the specimen is live mock controls on the ramp ── */
 dialog.geom {

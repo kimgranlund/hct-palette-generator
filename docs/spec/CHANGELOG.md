@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.45 — 2026-06-27 — Typography editor section (workbench IA phase 2)
+
+Typography is promoted from a modal to a **first-class editor section**. A persistent App-Header switcher
+`« Color · Typography · Geometry »` (`this.section`) routes the whole editor between sections of one set,
+reusing the three-pane shell. The Typography section: **center** = the full **23-step** specimen
+(Display 5 · Heading 5 · Body 5 · UI 8) live in the treatment's fonts, in the pannable `.canvas-scene`,
+with a Specimen·Tokens canvas toggle (`this.typeSpecMode`); **left** = `typeAnalysisCards` (modular-scale,
+optical-tracking, leading, font-role pairings — SVG diagnostics mirroring `analysisCards`); **right** =
+`renderTypeInspector` (Scale/Fonts/Specimen tabs — treatment + body-base writable, per-voice + fonts
+read-only with "coming" notes, a live brand-coloured example, the token download). The Typography modal
+(`renderTypography`/`openTypography`/`_syncTypography`/`typeOpen`/`dialog.typo`) is retired;
+`downloadTypeTokens` + `_typeSample` + the bare `.typo-*` specimen CSS are kept. Color stays
+byte-identical (guarded `this.section` branches; `_liveRefreshNow` early-returns off-color; the color
+viewport is stashed/restored across a section round-trip; `renderCanvasArea` unchanged). No engine or
+persist change — `doc.type = {treatment, bodyBase}` only (per-voice tuning + custom fonts are flagged
+out-of-scope). Built via a multi-agent team (4 parallel designers → synthesis) + adversarial review
+(color-regression / a11y / dead-code critics) before merge. `(ty)` headless rewritten to drive the
+section (asserts the full 23-step specimen + inspector + analysis + color-restore); smoke leg updated.
+
 ## 1.43 — 2026-06-26 — Type ↔ Geometry composition + Geometry → Figma number variables
 
 The two new systems now **cohere**. A control's box and its text share **one number**: `geomScale(config,
