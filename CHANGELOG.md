@@ -10,6 +10,15 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-27
 
+#### Fixed
+- **Typography fonts now load everywhere — including offline and in the Figma plugin.** The four faces
+  (Inter · Inter Tight · Source Serif 4 · JetBrains Mono) are **self-hosted**: their Latin subset is
+  inlined as base64 `@font-face` (`src/ui/type-fonts.js`, ~230 KB), injected as a `<style>` when the
+  Typography section opens. `data:` URIs are inline, not network requests, so the specimen renders in the
+  real faces with **no Google Fonts CDN call at all** — offline-proof, privacy-clean, and compliant with
+  the Figma plugin's `networkAccess:"none"` (which hard-blocked the old CDN `<link>`). A `gen:type-fonts`
+  script regenerates the asset when the font set changes.
+
 #### Changed
 - **Typography expanded to the seven named groups** (the canonical taxonomy from the spec): **Display ·
   Heading-Editorial · Heading-Context · Heading-Eyebrow · Body · UI · Code** — replacing the prior four

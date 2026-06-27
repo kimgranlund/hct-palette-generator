@@ -27,6 +27,7 @@ import {
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
 import { MCP_BRAND_KIT } from "./mcp-assets.js";
+import { TYPE_FONTS_CSS } from "./type-fonts.js";
 import { CATEGORY_INDEX, loadCategory } from "./categories/index.js";
 import { deriveNeutral, deriveRelative, RELATIONSHIPS } from "../engine/derive.mjs";
 import { typeScale, typeTokensCSS, typeTokensDTCG, TYPE_TREATMENTS, DEFAULT_TYPE } from "../engine/type.mjs";
@@ -127,37 +128,21 @@ function ensureAppTheme() {
 }
 
 // ── typography web fonts (lazy) ─────────────────────────────────────────────────
-// The Typography treatments name four highly-rated, free Google Fonts — Inter, Inter
-// Tight (geometric sans), Source Serif 4 (high-contrast serif), and JetBrains Mono.
-// Loaded LAZILY (only when the Typography modal first opens, not on every boot) as a
-// single css2 stylesheet so the specimen renders in the REAL faces instead of falling
-// back to the system stack. The weight range 400..900 covers every weight the engine
-// emits (400 / 450 / 500 / 600 / 700 / 800 / 900 across the treatments); `display=swap`
-// keeps the specimen visible (fallback) while the fonts stream in. Offline (the Figma
-// single-file bundle has no network) the link simply fails and the generic fallbacks in
-// _typeSample hold — so this never blocks, it only upgrades fidelity where there's a net.
+// The Typography treatments name four highly-rated, free Google Fonts — Inter, Inter Tight (geometric
+// sans), Source Serif 4 (high-contrast serif), and JetBrains Mono. They're SELF-HOSTED: the Latin subset
+// is inlined as base64 @font-face (src/ui/type-fonts.js, ~230KB), injected LAZILY (only when the Typography
+// section first opens). `data:` URIs are inline, not network requests, so the specimen renders in the REAL
+// faces EVERYWHERE — online, offline, and inside the Figma plugin (manifest networkAccess:"none", where any
+// CDN is hard-blocked). No external request at all (no Google Fonts CDN), so it's offline-proof, privacy-
+// clean, and store-compliant. The fixed specimen samples are Latin, fully covered by the subset.
 const TYPE_FONTS_LINK_ID = "nonoun-type-fonts";
-const TYPE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400..900" +
-  "&family=Inter+Tight:wght@400..900" +
-  "&family=Source+Serif+4:wght@400..900" +
-  "&family=JetBrains+Mono:wght@400..800&display=swap";
 function ensureTypeFonts() {
   if (typeof document === "undefined" || !document.head) return;
   if (document.getElementById(TYPE_FONTS_LINK_ID)) return; // inject exactly once
-  // preconnect to the Google Fonts hosts so the stylesheet + the font binaries start sooner.
-  for (const [href, crossorigin] of [["https://fonts.googleapis.com", false], ["https://fonts.gstatic.com", true]]) {
-    const pre = document.createElement("link");
-    pre.rel = "preconnect";
-    pre.href = href;
-    if (crossorigin) pre.crossOrigin = "anonymous";
-    document.head.appendChild(pre);
-  }
-  const link = document.createElement("link");
-  link.id = TYPE_FONTS_LINK_ID;
-  link.rel = "stylesheet";
-  link.href = TYPE_FONTS_HREF;
-  document.head.appendChild(link);
+  const style = document.createElement("style");
+  style.id = TYPE_FONTS_LINK_ID;
+  style.textContent = TYPE_FONTS_CSS;
+  document.head.appendChild(style);
 }
 
 // setColorScheme — flip the document's color-scheme so EVERY light-dark() token —
@@ -288,8 +273,8 @@ const TYPE_SAMPLES = {
   "Heading Context": "Latest Stories",
   "Heading Eyebrow": "Editor's Picks",
   "Body": "Follow the latest updates, highlights, and analysis from across the league.",
-  "UI": "26 PTS · 13 REB · 3 BLK · +9 +/−",
-  "Code": "26 PTS · 13 REB · 3 BLK · +9 +/−",
+  "UI": "26 PTS · 13 REB · 3 BLK · +9 +/-",
+  "Code": "26 PTS · 13 REB · 3 BLK · +9 +/-",
 };
 const TYPE_SAMPLE = (cat) => TYPE_SAMPLES[cat] || "The quick brown fox";
 

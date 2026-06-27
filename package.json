@@ -12,6 +12,7 @@
     "gen:preview": "node scripts/gen-preview.mjs",
     "gen:categories": "node scripts/gen-categories.mjs",
     "gen:mcp-assets": "node scripts/gen-mcp-assets.mjs",
+    "gen:type-fonts": "node scripts/gen-type-fonts.mjs",
     "build": "npm run gen:figma-assets && npm run gen:mcp-assets && npm run gen:categories && tsc && vite build && npm run bundle && npm run gen:figma-ui",
     "preview": "vite preview",
     "test": "npm run gen:figma-assets && npm run gen:mcp-assets && npm run gen:categories && npm run bundle && npm run gen:figma-ui && node test/run.mjs",

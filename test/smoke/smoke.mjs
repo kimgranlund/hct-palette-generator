@@ -161,8 +161,10 @@ try {
   await evalJS(`${el}.setSection("typography")`); await sleep(300);
   ok(await evalJS(`(()=>{return ${el}.section==="typography" && ${el}.querySelectorAll(".type-spec-line").length===41 && ${el}.querySelectorAll(".type-spec-group").length===7})()`), "Typography section shows the full 41-step specimen across the 7 named groups");
   ok(await evalJS(`(()=>{return !!${el}.querySelector(".tyi-voices") && ${el}.querySelectorAll(".an-card").length>=4})()`), "Typography section: right-pane inspector + left-rail analysis cards render");
-  // entering the section lazily injects the Google Fonts <link> so the specimen renders in the real faces.
-  ok(await evalJS(`(()=>{const l=document.getElementById("nonoun-type-fonts");return !!l && l.rel==="stylesheet" && /fonts\\.googleapis\\.com\\/css2/.test(l.href)})()`), "Typography injects the Google Fonts stylesheet (Inter / Inter Tight / Source Serif 4 / JetBrains Mono)");
+  // entering the section injects the SELF-HOSTED base64 @font-face <style> — no CDN, so it renders the real
+  // faces offline + in the Figma plugin (networkAccess:none). Confirm there's NO Google Fonts CDN request.
+  ok(await evalJS(`(()=>{const s=document.getElementById("nonoun-type-fonts");return !!s && s.tagName==="STYLE" && /@font-face/.test(s.textContent) && /base64/.test(s.textContent) && /Inter Tight/.test(s.textContent)})()`), "Typography injects the self-hosted base64 @font-face (renders offline + in the Figma plugin)");
+  ok(await evalJS(`(()=>{return ![...document.querySelectorAll("link[href]")].some(l=>/fonts\\.(googleapis|gstatic)\\.com/.test(l.href))})()`), "no Google Fonts CDN request (offline-proof + Figma networkAccess:none compliant)");
   // opportunistic: if the smoke env has network, confirm a referenced face actually loaded (non-fatal offline).
   await sleep(600);
   const fontLoaded = await evalJS(`(async()=>{try{await document.fonts.ready;return document.fonts.check('16px "Inter Tight"')||document.fonts.check('700 24px "Inter Tight"')}catch(e){return "noapi"}})()`, true);

@@ -17,7 +17,7 @@ const categoryKey = (file) => (file === "index.js" ? "categoryIndex" : "category
 const MODS = [
   ["hct", "src/engine/hct.js"], ["okhsl", "src/engine/okhsl.js"], ["semantic", "src/engine/semantic.js"],
   ["tonal", "src/engine/tonal.js"], ["derive", "src/engine/derive.mjs"], ["type", "src/engine/type.mjs"], ["geometry", "src/engine/geometry.mjs"], ["persist", "src/ui/persist.js"],
-  ["exports", "src/engine/exports.js"], ["figmaPlugin", "src/ui/figma-plugin-assets.js"], ["mcpAssets", "src/ui/mcp-assets.js"],
+  ["exports", "src/engine/exports.js"], ["figmaPlugin", "src/ui/figma-plugin-assets.js"], ["mcpAssets", "src/ui/mcp-assets.js"], ["typeFonts", "src/ui/type-fonts.js"],
   ...CATEGORY_FILES.filter((f) => f !== "index.js").map((f) => [categoryKey(f), `${CATEGORY_DIR}/${f}`]),
   ["categoryIndex", `${CATEGORY_DIR}/index.js`],
   ["zip", "src/ui/zip.mjs"],
@@ -25,7 +25,7 @@ const MODS = [
   ["model", "src/ui/model.mjs"], ["app", "src/ui/app.js"],
 ];
 const KEY = { "hct.js": "hct", "okhsl.js": "okhsl", "semantic.js": "semantic", "tonal.js": "tonal", "derive.mjs": "derive", "type.mjs": "type", "geometry.mjs": "geometry", "persist.js": "persist",
-  "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "mcp-assets.js": "mcpAssets", "zip.mjs": "zip", "icons.js": "icons", "model.mjs": "model",
+  "exports.js": "exports", "figma-plugin-assets.js": "figmaPlugin", "mcp-assets.js": "mcpAssets", "type-fonts.js": "typeFonts", "zip.mjs": "zip", "icons.js": "icons", "model.mjs": "model",
   ...Object.fromEntries(CATEGORY_FILES.map((f) => [f, categoryKey(f)])) };
 
 function transform(src) {
