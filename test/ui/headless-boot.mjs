@@ -1333,10 +1333,13 @@ app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // rest
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".type-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(ty) returning to Color restores the ramp canvas (color untouched)");
 
-// ── (geo) Geometry modal: treatment + base height → live size ramp + dimension-token download ──
-app.openGeometry(); flushRaf();
-ok(app.geomOpen === true && !!app.querySelector(".geom"), "(geo) openGeometry shows the Geometry <dialog>");
-ok(app.querySelectorAll(".geom-line").length === 6, "(geo) the specimen shows the 6-step ramp (XS..2XL)");
+// ── (geo) Geometry SECTION: the switcher flips this.section → the full dimensional dataset (the 6-size
+// control ramp + radius + space) on the canvas + left analysis rail + right inspector + token download ──
+app.setSection("geometry"); flushRaf();
+ok(app.section === "geometry" && !!app.querySelector(".geom-spec"), "(geo) the section switcher enters Geometry (the canvas dataset renders)");
+ok(app.querySelectorAll(".geom-spec-line").length === 6, `(geo) the canvas shows the 6-step control ramp (XS..2XL) (got ${app.querySelectorAll(".geom-spec-line").length})`);
+ok(app.querySelectorAll(".an-card").length >= 4, `(geo) the left rail shows the geometry analysis cards (got ${app.querySelectorAll(".an-card").length})`);
+ok(!!app.querySelector(".tyi-voices") || !!app.querySelector(".insp-title"), "(geo) the right pane shows the Geometry inspector");
 const { geomScale: gScale } = await import("../../src/engine/geometry.mjs");
 const { brandKit: bkGeo, geometryScale: geoScaleOf } = await import("../../src/ui/model.mjs");
 const { typeScale: tScaleGeo } = await import("../../src/engine/type.mjs");
@@ -1355,14 +1358,18 @@ ok(bkGeo(app.doc).geometry && bkGeo(app.doc).geometry.sizes && bkGeo(app.doc).ge
   ok(bkGeo(app.doc).geometry.sizes.MD.font === ui.MD.size, "(geo) brandKit's geometry shares the type UI font (one source of truth)");
   app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore
 }
+// the canvas Controls·Tokens toggle drops the live mock controls to metrics-only
+app.setGeomSpecMode("tokens"); flushRaf();
+ok((app.querySelector(".geom-spec") || { classList: { contains: () => false } }).classList.contains("is-tokens"), "(geo) the Controls·Tokens toggle switches the canvas to metrics-only");
+app.setGeomSpecMode("controls"); flushRaf();
 let geomZip = null; const realDBgeo = app.downloadBytes.bind(app);
 app.downloadBytes = (bytes, name) => { geomZip = { bytes, name }; };
 app.downloadGeomTokens();
 ok(geomZip && /geometry-tokens\.zip$/.test(geomZip.name) && geomZip.bytes && geomZip.bytes.length > 200, `(geo) downloadGeomTokens emits a .zip (${geomZip && geomZip.name})`);
 app.downloadBytes = realDBgeo;
 app.commit((d) => { d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); // restore default
-app.closeGeometry(); flushRaf();
-ok(app.geomOpen === false, "(geo) closeGeometry dismisses the modal");
+app.setSection("color"); flushRaf();
+ok(app.section === "color" && !app.querySelector(".geom-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(geo) returning to Color restores the ramp canvas (color untouched)");
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {

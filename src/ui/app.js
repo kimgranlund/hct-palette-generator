@@ -415,7 +415,8 @@ class HctApp extends HTMLElement {
     this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
     this.settingsOpen = false; // the Settings page (token-mapping + app prefs)
     this.settingsSection = "mapping"; // which Settings nav item is active (left-nav page layout)
-    this.geomOpen = false; // the Geometry modal (dimensional treatment + size ramp + export)
+    this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (metrics only) — geom-section sub-state
+    this.geomSegment = "ramp"; // right-pane Geometry inspector tab: ramp | radius | space (ui-session)
     this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
@@ -775,7 +776,6 @@ class HctApp extends HTMLElement {
     this._syncNewPal(); // same, for the New-Palette modal
     this._syncApplyGate(); // same, for the Apply-to-Figma consent gate
     this._syncSettings(); // same, for the Settings modal
-    this._syncGeometry(); // same, for the Geometry modal
   }
 
   // _syncDrawer — reconcile the native export <dialog> with this.exportOpen AFTER each render.
@@ -1295,7 +1295,6 @@ class HctApp extends HTMLElement {
       this.renderNewPalette(view),
       this.renderApplyGate(),
       this.renderSettings(),
-      this.renderGeometry(),
       this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
     );
   }
@@ -1460,7 +1459,7 @@ class HctApp extends HTMLElement {
     const body =
       this.section === "color" ? this.analysisCards(view)
       : this.section === "typography" ? this.typeAnalysisCards(view)
-      : [h("div", { class: "empty-note" }, "Geometry analysis — coming next.")];
+      : this.geomAnalysisCards(view);
     return h(
       "aside",
       { class: "left-pane" },
@@ -2419,8 +2418,8 @@ class HctApp extends HTMLElement {
     }
     if (this.section === "geometry") {
       return h("div", { class: "center" },
-        this.renderStubCanvasHeader("Geometry"),
-        this.renderStubCanvas("geometry"),
+        this.renderGeomCanvasHeader(),
+        this.renderGeomCanvas(view),
         this.renderCanvasFooter());
     }
     return h(
@@ -2628,27 +2627,6 @@ class HctApp extends HTMLElement {
     return area;
   }
 
-  // renderStubCanvasHeader / renderStubCanvas — a placeholder for a section whose editor isn't built
-  // yet (Geometry, this phase). The stub carries an explicit button into the proven Geometry modal, so
-  // the tab is discoverable and nothing is lost.
-  renderStubCanvasHeader(label) {
-    return h(
-      "div",
-      { class: "canvas-header" },
-      !this.panesLeft ? this.paneToggle("left") : false,
-      h("span", { class: "stub-head-label" }, label),
-      h("div", { class: "spacer" }),
-      !this.panesRight ? this.paneToggle("right") : false,
-    );
-  }
-  renderStubCanvas(which) {
-    return h(
-      "div",
-      { class: "canvas-area is-stub", role: "group", "aria-label": "Section placeholder" },
-      h("div", { class: "stub-note" }, "The Geometry section is coming next. For now, open the Geometry editor to tune the size ramp and dimensional tokens."),
-      btn([icon("ruler"), "Open Geometry editor"], { variant: "primary", onclick: () => this.openGeometry() }),
-    );
-  }
 
   // wirePanZoom — pointer-based pan/zoom on the canvas inner content layer.
   // origin (0,0) is the CENTER of the viewport (the .canvas-scene is anchored at
@@ -3392,19 +3370,10 @@ class HctApp extends HTMLElement {
   // [ Palette | Global | Roles ] — three panels over the SELECTED palette. The
   // selection lives in ui-session state (this.segment); default is Palette.
   renderRightPane(view) {
-    // section routing — Typography/Geometry get their own inspector; Color's body (below) is unchanged.
-    if (this.section !== "color") {
-      const body = this.section === "typography"
-        ? this.renderTypeInspector(view)
-        : h("div", { class: "seg-body" }, h("div", { class: "empty-note" }, "Geometry inspector — coming next."));
-      if (this.section === "typography") return body; // renderTypeInspector returns the whole .right-pane
-      return h(
-        "aside",
-        { class: "right-pane" },
-        h("div", { class: "pane-head" }, this.panesRight ? this.paneToggle("right") : false, h("div", { class: "pane-label section-inspector-label" }, "Geometry")),
-        body,
-      );
-    }
+    // section routing — Typography/Geometry each return their OWN whole .right-pane inspector; Color's
+    // body (below) is unchanged.
+    if (this.section === "typography") return this.renderTypeInspector(view);
+    if (this.section === "geometry") return this.renderGeomInspector(view);
     const hasStory = !!view.story;
     const seg = this.segment === "story" && !hasStory ? "palette" : this.segment; // story tab only when there is one
     let body;
@@ -4701,15 +4670,12 @@ class HctApp extends HTMLElement {
       h("div", { class: "typo-sample", style: `font-family:'${fam}', ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight};${tt}` }, text),
     );
   }
-  // ── Geometry modal (dimensional treatment + live size ramp + export) ──────────────────
-  openGeometry() { this.geomOpen = true; this.render(); }
-  closeGeometry() { this.geomOpen = false; this.render(); }
-  _syncGeometry() {
-    const d = this.querySelector(".geom");
-    if (!d || typeof d.showModal !== "function") return;
-    if (this.geomOpen && !d.open) { try { d.showModal(); } catch { /* not attached */ } }
-    else if (!this.geomOpen && d.open) { try { d.close(); } catch { /* already closed */ } }
-  }
+  // ── Geometry section — the dimensional system as a full editor section (canvas + analysis rail +
+  // inspector), the spatial analog of the Color and Typography sections. Phase 3 retired the Geometry
+  // modal: all geometry comes from geometryScale(doc), COMPOSED with the type UI scale (a control's text
+  // `font` per step is the brand's Typography UI size). Binds to doc.geometry = { treatment, baseHeight };
+  // density / radius style / spacing come from the treatment (shown read-only). ──────────────────
+  setGeomSpecMode(v) { this.geomSpecMode = v; this.render(); }
   // download the resolved geometry tokens — CSS custom props + utility classes, DTCG dimension tokens, and
   // a Figma NUMBER-variable file (the "Geometry" collection). The scale is composed with the type scale so
   // the per-step `font` is the brand's UI text size.
@@ -4723,98 +4689,404 @@ class HctApp extends HTMLElement {
     this.downloadBytes(zipStore(files), "geometry-tokens.zip", "application/zip");
     this.toast("Geometry tokens downloaded");
   }
-  // a live mock control at one size — a real box on the ramp: leading icon, label, trailing caret, every
-  // dimension (height, the icon square, the gap, the centering-law padding, the pill radius) the real px.
-  _geomSample(scale, name) {
-    const s = scale.sizes[name];
-    if (!s) return false;
-    const box = h(
-      "div",
-      {
-        class: "geom-ctl",
-        style: `height:${s.height}px;font-size:${s.font}px;gap:${s.gap}px;padding-inline-start:${s.padding}px;padding-inline-end:${s.padding}px;border-radius:${s.radiusPill}px`,
-        title: `height ${s.height} · icon ${s.icon} · font ${s.font} · pad ${s.padding} · gap ${s.gap} · radius ${s.radiusPill}`,
-      },
-      h("span", { class: "geom-glyph", style: `width:${s.icon}px;height:${s.icon}px` }),
-      h("span", { class: "geom-ctl-label" }, "Button"),
-      h("span", { class: "geom-caret", style: `width:${s.caret}px;height:${s.caret}px` }, icon("caret-left")),
-    );
+  // renderGeomCanvasHeader — the Geometry section's canvas header: pane toggles + the Controls·Tokens mode
+  // segment + the reused fit/scheme/zoom controls (mirrors renderTypeCanvasHeader).
+  renderGeomCanvasHeader() {
     return h(
       "div",
-      { class: "geom-line" },
-      h("span", { class: "geom-step" }, `${name} · ${s.height}h`),
-      box,
-      h("span", { class: "geom-readout" }, `icon ${s.icon} · font ${s.font} · pad ${s.padding}`),
+      { class: "canvas-header" },
+      !this.panesLeft ? this.paneToggle("left") : false,
+      this.segmented(
+        [
+          { id: "controls", label: "Controls", title: "Live mock controls — render each ramp step as a real box" },
+          { id: "tokens", label: "Tokens", title: "Metrics only — token name · height · icon · font · pad · radius" },
+        ],
+        this.geomSpecMode,
+        (id) => this.setGeomSpecMode(id),
+        { cls: "canvas-seg", ariaLabel: "Geometry specimen mode", role: "group", idPrefix: "gspec" },
+      ),
+      h("div", { class: "spacer" }),
+      btn(icon("crosshair"), {
+        title: "Fit — reset the canvas view to centre at 100%",
+        ariaLabel: "Fit — reset the canvas view to centre at 100%",
+        onclick: () => { this.fit(); this.render(); },
+      }),
+      this.canvasThemeBtn(),
+      btn(icon("minus"), { ariaLabel: "Zoom out", onclick: () => this.zoomBy(-1) }),
+      h("span", { class: "zoom-readout", role: "status", "aria-live": "polite", "aria-label": "Zoom level" }, Math.round(this.viewport.zoom * 100) + "%"),
+      btn(icon("plus"), { ariaLabel: "Zoom in", onclick: () => this.zoomBy(1) }),
+      !this.panesRight ? this.paneToggle("right") : false,
     );
   }
-  renderGeometry() {
-    const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
-    const scale = geometryScale(this.doc); // composed with the type scale — the per-step `font` is the brand's UI text size
-    const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
-    const baseReadout = h("b", {}, scale.baseHeight + "px");
-    return h(
-      "dialog",
+
+  // renderGeomCanvas — the Geometry center: the full dimensional dataset (the 6-size control ramp + the
+  // radius ladder + the space scale) in the same pannable/zoomable .canvas-area + .canvas-scene shell the
+  // color ramps + type specimen use (wirePanZoom + applyTransform), painted in the canvas preview scheme.
+  renderGeomCanvas(view) {
+    const area = h(
+      "div",
       {
-        class: "geom",
-        "aria-label": "Geometry",
-        onclick: (e) => { if (e.target === e.currentTarget) this.closeGeometry(); },
-        oncancel: (e) => { e.preventDefault(); this.closeGeometry(); },
+        class: "canvas-area geom-canvas canvas-scheme-" + this.resolvedCanvasScheme(),
+        role: "group",
+        "aria-label": "Geometry specimen — drag to pan, wheel to zoom, double-click to reset",
       },
-      h(
+      h("div", { class: "canvas-scene" }, this.renderGeometryScene(view)),
+    );
+    this.wirePanZoom(area);
+    requestAnimationFrame(() => this.applyTransform());
+    return area;
+  }
+
+  // renderGeometryScene — the canvas "Geometry" view: the FULL dataset. (1) the 6-size CONTROL ramp, each
+  // step a live mock control (leading glyph · label · caret) at its real height/icon/font/pad/radius with a
+  // metrics readout; (2) the RADIUS ladder; (3) the SPACE scale. Tokens mode drops the live boxes for
+  // metrics only. The control text size (font) comes from the type UI scale (the composition), so
+  // ensureTypeFonts() makes that font real; paints in the canvas preview scheme (var(--ink*) flips).
+  renderGeometryScene(view) {
+    ensureTypeFonts();
+    const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
+    const scale = geometryScale(this.doc); // composed with the type scale — per-step `font` is the brand UI size
+    const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
+    const tokensOnly = this.geomSpecMode === "tokens";
+    const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const SIZE_NAMES = ["XS", "SM", "MD", "LG", "XL", "2XL"];
+    const ctlLine = (name) => {
+      const s = scale.sizes[name];
+      if (!s) return false;
+      const box = h(
         "div",
-        { class: "drawer-head" },
-        h("h3", {}, icon("ruler"), "Geometry"),
-        h("div", { class: "spacer" }),
-        btn(icon("x"), { ariaLabel: "Close geometry", onclick: () => this.closeGeometry() }),
-      ),
-      h(
+        {
+          class: "geom-ctl",
+          style: `height:${s.height}px;font-size:${s.font}px;gap:${s.gap}px;padding-inline-start:${s.padding}px;padding-inline-end:${s.padding}px;border-radius:${s.radiusPill}px`,
+          title: `height ${s.height} · icon ${s.icon} · font ${s.font} · pad ${s.padding} · gap ${s.gap} · radius ${s.radiusPill}`,
+        },
+        h("span", { class: "geom-glyph", style: `width:${s.icon}px;height:${s.icon}px` }),
+        h("span", { class: "geom-ctl-label" }, "Button"),
+        h("span", { class: "geom-caret", style: `width:${s.caret}px;height:${s.caret}px` }, icon("caret-left")),
+      );
+      return h(
         "div",
-        { class: "typo-controls" },
+        { class: "geom-spec-line" + (tokensOnly ? " tokens" : "") },
         h(
           "div",
-          { class: "field" },
-          h("label", { for: "geom-treatment" }, "Treatment"),
-          h(
-            "select",
-            { id: "geom-treatment", "aria-label": "Treatment", onchange: (e) => this.commit((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), treatment: e.target.value, baseHeight: (GEOMETRY_TREATMENTS.find((x) => x.id === e.target.value) || GEOMETRY_TREATMENTS[0]).baseHeight }; }) },
-            ...GEOMETRY_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
-          ),
+          { class: "geom-spec-meta" },
+          h("code", { class: "geom-spec-token" }, `--size-${kebab(name)}`),
+          h("span", { class: "geom-spec-dims" }, `${s.height}h`),
+          h("span", { class: "geom-spec-dims" }, `icon ${s.icon}`),
+          h("span", { class: "geom-spec-dims" }, `font ${s.font}`),
+          h("span", { class: "geom-spec-dims" }, `pad ${s.padding}`),
+          h("span", { class: "geom-spec-dims" }, `r ${s.radiusPill}`),
         ),
-        h(
-          "div",
-          { class: "field" },
-          h("label", {}, "Base height", baseReadout),
-          h("input", {
-            type: "range", "data-fk": "geom:base", "aria-label": "Base control height",
-            min: 20, max: 48, step: 2, value: scale.baseHeight,
-            oninput: (e) => { baseReadout.textContent = e.target.value + "px"; },
-            onchange: (e) => this.commit((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), baseHeight: parseInt(e.target.value, 10) }; }),
-          }),
-        ),
-      ),
-      h("p", { class: "typo-note" }, t.note + " — every glyph centers in a square cell of side = the control height, so edge padding = (height − glyph) / 2. The ramp + paddings are computed, not authored."),
+        tokensOnly ? false : h("div", { class: "geom-spec-render" }, box),
+      );
+    };
+    const ladderRow = (entries, swatch) =>
+      h("div", { class: "geom-scale-row" }, ...entries.map(swatch));
+    return h(
+      "div",
+      { class: "geom-spec" + (tokensOnly ? " is-tokens" : "") },
+      h("div", { class: "geom-spec-head" }, h("b", {}, t.label), h("small", {}, `${scale.baseHeight}px base · 6 sizes · ${scale.density}× density`)),
+      h("p", { class: "geom-spec-note" }, t.note + " — every glyph centers in a square cell of side = the control height, so edge padding = (height − glyph)/2. The ramp + paddings are computed, not authored."),
       scale.typed
         ? h("p", { class: "geom-shared-note" }, icon("type"), h("span", {}, "Text size (", h("b", {}, "font"), ") per step comes from the ", h("b", {}, "Typography UI"), " scale — one source of truth, so a control's box and its text stay in sync."))
         : false,
       h(
         "div",
-        { class: "geom-specimen" },
-        ...["XS", "SM", "MD", "LG", "XL", "2XL"].map((name) => this._geomSample(scale, name)),
+        { class: "geom-spec-group" },
+        h("div", { class: "geom-spec-grouphead" }, h("b", {}, "Controls"), h("small", {}, "height · icon · font · pad · radius"), h("span", { class: "geom-spec-count" }, "6 sizes")),
+        ...SIZE_NAMES.map(ctlLine),
       ),
       h(
         "div",
-        { class: "geom-scales" },
-        h("div", { class: "geom-scale" }, h("b", {}, "Radius"), ...Object.entries(scale.radii).map(([k, v]) =>
-          h("span", { class: "geom-chip" }, h("span", { class: "geom-radius-swatch", style: `border-radius:${Math.min(v, 24)}px` }), `${k} ${v === 9999 ? "pill" : v}`))),
-        h("div", { class: "geom-scale" }, h("b", {}, "Space"), ...Object.entries(scale.space).map(([k, v]) =>
-          h("span", { class: "geom-chip", title: `--space-${k}: ${v}px` }, h("span", { class: "geom-space-bar", style: `width:${Math.max(1, v)}px` }), `${v}`))),
+        { class: "geom-spec-group" },
+        h("div", { class: "geom-spec-grouphead" }, h("b", {}, "Radius"), h("small", {}, t.radiusStyle), h("span", { class: "geom-spec-count" }, `${Object.keys(scale.radii).length} steps`)),
+        ladderRow(Object.entries(scale.radii), ([k, v]) =>
+          h("span", { class: "geom-chip" }, h("span", { class: "geom-radius-swatch", style: `border-radius:${Math.min(v, 24)}px` }), `${k} ${v === 9999 ? "pill" : v}`)),
       ),
       h(
         "div",
-        { class: "typo-foot" },
-        btn([icon("download"), "Download geometry tokens"], { title: "CSS custom props + utility classes + DTCG dimension tokens, as a .zip", onclick: () => this.downloadGeomTokens() }),
-        h("div", { class: "spacer" }),
-        btn("Done", { variant: "primary", onclick: () => this.closeGeometry() }),
+        { class: "geom-spec-group" },
+        h("div", { class: "geom-spec-grouphead" }, h("b", {}, "Space"), h("small", {}, `${t.spaceBase}px base`), h("span", { class: "geom-spec-count" }, `${Object.keys(scale.space).length} steps`)),
+        ladderRow(Object.entries(scale.space), ([k, v]) =>
+          h("span", { class: "geom-chip", title: `--space-${k}: ${v}px` }, h("span", { class: "geom-space-bar", style: `width:${Math.max(1, v)}px` }), `${v}`)),
+      ),
+    );
+  }
+
+  // ── Geometry analysis (left rail, READ-ONLY) ──────────────────────────────────────────
+  // The geometry analog of analysisCards(): diagrams of the resolved dimensional system — pure functions
+  // of geometryScale(doc), no inputs. Reuses .an-card / .an-svg / legend(). `view` is accepted for dispatch
+  // parity but unused (geometry is doc-driven, not palette-view-driven).
+  geomAnalysisCards(view) {
+    const scale = geometryScale(this.doc);
+    const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
+    return [
+      card("Centering law — pad = ½(height − glyph)", this.graphGeomCentering(scale)),
+      card("Power-law ramp — icon & font vs height", this.graphGeomPower(scale)),
+      card("Two-band ramp — height per step", this.graphGeomBands(scale)),
+      card("Font ← Typography UI — shared text size", this.graphGeomComposition(scale)),
+    ];
+  }
+
+  // the centering law, drawn: a square CELL (side = control height) with the glyph centred in it; the equal
+  // gaps either side ARE the derived edge padding ½(height − glyph). Numbers are the LG size's real px.
+  graphGeomCentering(scale) {
+    const s = scale.sizes.LG || Object.values(scale.sizes)[0];
+    if (!s) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 116, side = 80;
+    const x0 = (W - side) / 2, y0 = (H - side) / 2;
+    const g = side * (s.icon / s.height); // glyph drawn proportional to icon/height
+    const gx = x0 + (side - g) / 2, gy = y0 + (side - g) / 2;
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <rect class="gc-cell" x="${x0}" y="${y0}" width="${side}" height="${side}" rx="2"/>
+        <rect class="gc-glyph" x="${gx.toFixed(1)}" y="${gy.toFixed(1)}" width="${g.toFixed(1)}" height="${g.toFixed(1)}" rx="2"/>
+        <line class="gc-pad" x1="${x0}" y1="${gy.toFixed(1)}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}"/>
+        <line class="gc-pad" x1="${(gx + g).toFixed(1)}" y1="${(gy + g).toFixed(1)}" x2="${(x0 + side).toFixed(1)}" y2="${(gy + g).toFixed(1)}"/>
+      </svg>`;
+    return h(
+      "div",
+      {},
+      h("div", { class: "an-svg", html: svg }),
+      h("div", { class: "geom-an-cap" }, `LG · cell ${s.height} · glyph ${s.icon} · pad ½(${s.height}−${s.icon}) = ${(s.height - s.icon) / 2}`),
+    );
+  }
+
+  // icon & font vs control height across the six sizes — both glyphs scale SUBLINEARLY (a power law of
+  // height, exponent < 1), so the curves bend below the faint height diagonal. fill:none on the lines.
+  graphGeomPower(scale) {
+    const rows = ["XS", "SM", "MD", "LG", "XL", "2XL"].map((n) => scale.sizes[n]).filter(Boolean);
+    if (!rows.length) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 132, pad = 26;
+    const maxH = Math.max(...rows.map((s) => s.height)) * 1.05;
+    const maxV = Math.max(...rows.map((s) => Math.max(s.icon, s.font, s.height))) * 1.05;
+    const X = (hh) => pad + (hh / maxH) * (W - pad - 8);
+    const Y = (v) => (H - pad + 8) - (v / maxV) * (H - pad - 8);
+    const path = (key) => "M" + rows.map((s) => `${X(s.height).toFixed(1)},${Y(s[key]).toFixed(1)}`).join(" L");
+    const dots = (key, cls) => rows.map((s) => `<circle class="${cls}" cx="${X(s.height).toFixed(1)}" cy="${Y(s[key]).toFixed(1)}" r="1.8"/>`).join("");
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <line class="lc-axis" x1="${pad}" y1="8" x2="${pad}" y2="${H - pad + 8}"/>
+        <line class="lc-axis" x1="${pad}" y1="${H - pad + 8}" x2="${W - 6}" y2="${H - pad + 8}"/>
+        <path class="gp-ref" d="${path("height")}"/>
+        <path class="gp-icon" d="${path("icon")}"/>${dots("icon", "gp-dot gp-dot-icon")}
+        <path class="gp-font" d="${path("font")}"/>${dots("font", "gp-dot gp-dot-font")}
+        <text x="2" y="14">px</text>
+        <text x="${W - 44}" y="${H - pad + 18}">height→</text>
+      </svg>`;
+    return h(
+      "div",
+      {},
+      h("div", { class: "an-svg", html: svg }),
+      this.legend([{ mark: "gp ref", label: "height" }, { mark: "gp icon", label: "icon 2.49·h^.58" }, { mark: "gp font", label: "font ≈ √h" }]),
+    );
+  }
+
+  // control height per step index — the two-band ramp (compact +4 linear below MD, expressive ×4/3
+  // geometric above LG), with a marker at the MD|LG seam where the ramp changes gear.
+  graphGeomBands(scale) {
+    const rows = ["XS", "SM", "MD", "LG", "XL", "2XL"].map((n) => ({ n, hh: scale.sizes[n] && scale.sizes[n].height })).filter((r) => r.hh);
+    if (rows.length < 2) return h("div", { class: "an-empty" }, "—");
+    const W = 244, H = 124, pad = 26;
+    const maxH = Math.max(...rows.map((r) => r.hh)) * 1.05;
+    const X = (i) => pad + (i / (rows.length - 1)) * (W - pad - 8);
+    const Y = (hh) => (H - pad + 8) - (hh / maxH) * (H - pad - 8);
+    const d = "M" + rows.map((r, i) => `${X(i).toFixed(1)},${Y(r.hh).toFixed(1)}`).join(" L");
+    const dots = rows.map((r, i) => `<circle class="gp-dot gp-dot-font" cx="${X(i).toFixed(1)}" cy="${Y(r.hh).toFixed(1)}" r="1.9"/>`).join("");
+    const seamX = ((X(2) + X(3)) / 2).toFixed(1);
+    const svg = `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <line class="lc-axis" x1="${pad}" y1="8" x2="${pad}" y2="${H - pad + 8}"/>
+        <line class="lc-axis" x1="${pad}" y1="${H - pad + 8}" x2="${W - 6}" y2="${H - pad + 8}"/>
+        <line class="dg-unity" x1="${seamX}" y1="8" x2="${seamX}" y2="${H - pad + 8}"/>
+        <text x="${(+seamX + 3).toFixed(1)}" y="15">MD|LG seam</text>
+        <path class="gp-font" d="${d}"/>${dots}
+        <text x="2" y="14">px</text>
+        <text x="${W - 48}" y="${H - pad + 18}">XS→2XL</text>
+      </svg>`;
+    return h("div", { class: "an-svg", html: svg });
+  }
+
+  // the composition link — when the geometry is composed with a type scale, each control's text size
+  // (font) IS the Typography UI voice at the matching step. Lists the six steps + their derived rhythm.
+  graphGeomComposition(scale) {
+    return h(
+      "div",
+      { class: "geom-comp" },
+      h("p", { class: "geom-comp-note" }, scale.typed
+        ? "Each control's text size is the Typography UI voice at the matching step — the box and its text share one number; caret = font, gap = font/2."
+        : "Standalone power-law text size (no type scale composed)."),
+      h(
+        "div",
+        { class: "geom-comp-rows" },
+        ...["XS", "SM", "MD", "LG", "XL", "2XL"].map((n) => {
+          const s = scale.sizes[n];
+          return s ? h("div", { class: "geom-comp-row" }, h("span", { class: "geom-comp-k" }, n), h("span", { class: "geom-comp-v" }, `font ${s.font}`), h("span", { class: "geom-comp-v dim" }, `caret ${s.caret} · gap ${s.gap}`)) : false;
+        }),
+      ),
+    );
+  }
+
+  // ── Geometry inspector (right pane) ───────────────────────────────────────────
+  // The geometry analog of renderTypeInspector: a .pane-head segmented tablist + a scrollable .seg-body + a
+  // pinned .seg-example live control. Binds ONLY to doc.geometry = { treatment, baseHeight } (the two fields
+  // the engine + persist carry). Density / radius style / spacing come from the treatment, shown READ-ONLY,
+  // exactly as the Typography inspector shows per-voice params read-only.
+  renderGeomInspector(view) {
+    const seg = this.geomSegment === "radius" || this.geomSegment === "space" ? this.geomSegment : "ramp";
+    const body = seg === "radius" ? this.geomRadiusTab() : seg === "space" ? this.geomSpaceTab() : this.geomRampTab();
+    const tabs = [{ id: "ramp", label: "Ramp" }, { id: "radius", label: "Radius" }, { id: "space", label: "Space" }];
+    return h(
+      "aside",
+      { class: "right-pane" },
+      h("div", { class: "pane-head" },
+        this.panesRight ? this.paneToggle("right") : false,
+        this.segmented(tabs, seg, (id) => { this.geomSegment = id; this.render(); }, { ariaLabel: "Geometry inspector", idPrefix: "gtab", controls: "gi-panel" })),
+      h("div", { class: "seg-body", role: "tabpanel", id: "gi-panel", "aria-labelledby": "gtab-" + seg }, body),
+      h("div", { class: "seg-example" }, this.geomExampleCard(view)),
+    );
+  }
+
+  // geomRampTab — the WRITABLE controls (treatment + base height), then a READ-ONLY per-size summary of
+  // what the centering law yields (icon · font · pad · gap · radius), + the composition note + download.
+  geomRampTab() {
+    const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
+    const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
+    const scale = geometryScale(this.doc);
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("ruler"), "Size ramp"),
+      h("div", { class: "insp-sub" }, "Choose a treatment + base height — icon, font, padding, gap & radius follow by the centering law."),
+      field(
+        "Treatment",
+        h(
+          "select",
+          { "data-fk": "gi:treatment", onchange: (e) => this.commit((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), treatment: e.target.value, baseHeight: (GEOMETRY_TREATMENTS.find((x) => x.id === e.target.value) || GEOMETRY_TREATMENTS[0]).baseHeight }; }) },
+          ...GEOMETRY_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
+        ),
+      ),
+      this.slider("Base height", scale.baseHeight, 20, 48, 2, (v) => fmt(v) + "px", (v) => this.editDrag((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), baseHeight: Math.round(v) }; })),
+      h("p", { class: "insp-sub tyi-note" }, t.note),
+      h(
+        "div",
+        { class: "tyi-voices" },
+        h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-size"), h("small", {}, "computed · read-only")),
+        ...["XS", "SM", "MD", "LG", "XL", "2XL"].map((n) => {
+          const s = scale.sizes[n];
+          if (!s) return false;
+          return h(
+            "div",
+            { class: "tyi-voice" },
+            h("div", { class: "tyi-voice-name" }, n, h("span", { class: "tyi-voice-font" }, `${s.height}px`)),
+            h(
+              "dl",
+              { class: "tyi-voice-stats" },
+              h("div", {}, h("dt", {}, "Icon"), h("dd", {}, `${s.icon}`)),
+              h("div", {}, h("dt", {}, "Font"), h("dd", {}, `${s.font}`)),
+              h("div", {}, h("dt", {}, "Pad"), h("dd", {}, `${s.padding}`)),
+              h("div", {}, h("dt", {}, "Gap"), h("dd", {}, `${s.gap}`)),
+              h("div", {}, h("dt", {}, "Radius"), h("dd", {}, `${s.radiusPill}`)),
+            ),
+          );
+        }),
+      ),
+      scale.typed ? h("p", { class: "insp-sub tyi-future" }, "Text size (font) per step comes from the Typography UI scale — one source of truth.") : false,
+      h(
+        "div",
+        { class: "insp-actions" },
+        btn([icon("download"), "Download geometry tokens"], { title: "CSS custom props + utility classes + DTCG dimension tokens + Figma number variables, as a .zip", onclick: () => this.downloadGeomTokens() }),
+      ),
+    );
+  }
+
+  // geomRadiusTab — the corner ladder the treatment resolves to (none·sm·md·lg·full). The radius STYLE is
+  // set by the treatment (read-only here, like the type fonts).
+  geomRadiusTab() {
+    const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
+    const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
+    const scale = geometryScale(this.doc);
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("ruler"), "Radius ladder"),
+      h("div", { class: "insp-sub" }, `The ${t.radiusStyle} corner ladder for the ${t.label} treatment. A fully-round control is a pill (radius = height/2).`),
+      h(
+        "div",
+        { class: "geom-lad" },
+        ...Object.entries(scale.radii).map(([k, v]) =>
+          h(
+            "div",
+            { class: "geom-lad-row" },
+            h("span", { class: "geom-radius-swatch", style: `border-radius:${v === 9999 ? 18 : Math.min(v, 18)}px` }),
+            h("span", { class: "geom-lad-k" }, k),
+            h("span", { class: "geom-lad-v" }, v === 9999 ? "pill" : `${v}px`),
+          ),
+        ),
+      ),
+      h("p", { class: "insp-sub tyi-future" }, "The radius style is set by the treatment. Per-token radius overrides are a future step."),
+      h("div", { class: "insp-actions" }, btn([icon("download"), "Download geometry tokens"], { title: "CSS + DTCG + Figma number variables, as a .zip", onclick: () => this.downloadGeomTokens() })),
+    );
+  }
+
+  // geomSpaceTab — the layout-spacing scale (--space-*): the rhythm BETWEEN components (gutters, gaps,
+  // section rhythm), a separate concern from the in-control padding the centering law governs.
+  geomSpaceTab() {
+    const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
+    const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
+    const scale = geometryScale(this.doc);
+    const maxV = Math.max(1, ...Object.values(scale.space));
+    return h(
+      "div",
+      { class: "insp-body" },
+      h("h3", { class: "insp-title" }, icon("ruler"), "Space scale"),
+      h("div", { class: "insp-sub" }, `Layout rhythm in ${t.spaceBase}px multiples — the space between components, not the padding inside one.`),
+      h(
+        "div",
+        { class: "geom-lad" },
+        ...Object.entries(scale.space).map(([k, v]) =>
+          h(
+            "div",
+            { class: "geom-lad-row" },
+            h("span", { class: "geom-lad-k" }, `--space-${k}`),
+            h("span", { class: "geom-space-track" }, h("span", { class: "geom-space-fill", style: `width:${Math.round((v / maxV) * 100)}%` })),
+            h("span", { class: "geom-lad-v" }, `${v}px`),
+          ),
+        ),
+      ),
+      h("div", { class: "insp-actions" }, btn([icon("download"), "Download geometry tokens"], { title: "CSS + DTCG + Figma number variables, as a .zip", onclick: () => this.downloadGeomTokens() })),
+    );
+  }
+
+  // geomExampleCard — the pinned live card: a real MD control built from the resolved geometry AND painted
+  // in the SELECTED palette's roles (surface / onSurface + primary). Mirrors typeExampleCard's resolution.
+  geomExampleCard(view) {
+    const scale = geometryScale(this.doc);
+    const s = scale.sizes.MD || Object.values(scale.sizes)[0];
+    if (!s) return h("div", { class: "example-card" });
+    const p = view.palettes[this.selectedIndex()];
+    const roles = (p && p.roles) || [];
+    const dark = this.resolvedCanvasScheme() === "dark";
+    const sl = slug((p && p.name) || "");
+    const byKey = {};
+    for (const r of roles) byKey[r.key] = r;
+    const pick = (role) => (role ? (dark ? role.darkHex : role.lightHex) : "transparent");
+    const main = roles.find((r) => r.suffix === "");
+    const onMain = roles.find((r) => r.suffix === "-on-" + sl);
+    return h(
+      "div",
+      { class: "example-card geom-example", style: "background:" + pick(byKey.surface) },
+      h("div", { class: "geom-ex-title", style: "color:" + pick(byKey.onSurface) }, `MD · ${s.height}px control`),
+      h(
+        "button",
+        {
+          class: "geom-ex-ctl",
+          tabindex: "-1",
+          style: `background:${pick(main)};color:${pick(onMain)};height:${s.height}px;font-size:${s.font}px;gap:${s.gap}px;padding-inline:${s.padding}px;border-radius:${s.radiusPill}px`,
+        },
+        h("span", { class: "geom-ex-glyph", style: `width:${s.icon}px;height:${s.icon}px` }),
+        "Button",
+        h("span", { class: "geom-ex-caret", style: `width:${s.caret}px;height:${s.caret}px` }, icon("caret-left")),
       ),
     );
   }
