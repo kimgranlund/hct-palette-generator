@@ -280,6 +280,19 @@ const btn = (children, { variant = "ghost", cls = "", title, ariaLabel, ariaPres
 const SCHEME_ICON = { system: "theme", light: "sun", dark: "moon" };
 const SCHEME_NEXT = { system: "light", light: "dark", dark: "system" };
 
+// per-group specimen sample text (the seven named typography groups). Display/Context/Eyebrow render
+// UPPERCASE via the engine's per-step textTransform; the sample strings stay title-case here.
+const TYPE_SAMPLES = {
+  "Display": "Yao Ming",
+  "Heading Editorial": "Featured Matchups",
+  "Heading Context": "Latest Stories",
+  "Heading Eyebrow": "Editor's Picks",
+  "Body": "Follow the latest updates, highlights, and analysis from across the league.",
+  "UI": "26 PTS · 13 REB · 3 BLK · +9 +/−",
+  "Code": "26 PTS · 13 REB · 3 BLK · +9 +/−",
+};
+const TYPE_SAMPLE = (cat) => TYPE_SAMPLES[cat] || "The quick brown fox";
+
 // chip — a small pill. mode "interactive" (a <button>, `on` = active/pressed) or "status"
 // (a non-interactive <span> badge, optional `tone`). Folds the in-flow pill stylings
 // (damp-presets, map-drift-sum) onto one .chip primitive. The absolutely-positioned
@@ -1443,9 +1456,9 @@ class HctApp extends HTMLElement {
   typeAnalysisCards(view) {
     const scale = typeScale(this.doc.type || DEFAULT_TYPE);
     const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
-    const cats = ["Display", "Heading", "Body", "UI"];
-    const series = cats
-      .map((c) => ({ cat: c, steps: Object.entries(scale.categories[c] || {}).map(([name, s]) => ({ name, ...s })) }))
+    const SHORT = { "Display": "Disp", "Heading Editorial": "H·Ed", "Heading Context": "H·Cx", "Heading Eyebrow": "H·Eye", "Body": "Body", "UI": "UI", "Code": "Code" };
+    const series = Object.keys(scale.categories)
+      .map((c) => ({ cat: c, short: SHORT[c] || c, steps: Object.entries(scale.categories[c] || {}).map(([name, s]) => ({ name, ...s })) }))
       .filter((x) => x.steps.length);
     return [
       card("Modular scale — size (px) per step", this.graphTypeScale(series)),
@@ -1477,7 +1490,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // letter-spacing (px) vs size (px); a dashed unity line marks tracking = 0.
@@ -1507,7 +1520,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 30}" y="${H - pad + 18}">size→</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // leading ratio = lineHeight ÷ size per step (tight at display, loose at body). X = step index per voice.
@@ -1532,7 +1545,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // font-role pairings — the 5 role→family assignments (no SVG; a small key, like the contrast bars).
@@ -2825,12 +2838,6 @@ class HctApp extends HTMLElement {
     const scale = typeScale(cfg);
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const tokensOnly = this.typeSpecMode === "tokens";
-    const SAMPLE = {
-      Display: "Yao Ming",
-      Heading: "Latest Stories",
-      Body: "Follow the latest updates, highlights, and analysis from across the league.",
-      UI: "26 PTS · 13 REB · 3 BLK · +9 +/−",
-    };
     const PARA = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs — " +
       "follow the latest updates, highlights, and deep analysis from across the league, then read on for the full story.";
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -2841,9 +2848,10 @@ class HctApp extends HTMLElement {
       const fam = scale.fonts[role] || "Inter";
       const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
       const token = `type-${kebab(cat)}-${kebab(step)}`;
+      const tt = s.textTransform && s.textTransform !== "none" ? `text-transform:${s.textTransform};` : "";
       const faceStyle =
         `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;` +
-        `letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}`;
+        `letter-spacing:${s.letterSpacing}px;font-weight:${s.weight};${tt}`;
       const isPara = cat === "Body" && step === "XL";
       return h(
         "div",
@@ -2856,11 +2864,13 @@ class HctApp extends HTMLElement {
           h("span", { class: "type-spec-dims" }, `w${s.weight}`),
           h("span", { class: "type-spec-dims" }, `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing} tr`),
         ),
-        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : SAMPLE[cat]),
+        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : TYPE_SAMPLE(cat)),
       );
     };
-    const groups = ["Display", "Heading", "Body", "UI"].map((cat) => {
-      const steps = scale.categories[cat] ? Object.keys(scale.categories[cat]) : [];
+    const cats = Object.keys(scale.categories); // the seven named groups, in engine order
+    const total = cats.reduce((a, c) => a + Object.keys(scale.categories[c]).length, 0);
+    const groups = cats.map((cat) => {
+      const steps = Object.keys(scale.categories[cat]);
       const role = scale.roleOf[cat] || "body";
       return h(
         "div",
@@ -2872,8 +2882,8 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "type-spec" + (tokensOnly ? " is-tokens" : "") },
-      h("div", { class: "type-spec-head" }, h("b", {}, t.label), h("small", {}, `${cfg.bodyBase}px base · 21 steps`)),
-      h("p", { class: "type-spec-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, and leading are the system."),
+      h("div", { class: "type-spec-head" }, h("b", {}, t.label), h("small", {}, `${cfg.bodyBase}px base · ${cats.length} groups · ${total} steps`)),
+      h("p", { class: "type-spec-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, leading, and case are the system."),
       ...groups,
     );
   }
@@ -3421,7 +3431,7 @@ class HctApp extends HTMLElement {
         "div",
         { class: "tyi-voices" },
         h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-voice"), h("small", {}, "from treatment · read-only")),
-        ...["Display", "Heading", "Body", "UI"].map((cName) => {
+        ...Object.keys(scale.categories).map((cName) => {
           const p = t.categories[cName];
           const md = scale.categories[cName] && scale.categories[cName].MD;
           return h(
@@ -3481,26 +3491,26 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // typeSpecimenTab — a compact in-pane specimen (the 8-of-21 SHOW set), so the inspector body itself
-  // shows the scale, not only the example. (The full 21-step specimen lives on the canvas.)
+  // typeSpecimenTab — a compact in-pane specimen: each of the seven voices at its MD step. The full
+  // scale (all 41 steps across the 7 groups) lives on the canvas.
   typeSpecimenTab(view) {
     const scale = typeScale(this.doc.type || DEFAULT_TYPE);
-    const SAMPLE = { Display: "Yao Ming", Heading: "Latest Stories", Body: "Follow the latest updates, highlights, and analysis from across the league.", UI: "26 PTS · 13 REB · 3 BLK · +9 +/−" };
-    const SHOW = { Display: ["XL", "MD"], Heading: ["XL", "MD", "XS"], Body: ["LG", "MD", "XS"], UI: ["XL", "MD", "XS"] };
+    const cats = Object.keys(scale.categories);
+    const repStep = (cat) => { const ks = Object.keys(scale.categories[cat]); return ks.includes("MD") ? "MD" : ks[Math.floor(ks.length / 2)]; };
     return h(
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, icon("type"), "Specimen"),
-      h("div", { class: "insp-sub" }, "The resolved scale — 8 representative steps. The full 21-step specimen is on the canvas."),
+      h("div", { class: "insp-sub" }, "Each of the seven voices at MD. The full scale is on the canvas."),
       h(
         "div",
         { class: "tyi-specimen" },
-        ...["Display", "Heading", "Body", "UI"].map((cat) =>
+        ...cats.map((cat) =>
           h(
             "div",
             { class: "typo-cat" },
             h("div", { class: "typo-cat-head" }, h("b", {}, cat), h("small", {}, scale.fonts[scale.roleOf[cat]])),
-            ...SHOW[cat].map((step) => this._typeSample(scale, cat, step, SAMPLE[cat])),
+            this._typeSample(scale, cat, repStep(cat), TYPE_SAMPLE(cat)),
           ),
         ),
       ),
@@ -3520,12 +3530,12 @@ class HctApp extends HTMLElement {
     const pick = (role) => (role ? (dark ? role.darkHex : role.lightHex) : "transparent");
     const main = roles.find((r) => r.suffix === "");
     const onMain = roles.find((r) => r.suffix === "-on-" + sl);
-    const hStep = scale.categories.Heading.MD, bStep = scale.categories.Body.MD;
+    const hStep = scale.categories["Heading Editorial"].MD, bStep = scale.categories.Body.MD;
     const fam = (cat) => { const fm = scale.fonts[scale.roleOf[cat]] || "Inter"; const g = /mono/i.test(fm) ? "monospace" : /serif/i.test(fm) ? "serif" : "sans-serif"; return `${fm}, ${g}`; };
     return h(
       "div",
       { class: "example-card tyi-example", style: "background:" + pick(byKey.surface) },
-      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
+      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading Editorial")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
       h("p", { class: "tyi-ex-body", style: `color:${pick(byKey.onSurfaceVariant)};font-family:${fam("Body")};font-size:${bStep.size}px;line-height:${bStep.lineHeight}px;letter-spacing:${bStep.letterSpacing}px;font-weight:${bStep.weight}` }, "Follow the latest updates, highlights, and analysis from across the league."),
       h("button", { class: "ex-btn", tabindex: "-1", style: "background:" + pick(main) + ";color:" + pick(onMain) }, "Read more"),
     );
@@ -4638,11 +4648,12 @@ class HctApp extends HTMLElement {
     const role = scale.roleOf[cat] || "body";
     const fam = scale.fonts[role] || "Inter";
     const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
+    const tt = s.textTransform && s.textTransform !== "none" ? `text-transform:${s.textTransform};` : "";
     return h(
       "div",
       { class: "typo-line" },
       h("span", { class: "typo-step" }, `${step} · ${s.size}/${s.lineHeight}`),
-      h("div", { class: "typo-sample", style: `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}` }, text),
+      h("div", { class: "typo-sample", style: `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight};${tt}` }, text),
     );
   }
   // ── Geometry modal (dimensional treatment + live size ramp + export) ──────────────────

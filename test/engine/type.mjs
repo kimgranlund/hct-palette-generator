@@ -5,10 +5,25 @@ import * as T from "../../src/engine/type.mjs";
 const fails = [];
 const ok = (c, m) => { if (!c) fails.push(m); };
 
-// ── treatments: 5 presets, each with the four role voices ──
+// ── treatments: 5 presets, each with the SEVEN named groups ──
+const GROUPS7 = ["Display", "Heading Editorial", "Heading Context", "Heading Eyebrow", "Body", "UI", "Code"];
 ok(T.TYPE_TREATMENTS.length === 5, `5 treatments (got ${T.TYPE_TREATMENTS.length})`);
-ok(T.TYPE_TREATMENTS.every((t) => t.fonts && ["Display", "Heading", "Body", "UI"].every((c) => t.categories[c])), "every treatment has Display/Heading/Body/UI + fonts");
+ok(T.TYPE_TREATMENTS.every((t) => t.fonts && GROUPS7.every((c) => t.categories[c])), "every treatment has the 7 groups (Display · 3 Headings · Body · UI · Code) + fonts");
 ok(T.TYPE_TREATMENTS.some((t) => t.id === "product") && T.TYPE_TREATMENTS.some((t) => t.id === "luxury") && T.TYPE_TREATMENTS.some((t) => t.id === "editorial"), "has product/luxury/editorial");
+
+// ── the taxonomy: role mapping (Eyebrow + Code ride MONO) + the UPPERCASE caps voices ──
+{
+  const s = T.typeScale({ treatment: "product", bodyBase: 16 });
+  ok(s.roleOf["Heading Eyebrow"] === "mono" && s.roleOf["Code"] === "mono", "Eyebrow + Code map to the mono font role");
+  ok(s.roleOf["Display"] === "display" && s.roleOf["Heading Editorial"] === "heading" && s.roleOf["Body"] === "body" && s.roleOf["UI"] === "ui", "Display/Heading/Body/UI map to their roles");
+  ok(s.categories["Display"].MD.textTransform === "uppercase" && s.categories["Heading Context"].MD.textTransform === "uppercase" && s.categories["Heading Eyebrow"].MD.textTransform === "uppercase", "Display + Context + Eyebrow are UPPERCASE voices");
+  ok(s.categories["Heading Editorial"].MD.textTransform === "none" && s.categories["Body"].MD.textTransform === "none", "Editorial + Body are sentence-case (no transform)");
+  // Context/Eyebrow caps track POSITIVE (open up); Display caps track NEGATIVE (tighten)
+  ok(s.categories["Heading Context"].XL.letterSpacing > 0 && s.categories["Heading Eyebrow"].XL.letterSpacing > 0, "caps headings track positive (open)");
+  ok(s.categories["Display"].XL.letterSpacing < 0, "Display caps track negative (tighten)");
+  // Code mirrors the UI ramp (8 steps, 3XS..2XL)
+  ok(["3XS", "2XS", "XS", "SM", "MD", "LG", "XL", "2XL"].every((k) => s.categories.Code[k]), "Code has the 8-step UI ramp 3XS..2XL");
+}
 
 // ── the modular scale: size = base · ratio^n, monotonic, MD = base ──
 {

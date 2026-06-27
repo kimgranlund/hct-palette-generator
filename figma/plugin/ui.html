@@ -1118,18 +1118,24 @@ dialog.settings::backdrop { background: rgba(10,14,22,.34); }
 .type-spec-render.para { white-space: normal; overflow: visible; max-width: 640px; }
 .type-spec.is-tokens .type-spec-line { background: transparent; }
 
-/* typography analysis — four-voice series (display·heading·body·ui), shared palette */
+/* typography analysis — the seven-group series (display · 3 headings · body · ui · code), shared palette */
 .ty-line { fill: none; stroke-width: 1.5; }
 .ty-dot { stroke: none; }
-.ty-s0 { stroke: var(--accent); fill: var(--accent); }
-.ty-s1 { stroke: var(--ink-dim); fill: var(--ink-dim); }
-.ty-s2 { stroke: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); fill: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
-.ty-s3 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }
+.ty-s0 { stroke: var(--accent); fill: var(--accent); }                                                      /* Display */
+.ty-s1 { stroke: color-mix(in srgb, var(--accent) 70%, #e0e0e0); fill: color-mix(in srgb, var(--accent) 70%, #e0e0e0); } /* H·Editorial */
+.ty-s2 { stroke: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); fill: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); } /* H·Context */
+.ty-s3 { stroke: var(--ink-dim); fill: var(--ink-dim); stroke-dasharray: 3 3; }                              /* H·Eyebrow (mono) */
+.ty-s4 { stroke: color-mix(in srgb, var(--ink) 60%, var(--accent)); fill: color-mix(in srgb, var(--ink) 60%, var(--accent)); } /* Body */
+.ty-s5 { stroke: var(--ink-faint); fill: var(--ink-faint); }                                                /* UI */
+.ty-s6 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }                         /* Code (mono) */
 .an-leg-mark.ty { background: var(--ink-faint); }
 .an-leg-mark.ty.s0 { background: var(--accent); }
-.an-leg-mark.ty.s1 { background: var(--ink-dim); }
-.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
-.an-leg-mark.ty.s3 { background: var(--ink-faint); }
+.an-leg-mark.ty.s1 { background: color-mix(in srgb, var(--accent) 70%, #e0e0e0); }
+.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); }
+.an-leg-mark.ty.s3 { background: var(--ink-dim); }
+.an-leg-mark.ty.s4 { background: color-mix(in srgb, var(--ink) 60%, var(--accent)); }
+.an-leg-mark.ty.s5 { background: var(--ink-faint); }
+.an-leg-mark.ty.s6 { background: var(--ink-faint); }
 .ty-roles { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 .ty-role { display: flex; align-items: baseline; gap: 8px; font-size: 10.5px; }
 .ty-role .ty-role-k { width: 54px; color: var(--ink-dim); flex: none; }
@@ -2298,26 +2304,43 @@ const TYPE_RATIOS = [
 ];
 
 // A "treatment" seeds the params, exactly as the color "Color Categories" presets seed palette params.
-// Each category: { role, base, ratio, leading, weight, trackingEm, steps }. Fonts are swappable; the
-// SCALE + tracking + weight + leading relationships are the product. Free/widely-available families only.
-const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5) => ({ role, base, ratio, leading, weight, trackingEm, steps });
+// Each category: { role, base, ratio, leading, weight, trackingEm, steps, transform }. Fonts are swappable;
+// the SCALE + tracking + weight + leading + case relationships are the product. Free families only.
+const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5, transform = "none") => ({ role, base, ratio, leading, weight, trackingEm, steps, transform });
+
+// make7 — the SEVEN named type groups (the canonical taxonomy from docs/spec/typography): Display · the
+// three Headings (Editorial · Context · Eyebrow) · Body · UI · Code. Shared STRUCTURE across treatments;
+// each treatment passes its fonts + a few character knobs. Eyebrow + Code ride the MONO role; Display,
+// Heading-Context, and Heading-Eyebrow are the UPPERCASE, wide-tracked "caps" voices (Display tracks
+// NEGATIVE — big caps tighten; Context/Eyebrow track POSITIVE — small caps open up).
+function make7(o = {}) {
+  return {
+    "Display": cat("display", o.dBase ?? 64, o.dRatio ?? 1.333, o.dLead ?? 0.95, o.dWeight ?? 900, o.dTrack ?? -0.03, STEPS_5, "uppercase"),
+    "Heading Editorial": cat("heading", 28, o.heRatio ?? 1.25, o.heLead ?? 1.2, o.heWeight ?? 800, o.heTrack ?? 0, STEPS_5, "none"),
+    "Heading Context": cat("heading", 26, o.hcRatio ?? 1.2, 1.15, o.hcWeight ?? 700, o.hcTrack ?? 0.12, STEPS_5, "uppercase"),
+    "Heading Eyebrow": cat("mono", 13, 1.15, 1.3, 700, o.eyeTrack ?? 0.18, STEPS_5, "uppercase"),
+    "Body": cat("body", o.bBase ?? 16, o.bRatio ?? 1.2, o.bLead ?? 1.5, o.bWeight ?? 450, 0, STEPS_5, "none"),
+    "UI": cat("ui", 14, 1.125, 1.45, o.uiWeight ?? 450, o.uiTrack ?? 0.01, STEPS_UI, "none"),
+    "Code": cat("mono", 13, 1.125, 1.5, 450, 0, STEPS_UI, "none"),
+  };
+}
 
 const TYPE_TREATMENTS = [
   { id: "product", label: "Product / Lifestyle", note: "Neutral geometric sans — screen-native, calm, versatile.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 56, 1.333, 1.05, 800, -0.02), Heading: cat("heading", 22, 1.25, 1.2, 700, -0.01), Body: cat("body", 16, 1.2, 1.5, 450, 0), UI: cat("ui", 14, 1.125, 1.45, 450, 0.01, STEPS_UI) } },
+    categories: make7({ dWeight: 800, dTrack: -0.02 }) },
   { id: "luxury", label: "Luxury / Premium", note: "Elegant high-contrast serif display, airy sans, wide tracking.",
     fonts: { display: "Source Serif 4", heading: "Source Serif 4", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 64, 1.5, 1.1, 400, -0.01), Heading: cat("heading", 24, 1.333, 1.3, 500, 0.02), Body: cat("body", 17, 1.25, 1.65, 400, 0), UI: cat("ui", 13, 1.125, 1.5, 450, 0.04, STEPS_UI) } },
+    categories: make7({ dBase: 72, dWeight: 400, dTrack: -0.01, dLead: 1.05, heWeight: 600, heLead: 1.3, hcRatio: 1.25, bBase: 17, bRatio: 1.25, bLead: 1.65, uiTrack: 0.04, eyeTrack: 0.22 }) },
   { id: "editorial", label: "Editorial / Magazine", note: "Serif headlines, sans body, mono metadata.",
     fonts: { display: "Source Serif 4", heading: "Inter Tight", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 56, 1.414, 1.05, 700, -0.015), Heading: cat("heading", 22, 1.333, 1.2, 700, 0), Body: cat("body", 18, 1.25, 1.55, 400, 0), UI: cat("ui", 13, 1.125, 1.45, 450, 0.02, STEPS_UI) } },
+    categories: make7({ dWeight: 700, dTrack: -0.015, dLead: 1.0, heWeight: 800, bBase: 18, bRatio: 1.25, eyeTrack: 0.2 }) },
   { id: "technical", label: "Technical / Data", note: "Mono-forward — tabular figures, dense, tight leading.",
     fonts: { display: "Inter", heading: "Inter", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 40, 1.25, 1.1, 700, -0.01), Heading: cat("heading", 20, 1.2, 1.25, 600, 0), Body: cat("body", 15, 1.2, 1.5, 450, 0), UI: cat("ui", 13, 1.125, 1.4, 450, 0, STEPS_UI) } },
+    categories: make7({ dBase: 48, dRatio: 1.25, dWeight: 700, dTrack: -0.01, dLead: 1.05, heWeight: 700, heRatio: 1.2, bBase: 15, uiTrack: 0 }) },
   { id: "statement", label: "Brutalist / Statement", note: "One heavy grotesque, tight tracking, dramatic jumps.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 72, 1.618, 0.95, 900, -0.03), Heading: cat("heading", 24, 1.5, 1.1, 800, -0.02), Body: cat("body", 16, 1.25, 1.45, 500, 0), UI: cat("ui", 14, 1.2, 1.4, 500, 0, STEPS_UI) } },
+    categories: make7({ dBase: 80, dRatio: 1.5, dWeight: 900, dTrack: -0.04, heWeight: 800, heRatio: 1.4, hcRatio: 1.3, hcTrack: 0.16, bRatio: 1.25, bWeight: 500, uiWeight: 500 }) },
 ];
 
 const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
@@ -2331,6 +2354,7 @@ function buildCategory(p, factor) {
       lineHeight: Math.round(size * p.leading),
       letterSpacing: round(size * p.trackingEm, 2),
       weight: p.weight,
+      textTransform: p.transform || "none",
       paragraphSpacing: size,
       paragraphIndent: 0,
     };
@@ -2366,9 +2390,10 @@ function typeTokensCSS(scale) {
   lines.push("}");
   for (const [cName, steps] of Object.entries(scale.categories)) {
     const role = scale.roleOf[cName] || "body";
-    for (const sName of Object.keys(steps)) {
-      const c = kebab(cName), s = kebab(sName);
-      lines.push(`.type-${c}-${s} { font-family: var(--font-${role}); font-size: var(--type-${c}-${s}-size); line-height: var(--type-${c}-${s}-line); letter-spacing: var(--type-${c}-${s}-tracking); font-weight: var(--type-${c}-${s}-weight); }`);
+    for (const [sName, s] of Object.entries(steps)) {
+      const c = kebab(cName), sk = kebab(sName);
+      const tt = s.textTransform && s.textTransform !== "none" ? ` text-transform: ${s.textTransform};` : "";
+      lines.push(`.type-${c}-${sk} { font-family: var(--font-${role}); font-size: var(--type-${c}-${sk}-size); line-height: var(--type-${c}-${sk}-line); letter-spacing: var(--type-${c}-${sk}-tracking); font-weight: var(--type-${c}-${sk}-weight);${tt} }`);
     }
   }
   return lines.join("\n") + "\n";
@@ -2386,7 +2411,7 @@ function typeTokensDTCG(scale) {
     for (const [sName, s] of Object.entries(steps)) {
       typography[cName][sName] = {
         $type: "typography",
-        $value: { fontFamily: scale.fonts[role], fontSize: `${s.size}px`, lineHeight: `${s.lineHeight}px`, letterSpacing: `${s.letterSpacing}px`, fontWeight: s.weight, paragraphSpacing: `${s.paragraphSpacing}px`, paragraphIndent: `${s.paragraphIndent}px` },
+        $value: { fontFamily: scale.fonts[role], fontSize: `${s.size}px`, lineHeight: `${s.lineHeight}px`, letterSpacing: `${s.letterSpacing}px`, fontWeight: s.weight, textCase: s.textTransform || "none", paragraphSpacing: `${s.paragraphSpacing}px`, paragraphIndent: `${s.paragraphIndent}px` },
       };
     }
   }
@@ -4806,6 +4831,19 @@ const btn = (children, { variant = "ghost", cls = "", title, ariaLabel, ariaPres
 const SCHEME_ICON = { system: "theme", light: "sun", dark: "moon" };
 const SCHEME_NEXT = { system: "light", light: "dark", dark: "system" };
 
+// per-group specimen sample text (the seven named typography groups). Display/Context/Eyebrow render
+// UPPERCASE via the engine's per-step textTransform; the sample strings stay title-case here.
+const TYPE_SAMPLES = {
+  "Display": "Yao Ming",
+  "Heading Editorial": "Featured Matchups",
+  "Heading Context": "Latest Stories",
+  "Heading Eyebrow": "Editor's Picks",
+  "Body": "Follow the latest updates, highlights, and analysis from across the league.",
+  "UI": "26 PTS · 13 REB · 3 BLK · +9 +/−",
+  "Code": "26 PTS · 13 REB · 3 BLK · +9 +/−",
+};
+const TYPE_SAMPLE = (cat) => TYPE_SAMPLES[cat] || "The quick brown fox";
+
 // chip — a small pill. mode "interactive" (a <button>, `on` = active/pressed) or "status"
 // (a non-interactive <span> badge, optional `tone`). Folds the in-flow pill stylings
 // (damp-presets, map-drift-sum) onto one .chip primitive. The absolutely-positioned
@@ -5969,9 +6007,9 @@ class HctApp extends HTMLElement {
   typeAnalysisCards(view) {
     const scale = typeScale(this.doc.type || DEFAULT_TYPE);
     const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
-    const cats = ["Display", "Heading", "Body", "UI"];
-    const series = cats
-      .map((c) => ({ cat: c, steps: Object.entries(scale.categories[c] || {}).map(([name, s]) => ({ name, ...s })) }))
+    const SHORT = { "Display": "Disp", "Heading Editorial": "H·Ed", "Heading Context": "H·Cx", "Heading Eyebrow": "H·Eye", "Body": "Body", "UI": "UI", "Code": "Code" };
+    const series = Object.keys(scale.categories)
+      .map((c) => ({ cat: c, short: SHORT[c] || c, steps: Object.entries(scale.categories[c] || {}).map(([name, s]) => ({ name, ...s })) }))
       .filter((x) => x.steps.length);
     return [
       card("Modular scale — size (px) per step", this.graphTypeScale(series)),
@@ -6003,7 +6041,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // letter-spacing (px) vs size (px); a dashed unity line marks tracking = 0.
@@ -6033,7 +6071,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 30}" y="${H - pad + 18}">size→</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // leading ratio = lineHeight ÷ size per step (tight at display, loose at body). X = step index per voice.
@@ -6058,7 +6096,7 @@ class HctApp extends HTMLElement {
         <text x="${W - 40}" y="${H - pad + 18}">XS→XL</text>
         ${paths}
       </svg>`;
-    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.cat }))));
+    return h("div", {}, h("div", { class: "an-svg", html: svg }), this.legend(series.map((g, gi) => ({ mark: "ty s" + gi, label: g.short || g.cat }))));
   }
 
   // font-role pairings — the 5 role→family assignments (no SVG; a small key, like the contrast bars).
@@ -7351,12 +7389,6 @@ class HctApp extends HTMLElement {
     const scale = typeScale(cfg);
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const tokensOnly = this.typeSpecMode === "tokens";
-    const SAMPLE = {
-      Display: "Yao Ming",
-      Heading: "Latest Stories",
-      Body: "Follow the latest updates, highlights, and analysis from across the league.",
-      UI: "26 PTS · 13 REB · 3 BLK · +9 +/−",
-    };
     const PARA = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs — " +
       "follow the latest updates, highlights, and deep analysis from across the league, then read on for the full story.";
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -7367,9 +7399,10 @@ class HctApp extends HTMLElement {
       const fam = scale.fonts[role] || "Inter";
       const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
       const token = `type-${kebab(cat)}-${kebab(step)}`;
+      const tt = s.textTransform && s.textTransform !== "none" ? `text-transform:${s.textTransform};` : "";
       const faceStyle =
         `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;` +
-        `letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}`;
+        `letter-spacing:${s.letterSpacing}px;font-weight:${s.weight};${tt}`;
       const isPara = cat === "Body" && step === "XL";
       return h(
         "div",
@@ -7382,11 +7415,13 @@ class HctApp extends HTMLElement {
           h("span", { class: "type-spec-dims" }, `w${s.weight}`),
           h("span", { class: "type-spec-dims" }, `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing} tr`),
         ),
-        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : SAMPLE[cat]),
+        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : TYPE_SAMPLE(cat)),
       );
     };
-    const groups = ["Display", "Heading", "Body", "UI"].map((cat) => {
-      const steps = scale.categories[cat] ? Object.keys(scale.categories[cat]) : [];
+    const cats = Object.keys(scale.categories); // the seven named groups, in engine order
+    const total = cats.reduce((a, c) => a + Object.keys(scale.categories[c]).length, 0);
+    const groups = cats.map((cat) => {
+      const steps = Object.keys(scale.categories[cat]);
       const role = scale.roleOf[cat] || "body";
       return h(
         "div",
@@ -7398,8 +7433,8 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "type-spec" + (tokensOnly ? " is-tokens" : "") },
-      h("div", { class: "type-spec-head" }, h("b", {}, t.label), h("small", {}, `${cfg.bodyBase}px base · 21 steps`)),
-      h("p", { class: "type-spec-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, and leading are the system."),
+      h("div", { class: "type-spec-head" }, h("b", {}, t.label), h("small", {}, `${cfg.bodyBase}px base · ${cats.length} groups · ${total} steps`)),
+      h("p", { class: "type-spec-note" }, t.note + " — fonts are swappable; the size scale, optical tracking, weight, leading, and case are the system."),
       ...groups,
     );
   }
@@ -7947,7 +7982,7 @@ class HctApp extends HTMLElement {
         "div",
         { class: "tyi-voices" },
         h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-voice"), h("small", {}, "from treatment · read-only")),
-        ...["Display", "Heading", "Body", "UI"].map((cName) => {
+        ...Object.keys(scale.categories).map((cName) => {
           const p = t.categories[cName];
           const md = scale.categories[cName] && scale.categories[cName].MD;
           return h(
@@ -8007,26 +8042,26 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // typeSpecimenTab — a compact in-pane specimen (the 8-of-21 SHOW set), so the inspector body itself
-  // shows the scale, not only the example. (The full 21-step specimen lives on the canvas.)
+  // typeSpecimenTab — a compact in-pane specimen: each of the seven voices at its MD step. The full
+  // scale (all 41 steps across the 7 groups) lives on the canvas.
   typeSpecimenTab(view) {
     const scale = typeScale(this.doc.type || DEFAULT_TYPE);
-    const SAMPLE = { Display: "Yao Ming", Heading: "Latest Stories", Body: "Follow the latest updates, highlights, and analysis from across the league.", UI: "26 PTS · 13 REB · 3 BLK · +9 +/−" };
-    const SHOW = { Display: ["XL", "MD"], Heading: ["XL", "MD", "XS"], Body: ["LG", "MD", "XS"], UI: ["XL", "MD", "XS"] };
+    const cats = Object.keys(scale.categories);
+    const repStep = (cat) => { const ks = Object.keys(scale.categories[cat]); return ks.includes("MD") ? "MD" : ks[Math.floor(ks.length / 2)]; };
     return h(
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, icon("type"), "Specimen"),
-      h("div", { class: "insp-sub" }, "The resolved scale — 8 representative steps. The full 21-step specimen is on the canvas."),
+      h("div", { class: "insp-sub" }, "Each of the seven voices at MD. The full scale is on the canvas."),
       h(
         "div",
         { class: "tyi-specimen" },
-        ...["Display", "Heading", "Body", "UI"].map((cat) =>
+        ...cats.map((cat) =>
           h(
             "div",
             { class: "typo-cat" },
             h("div", { class: "typo-cat-head" }, h("b", {}, cat), h("small", {}, scale.fonts[scale.roleOf[cat]])),
-            ...SHOW[cat].map((step) => this._typeSample(scale, cat, step, SAMPLE[cat])),
+            this._typeSample(scale, cat, repStep(cat), TYPE_SAMPLE(cat)),
           ),
         ),
       ),
@@ -8046,12 +8081,12 @@ class HctApp extends HTMLElement {
     const pick = (role) => (role ? (dark ? role.darkHex : role.lightHex) : "transparent");
     const main = roles.find((r) => r.suffix === "");
     const onMain = roles.find((r) => r.suffix === "-on-" + sl);
-    const hStep = scale.categories.Heading.MD, bStep = scale.categories.Body.MD;
+    const hStep = scale.categories["Heading Editorial"].MD, bStep = scale.categories.Body.MD;
     const fam = (cat) => { const fm = scale.fonts[scale.roleOf[cat]] || "Inter"; const g = /mono/i.test(fm) ? "monospace" : /serif/i.test(fm) ? "serif" : "sans-serif"; return `${fm}, ${g}`; };
     return h(
       "div",
       { class: "example-card tyi-example", style: "background:" + pick(byKey.surface) },
-      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
+      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading Editorial")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
       h("p", { class: "tyi-ex-body", style: `color:${pick(byKey.onSurfaceVariant)};font-family:${fam("Body")};font-size:${bStep.size}px;line-height:${bStep.lineHeight}px;letter-spacing:${bStep.letterSpacing}px;font-weight:${bStep.weight}` }, "Follow the latest updates, highlights, and analysis from across the league."),
       h("button", { class: "ex-btn", tabindex: "-1", style: "background:" + pick(main) + ";color:" + pick(onMain) }, "Read more"),
     );
@@ -9164,11 +9199,12 @@ class HctApp extends HTMLElement {
     const role = scale.roleOf[cat] || "body";
     const fam = scale.fonts[role] || "Inter";
     const generic = role === "mono" || /mono/i.test(fam) ? "monospace" : /serif/i.test(fam) ? "serif" : "sans-serif";
+    const tt = s.textTransform && s.textTransform !== "none" ? `text-transform:${s.textTransform};` : "";
     return h(
       "div",
       { class: "typo-line" },
       h("span", { class: "typo-step" }, `${step} · ${s.size}/${s.lineHeight}`),
-      h("div", { class: "typo-sample", style: `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight}` }, text),
+      h("div", { class: "typo-sample", style: `font-family:${fam}, ${generic};font-size:${s.size}px;line-height:${s.lineHeight}px;letter-spacing:${s.letterSpacing}px;font-weight:${s.weight};${tt}` }, text),
     );
   }
   // ── Geometry modal (dimensional treatment + live size ramp + export) ──────────────────

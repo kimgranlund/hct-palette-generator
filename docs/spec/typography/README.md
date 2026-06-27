@@ -15,17 +15,24 @@ generic (no brand/foundry specifics).
 | `Font Specs` | the **scales**, grouped by role category (below) |
 | `$extensions` | Figma mode metadata |
 
-### `Font Specs` — four role "voices"
+### `Font Specs` — the seven named groups
 
-Each is a size ramp; each step carries `Size · Single-line Height · Multi-line Height · Letter Spacing ·
-Paragraph Spacing · Paragraph Indent · Weight`.
+The engine implements this as **seven groups** (the three Headings are first-class): each is a size ramp,
+each step carrying `Size · Line Height · Letter Spacing · Weight · Case · Paragraph Spacing · Indent`.
 
-| Category | Steps | Sizes | Weight | Letter-spacing character |
+| Group | Steps | Font role | Case | Letter-spacing character |
 |---|---|---|---|---|
-| **UI** | `3XS … 2XL` (8) | 10–20 px | 450 | **positive, grows as size shrinks** (optical: +0.6 @10px → 0 @20px) |
-| **Content** (body) | `XS … XL` | 20–36 px | 450 | small positive |
-| **Display** | `XS … XL` | 36–120 px | 900 | **negative, tightens with size** (≈ −0.05 × size) |
-| **Heading** | `Eyebrow · Context · Editorial` (each a size ramp) | — | varies | per-treatment |
+| **Display** | `XS … XL` (5) | display | **UPPERCASE** | negative, tightens with size |
+| **Heading · Editorial** | `XS … XL` (5) | heading | sentence | ~0 |
+| **Heading · Context** | `XS … XL` (5) | heading | **UPPERCASE** | wide positive (caps open up) |
+| **Heading · Eyebrow** | `XS … XL` (5) | **mono** | **UPPERCASE** | very wide positive |
+| **Body** | `XS … XL` (5) | body | sentence | 0 |
+| **UI** | `3XS … 2XL` (8) | ui | sentence | small positive (optical) |
+| **Code** | `3XS … 2XL` (8) | **mono** | sentence | 0 |
+
+41 steps in all. Each treatment supplies the font palette + a few character knobs (a shared `make7()`
+factory); the engine generates every step's size (modular scale), leading, optical tracking, weight, and
+case. Heading-Eyebrow + Code use the mono role; Display / Context / Eyebrow are the uppercase caps voices.
 
 ## The system relationships (what the generator derives)
 

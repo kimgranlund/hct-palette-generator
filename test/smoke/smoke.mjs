@@ -157,9 +157,9 @@ try {
   console.log("  · screenshot → smoke-out/settings.png");
   await evalJS(`${el}.closeSettings()`); await sleep(120);
 
-  // Typography SECTION: the app-header switcher flips this.section → the full 23-step canvas specimen.
+  // Typography SECTION: the app-header switcher flips this.section → the full 41-step canvas specimen.
   await evalJS(`${el}.setSection("typography")`); await sleep(300);
-  ok(await evalJS(`(()=>{return ${el}.section==="typography" && ${el}.querySelectorAll(".type-spec-line").length===23 && ${el}.querySelectorAll(".type-spec-group").length===4})()`), "Typography section shows the full 23-step specimen (Display·Heading·Body·UI)");
+  ok(await evalJS(`(()=>{return ${el}.section==="typography" && ${el}.querySelectorAll(".type-spec-line").length===41 && ${el}.querySelectorAll(".type-spec-group").length===7})()`), "Typography section shows the full 41-step specimen across the 7 named groups");
   ok(await evalJS(`(()=>{return !!${el}.querySelector(".tyi-voices") && ${el}.querySelectorAll(".an-card").length>=4})()`), "Typography section: right-pane inspector + left-rail analysis cards render");
   // entering the section lazily injects the Google Fonts <link> so the specimen renders in the real faces.
   ok(await evalJS(`(()=>{const l=document.getElementById("nonoun-type-fonts");return !!l && l.rel==="stylesheet" && /fonts\\.googleapis\\.com\\/css2/.test(l.href)})()`), "Typography injects the Google Fonts stylesheet (Inter / Inter Tight / Source Serif 4 / JetBrains Mono)");

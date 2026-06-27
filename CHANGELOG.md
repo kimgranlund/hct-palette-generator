@@ -10,6 +10,16 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 
 ### 2026-06-27
 
+#### Changed
+- **Typography expanded to the seven named groups** (the canonical taxonomy from the spec): **Display ·
+  Heading-Editorial · Heading-Context · Heading-Eyebrow · Body · UI · Code** — replacing the prior four
+  voices. Heading-Eyebrow + Code ride the **mono** font; Display, Heading-Context, and Heading-Eyebrow are
+  the **UPPERCASE** caps voices (Display tightens, Context/Eyebrow open up) — the engine now carries a
+  per-step `textTransform`, emitted to CSS (`text-transform`) + DTCG (`textCase`). The canvas specimen,
+  left-rail analysis (seven-series curves), and right-pane inspector all render the full **41-step** scale
+  (Display 5 · 3×Heading 5 · Body 5 · UI 8 · Code 8). All five treatments keep their character via a shared
+  `make7()` factory. No persist change — `doc.type = {treatment, bodyBase}` is unchanged.
+
 #### Added
 - **Typography is now a first-class editor SECTION (not a modal).** A persistent App-Header switcher
   **« Color · Typography · Geometry »** routes the whole editor between sections of the *same* set. The

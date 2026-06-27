@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.46 — 2026-06-27 — Typography: the seven named groups (the full taxonomy)
+
+`type.mjs` expands from four voices to the canonical **seven groups** (`docs/spec/typography`): Display ·
+Heading-Editorial · Heading-Context · Heading-Eyebrow · Body · UI · Code (41 steps total). A shared
+`make7(opts)` factory builds the seven groups per treatment (each passing fonts + a few character knobs),
+so all five treatments keep their character without 35 hand-authored category literals. New per-group
+properties: **role** (Heading-Eyebrow + Code ride the `mono` role) and **case** — Display, Heading-Context,
+and Heading-Eyebrow are `uppercase` voices (Display tightens; Context/Eyebrow open up with wide positive
+tracking). The engine carries a per-step `textTransform`, emitted to CSS (`text-transform` on the utility
+class) and DTCG (`textCase` in the composite). The Typography section's canvas specimen, left-rail
+analysis (now seven-series curves with a short-label legend), and right-pane per-voice inspector all render
+the full 41-step scale. `geomScale` composition (`font` ← the UI voice) is unaffected (UI still present).
+No persist/fuzz change — `doc.type = {treatment, bodyBase}` only. Engine test rewritten for the role
+mapping + the uppercase voices + the Code ramp; `(ty)` headless + smoke assert 41 steps / 7 groups.
+
 ## 1.45 — 2026-06-27 — Typography editor section (workbench IA phase 2)
 
 Typography is promoted from a modal to a **first-class editor section**. A persistent App-Header switcher

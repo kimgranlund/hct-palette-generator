@@ -30,26 +30,43 @@ export const TYPE_RATIOS = [
 ];
 
 // A "treatment" seeds the params, exactly as the color "Color Categories" presets seed palette params.
-// Each category: { role, base, ratio, leading, weight, trackingEm, steps }. Fonts are swappable; the
-// SCALE + tracking + weight + leading relationships are the product. Free/widely-available families only.
-const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5) => ({ role, base, ratio, leading, weight, trackingEm, steps });
+// Each category: { role, base, ratio, leading, weight, trackingEm, steps, transform }. Fonts are swappable;
+// the SCALE + tracking + weight + leading + case relationships are the product. Free families only.
+const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5, transform = "none") => ({ role, base, ratio, leading, weight, trackingEm, steps, transform });
+
+// make7 — the SEVEN named type groups (the canonical taxonomy from docs/spec/typography): Display · the
+// three Headings (Editorial · Context · Eyebrow) · Body · UI · Code. Shared STRUCTURE across treatments;
+// each treatment passes its fonts + a few character knobs. Eyebrow + Code ride the MONO role; Display,
+// Heading-Context, and Heading-Eyebrow are the UPPERCASE, wide-tracked "caps" voices (Display tracks
+// NEGATIVE — big caps tighten; Context/Eyebrow track POSITIVE — small caps open up).
+function make7(o = {}) {
+  return {
+    "Display": cat("display", o.dBase ?? 64, o.dRatio ?? 1.333, o.dLead ?? 0.95, o.dWeight ?? 900, o.dTrack ?? -0.03, STEPS_5, "uppercase"),
+    "Heading Editorial": cat("heading", 28, o.heRatio ?? 1.25, o.heLead ?? 1.2, o.heWeight ?? 800, o.heTrack ?? 0, STEPS_5, "none"),
+    "Heading Context": cat("heading", 26, o.hcRatio ?? 1.2, 1.15, o.hcWeight ?? 700, o.hcTrack ?? 0.12, STEPS_5, "uppercase"),
+    "Heading Eyebrow": cat("mono", 13, 1.15, 1.3, 700, o.eyeTrack ?? 0.18, STEPS_5, "uppercase"),
+    "Body": cat("body", o.bBase ?? 16, o.bRatio ?? 1.2, o.bLead ?? 1.5, o.bWeight ?? 450, 0, STEPS_5, "none"),
+    "UI": cat("ui", 14, 1.125, 1.45, o.uiWeight ?? 450, o.uiTrack ?? 0.01, STEPS_UI, "none"),
+    "Code": cat("mono", 13, 1.125, 1.5, 450, 0, STEPS_UI, "none"),
+  };
+}
 
 export const TYPE_TREATMENTS = [
   { id: "product", label: "Product / Lifestyle", note: "Neutral geometric sans — screen-native, calm, versatile.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 56, 1.333, 1.05, 800, -0.02), Heading: cat("heading", 22, 1.25, 1.2, 700, -0.01), Body: cat("body", 16, 1.2, 1.5, 450, 0), UI: cat("ui", 14, 1.125, 1.45, 450, 0.01, STEPS_UI) } },
+    categories: make7({ dWeight: 800, dTrack: -0.02 }) },
   { id: "luxury", label: "Luxury / Premium", note: "Elegant high-contrast serif display, airy sans, wide tracking.",
     fonts: { display: "Source Serif 4", heading: "Source Serif 4", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 64, 1.5, 1.1, 400, -0.01), Heading: cat("heading", 24, 1.333, 1.3, 500, 0.02), Body: cat("body", 17, 1.25, 1.65, 400, 0), UI: cat("ui", 13, 1.125, 1.5, 450, 0.04, STEPS_UI) } },
+    categories: make7({ dBase: 72, dWeight: 400, dTrack: -0.01, dLead: 1.05, heWeight: 600, heLead: 1.3, hcRatio: 1.25, bBase: 17, bRatio: 1.25, bLead: 1.65, uiTrack: 0.04, eyeTrack: 0.22 }) },
   { id: "editorial", label: "Editorial / Magazine", note: "Serif headlines, sans body, mono metadata.",
     fonts: { display: "Source Serif 4", heading: "Inter Tight", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 56, 1.414, 1.05, 700, -0.015), Heading: cat("heading", 22, 1.333, 1.2, 700, 0), Body: cat("body", 18, 1.25, 1.55, 400, 0), UI: cat("ui", 13, 1.125, 1.45, 450, 0.02, STEPS_UI) } },
+    categories: make7({ dWeight: 700, dTrack: -0.015, dLead: 1.0, heWeight: 800, bBase: 18, bRatio: 1.25, eyeTrack: 0.2 }) },
   { id: "technical", label: "Technical / Data", note: "Mono-forward — tabular figures, dense, tight leading.",
     fonts: { display: "Inter", heading: "Inter", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 40, 1.25, 1.1, 700, -0.01), Heading: cat("heading", 20, 1.2, 1.25, 600, 0), Body: cat("body", 15, 1.2, 1.5, 450, 0), UI: cat("ui", 13, 1.125, 1.4, 450, 0, STEPS_UI) } },
+    categories: make7({ dBase: 48, dRatio: 1.25, dWeight: 700, dTrack: -0.01, dLead: 1.05, heWeight: 700, heRatio: 1.2, bBase: 15, uiTrack: 0 }) },
   { id: "statement", label: "Brutalist / Statement", note: "One heavy grotesque, tight tracking, dramatic jumps.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: { Display: cat("display", 72, 1.618, 0.95, 900, -0.03), Heading: cat("heading", 24, 1.5, 1.1, 800, -0.02), Body: cat("body", 16, 1.25, 1.45, 500, 0), UI: cat("ui", 14, 1.2, 1.4, 500, 0, STEPS_UI) } },
+    categories: make7({ dBase: 80, dRatio: 1.5, dWeight: 900, dTrack: -0.04, heWeight: 800, heRatio: 1.4, hcRatio: 1.3, hcTrack: 0.16, bRatio: 1.25, bWeight: 500, uiWeight: 500 }) },
 ];
 
 export const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
@@ -63,6 +80,7 @@ function buildCategory(p, factor) {
       lineHeight: Math.round(size * p.leading),
       letterSpacing: round(size * p.trackingEm, 2),
       weight: p.weight,
+      textTransform: p.transform || "none",
       paragraphSpacing: size,
       paragraphIndent: 0,
     };
@@ -98,9 +116,10 @@ export function typeTokensCSS(scale) {
   lines.push("}");
   for (const [cName, steps] of Object.entries(scale.categories)) {
     const role = scale.roleOf[cName] || "body";
-    for (const sName of Object.keys(steps)) {
-      const c = kebab(cName), s = kebab(sName);
-      lines.push(`.type-${c}-${s} { font-family: var(--font-${role}); font-size: var(--type-${c}-${s}-size); line-height: var(--type-${c}-${s}-line); letter-spacing: var(--type-${c}-${s}-tracking); font-weight: var(--type-${c}-${s}-weight); }`);
+    for (const [sName, s] of Object.entries(steps)) {
+      const c = kebab(cName), sk = kebab(sName);
+      const tt = s.textTransform && s.textTransform !== "none" ? ` text-transform: ${s.textTransform};` : "";
+      lines.push(`.type-${c}-${sk} { font-family: var(--font-${role}); font-size: var(--type-${c}-${sk}-size); line-height: var(--type-${c}-${sk}-line); letter-spacing: var(--type-${c}-${sk}-tracking); font-weight: var(--type-${c}-${sk}-weight);${tt} }`);
     }
   }
   return lines.join("\n") + "\n";
@@ -118,7 +137,7 @@ export function typeTokensDTCG(scale) {
     for (const [sName, s] of Object.entries(steps)) {
       typography[cName][sName] = {
         $type: "typography",
-        $value: { fontFamily: scale.fonts[role], fontSize: `${s.size}px`, lineHeight: `${s.lineHeight}px`, letterSpacing: `${s.letterSpacing}px`, fontWeight: s.weight, paragraphSpacing: `${s.paragraphSpacing}px`, paragraphIndent: `${s.paragraphIndent}px` },
+        $value: { fontFamily: scale.fonts[role], fontSize: `${s.size}px`, lineHeight: `${s.lineHeight}px`, letterSpacing: `${s.letterSpacing}px`, fontWeight: s.weight, textCase: s.textTransform || "none", paragraphSpacing: `${s.paragraphSpacing}px`, paragraphIndent: `${s.paragraphIndent}px` },
       };
     }
   }

@@ -1114,18 +1114,24 @@ dialog.settings::backdrop { background: rgba(10,14,22,.34); }
 .type-spec-render.para { white-space: normal; overflow: visible; max-width: 640px; }
 .type-spec.is-tokens .type-spec-line { background: transparent; }
 
-/* typography analysis — four-voice series (display·heading·body·ui), shared palette */
+/* typography analysis — the seven-group series (display · 3 headings · body · ui · code), shared palette */
 .ty-line { fill: none; stroke-width: 1.5; }
 .ty-dot { stroke: none; }
-.ty-s0 { stroke: var(--accent); fill: var(--accent); }
-.ty-s1 { stroke: var(--ink-dim); fill: var(--ink-dim); }
-.ty-s2 { stroke: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); fill: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
-.ty-s3 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }
+.ty-s0 { stroke: var(--accent); fill: var(--accent); }                                                      /* Display */
+.ty-s1 { stroke: color-mix(in srgb, var(--accent) 70%, #e0e0e0); fill: color-mix(in srgb, var(--accent) 70%, #e0e0e0); } /* H·Editorial */
+.ty-s2 { stroke: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); fill: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); } /* H·Context */
+.ty-s3 { stroke: var(--ink-dim); fill: var(--ink-dim); stroke-dasharray: 3 3; }                              /* H·Eyebrow (mono) */
+.ty-s4 { stroke: color-mix(in srgb, var(--ink) 60%, var(--accent)); fill: color-mix(in srgb, var(--ink) 60%, var(--accent)); } /* Body */
+.ty-s5 { stroke: var(--ink-faint); fill: var(--ink-faint); }                                                /* UI */
+.ty-s6 { stroke: var(--ink-faint); fill: var(--ink-faint); stroke-dasharray: 3 3; }                         /* Code (mono) */
 .an-leg-mark.ty { background: var(--ink-faint); }
 .an-leg-mark.ty.s0 { background: var(--accent); }
-.an-leg-mark.ty.s1 { background: var(--ink-dim); }
-.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 55%, var(--ink-faint)); }
-.an-leg-mark.ty.s3 { background: var(--ink-faint); }
+.an-leg-mark.ty.s1 { background: color-mix(in srgb, var(--accent) 70%, #e0e0e0); }
+.an-leg-mark.ty.s2 { background: color-mix(in srgb, var(--accent) 45%, var(--ink-dim)); }
+.an-leg-mark.ty.s3 { background: var(--ink-dim); }
+.an-leg-mark.ty.s4 { background: color-mix(in srgb, var(--ink) 60%, var(--accent)); }
+.an-leg-mark.ty.s5 { background: var(--ink-faint); }
+.an-leg-mark.ty.s6 { background: var(--ink-faint); }
 .ty-roles { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 .ty-role { display: flex; align-items: baseline; gap: 8px; font-size: 10.5px; }
 .ty-role .ty-role-k { width: 54px; color: var(--ink-dim); flex: none; }

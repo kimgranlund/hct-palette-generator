@@ -1310,7 +1310,7 @@ ok(app.settingsOpen === false, "(set) closeSettings dismisses the modal");
 // ── (ty) Typography SECTION: the switcher flips this.section → full 21-step canvas specimen + inspector ──
 app.setSection("typography"); flushRaf();
 ok(app.section === "typography" && !!app.querySelector(".type-spec"), "(ty) the section switcher enters Typography (the canvas specimen renders)");
-ok(app.querySelectorAll(".type-spec-line").length === 23 && app.querySelectorAll(".type-spec-group").length === 4, `(ty) the canvas shows the FULL specimen — 23 steps (Display 5·Heading 5·Body 5·UI 8) across 4 voices (got ${app.querySelectorAll(".type-spec-line").length} lines / ${app.querySelectorAll(".type-spec-group").length} groups)`);
+ok(app.querySelectorAll(".type-spec-line").length === 41 && app.querySelectorAll(".type-spec-group").length === 7, `(ty) the canvas shows the FULL specimen — 41 steps across the 7 named groups (Display·H-Editorial·H-Context·H-Eyebrow·Body·UI·Code) (got ${app.querySelectorAll(".type-spec-line").length} lines / ${app.querySelectorAll(".type-spec-group").length} groups)`);
 ok(app.querySelectorAll(".an-card").length >= 4, `(ty) the left rail shows the type analysis cards (got ${app.querySelectorAll(".an-card").length})`);
 ok(!!app.querySelector(".tyi-voices") || !!app.querySelector(".insp-title"), "(ty) the right pane shows the Typography inspector");
 const { typeScale: tScale } = await import("../../src/engine/type.mjs");
