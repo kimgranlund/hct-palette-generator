@@ -279,18 +279,65 @@ const btn = (children, { variant = "ghost", cls = "", title, ariaLabel, ariaPres
 const SCHEME_ICON = { system: "theme", light: "sun", dark: "moon" };
 const SCHEME_NEXT = { system: "light", light: "dark", dark: "system" };
 
-// per-group specimen sample text (the seven named typography groups). Display/Context/Eyebrow render
-// UPPERCASE via the engine's per-step textTransform; the sample strings stay title-case here.
-const TYPE_SAMPLES = {
-  "Display": "Yao Ming",
-  "Heading Editorial": "Featured Matchups",
-  "Heading Context": "Latest Stories",
-  "Heading Eyebrow": "Editor's Picks",
-  "Body": "Follow the latest updates, highlights, and analysis from across the league.",
-  "UI": "26 PTS · 13 REB · 3 BLK · +9 +/-",
-  "Code": "26 PTS · 13 REB · 3 BLK · +9 +/-",
+// Per-treatment specimen copy — each treatment carries BESPOKE placeholder text aligned to its concept
+// (lifestyle app · luxury maison · long-form journalism · ops dashboard · gig poster), so the type
+// previews read like the world they're for instead of one shared sports demo. `para` is the Body-XL
+// long-form filler. Context/Eyebrow render uppercase via the engine's textTransform; strings stay
+// title-case here (except Brutalist's already-shouting UI line).
+const TYPE_SPECIMENS = {
+  product: {
+    "Display": "Make today count",
+    "Heading Editorial": "Your week, at a glance",
+    "Heading Context": "This Morning",
+    "Heading Eyebrow": "Daily Brief",
+    "Body": "A calmer way to plan your day. Set the intentions that matter, check off what you finish, and let the small stuff go.",
+    "UI": "Today · 4 of 6 done · 2 left",
+    "Code": "GET /v1/habits/today → 200",
+    para: "A calmer way to plan your day. Set the intentions that matter, check off what you finish, and let the small stuff go — your streak keeps itself, so you can stay present for the part that actually counts.",
+  },
+  luxury: {
+    "Display": "The Maison Collection",
+    "Heading Editorial": "An invitation to slow down",
+    "Heading Context": "The Atelier",
+    "Heading Eyebrow": "Private Reserve",
+    "Body": "Crafted in limited number, each piece is finished by hand in our atelier and made to be kept for a lifetime.",
+    "UI": "Reserve · Suite 9 · 2 nights",
+    "Code": "RES · 2026-09-14 · SUITE-09",
+    para: "Crafted in limited number and finished entirely by hand, every piece leaves our atelier with the quiet confidence of something built to outlast its season — and to be passed, one day, to someone you love.",
+  },
+  editorial: {
+    "Display": "The long road back",
+    "Heading Editorial": "Notes from a vanishing coastline",
+    "Heading Context": "Field Report",
+    "Heading Eyebrow": "Dispatch",
+    "Body": "For thirty years she walked these shores at dawn. What she saw — and what she could no longer find — became the story.",
+    "UI": "Issue 47 · 12 min read · Share",
+    "Code": "By J. Okonkwo · Oct 2026",
+    para: "For thirty years she walked these shores at dawn, counting the birds the way her mother had taught her. What she saw over those decades, and what she slowly stopped finding, is the story we set out to tell.",
+  },
+  technical: {
+    "Display": "99.98% uptime",
+    "Heading Editorial": "Cluster health overview",
+    "Heading Context": "Live Metrics",
+    "Heading Eyebrow": "System Status",
+    "Body": "All regions reporting nominal. Latency held under 80ms across the last 24 hours of production traffic.",
+    "UI": "p99 78ms · 1.2k rps · 0 err",
+    "Code": "$ kubectl get pods -n prod",
+    para: "All regions are reporting nominal: latency held under 80ms across the last 24 hours, the error budget is untouched for the quarter, and the autoscaler released eleven nodes overnight without a single dropped request.",
+  },
+  statement: {
+    "Display": "After Hours",
+    "Heading Editorial": "Three nights only",
+    "Heading Context": "Main Stage",
+    "Heading Eyebrow": "Doors 9PM",
+    "Body": "No openers. No encore. One set, start to finish, loud enough to feel in your chest.",
+    "UI": "SOLD OUT · WAITLIST OPEN",
+    "Code": "FRI 02 · WAREHOUSE 9 · DTLA",
+    para: "No openers, no encore, no second chances: one set from start to finish, three nights only, loud enough to feel in your chest and gone before the city wakes up. Doors at nine — don't be the one telling it secondhand.",
+  },
 };
-const TYPE_SAMPLE = (cat) => TYPE_SAMPLES[cat] || "The quick brown fox";
+const TYPE_SAMPLE = (cat, t = "product") => (TYPE_SPECIMENS[t] || TYPE_SPECIMENS.product)[cat] || "The quick brown fox";
+const TYPE_PARA = (t = "product") => (TYPE_SPECIMENS[t] || TYPE_SPECIMENS.product).para;
 
 // chip — a small pill. mode "interactive" (a <button>, `on` = active/pressed) or "status"
 // (a non-interactive <span> badge, optional `tone`). Folds the in-flow pill stylings
@@ -2837,8 +2884,7 @@ class HctApp extends HTMLElement {
     const scale = typeScale(cfg);
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const tokensOnly = this.typeSpecMode === "tokens";
-    const PARA = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs — " +
-      "follow the latest updates, highlights, and deep analysis from across the league, then read on for the full story.";
+    const PARA = TYPE_PARA(scale.treatment);
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const line = (cat, step) => {
       const s = scale.categories[cat] && scale.categories[cat][step];
@@ -2863,7 +2909,7 @@ class HctApp extends HTMLElement {
           h("span", { class: "type-spec-dims" }, `w${s.weight}`),
           h("span", { class: "type-spec-dims" }, `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing} tr`),
         ),
-        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : TYPE_SAMPLE(cat)),
+        tokensOnly ? false : h("div", { class: "type-spec-render" + (isPara ? " para" : ""), style: faceStyle }, isPara ? PARA : TYPE_SAMPLE(cat, scale.treatment)),
       );
     };
     const cats = Object.keys(scale.categories); // the seven named groups, in engine order
@@ -3509,7 +3555,7 @@ class HctApp extends HTMLElement {
             "div",
             { class: "typo-cat" },
             h("div", { class: "typo-cat-head" }, h("b", {}, cat), h("small", {}, scale.fonts[scale.roleOf[cat]])),
-            this._typeSample(scale, cat, repStep(cat), TYPE_SAMPLE(cat)),
+            this._typeSample(scale, cat, repStep(cat), TYPE_SAMPLE(cat, scale.treatment)),
           ),
         ),
       ),
@@ -3534,8 +3580,8 @@ class HctApp extends HTMLElement {
     return h(
       "div",
       { class: "example-card tyi-example", style: "background:" + pick(byKey.surface) },
-      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading Editorial")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, "Latest Stories"),
-      h("p", { class: "tyi-ex-body", style: `color:${pick(byKey.onSurfaceVariant)};font-family:${fam("Body")};font-size:${bStep.size}px;line-height:${bStep.lineHeight}px;letter-spacing:${bStep.letterSpacing}px;font-weight:${bStep.weight}` }, "Follow the latest updates, highlights, and analysis from across the league."),
+      h("div", { class: "tyi-ex-head", style: `color:${pick(byKey.onSurface)};font-family:${fam("Heading Editorial")};font-size:${hStep.size}px;line-height:${hStep.lineHeight}px;letter-spacing:${hStep.letterSpacing}px;font-weight:${hStep.weight}` }, TYPE_SAMPLE("Heading Editorial", scale.treatment)),
+      h("p", { class: "tyi-ex-body", style: `color:${pick(byKey.onSurfaceVariant)};font-family:${fam("Body")};font-size:${bStep.size}px;line-height:${bStep.lineHeight}px;letter-spacing:${bStep.letterSpacing}px;font-weight:${bStep.weight}` }, TYPE_SAMPLE("Body", scale.treatment)),
       h("button", { class: "ex-btn", tabindex: "-1", style: "background:" + pick(main) + ";color:" + pick(onMain) }, "Read more"),
     );
   }

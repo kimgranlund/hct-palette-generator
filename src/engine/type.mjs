@@ -36,37 +36,50 @@ const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5, tr
 
 // make7 — the SEVEN named type groups (the canonical taxonomy from docs/spec/typography): Display · the
 // three Headings (Editorial · Context · Eyebrow) · Body · UI · Code. Shared STRUCTURE across treatments;
-// each treatment passes its fonts + a few character knobs. Eyebrow + Code ride the MONO role; Display,
-// Heading-Context, and Heading-Eyebrow are the UPPERCASE, wide-tracked "caps" voices (Display tracks
-// NEGATIVE — big caps tighten; Context/Eyebrow track POSITIVE — small caps open up).
+// each treatment passes its fonts + a few character knobs. Eyebrow + Code ride the MONO role.
+//
+// CASE is a per-treatment decision, not a blanket rule. The Display voice defaults to TITLE/SENTENCE case
+// (o.dTransform) — only the Brutalist/Statement treatment opts its Display into ALL-CAPS. The two genuine
+// "caps voices" are Heading-Context (the kicker / section label) and Heading-Eyebrow (the mono overline);
+// those stay uppercase and track POSITIVE so small caps open up. Display tracks NEGATIVE — big type
+// tightens. Leadings sit inside the ui-compose-typography bands: display 1.05–1.2, heading 1.05–1.3,
+// prose 1.45–1.65, UI 1.25–1.5, mono ~1.5.
 function make7(o = {}) {
   return {
-    "Display": cat("display", o.dBase ?? 64, o.dRatio ?? 1.333, o.dLead ?? 0.95, o.dWeight ?? 900, o.dTrack ?? -0.03, STEPS_5, "uppercase"),
-    "Heading Editorial": cat("heading", 28, o.heRatio ?? 1.25, o.heLead ?? 1.2, o.heWeight ?? 800, o.heTrack ?? 0, STEPS_5, "none"),
-    "Heading Context": cat("heading", 26, o.hcRatio ?? 1.2, 1.15, o.hcWeight ?? 700, o.hcTrack ?? 0.12, STEPS_5, "uppercase"),
-    "Heading Eyebrow": cat("mono", 13, 1.15, 1.3, 700, o.eyeTrack ?? 0.18, STEPS_5, "uppercase"),
-    "Body": cat("body", o.bBase ?? 16, o.bRatio ?? 1.2, o.bLead ?? 1.5, o.bWeight ?? 450, 0, STEPS_5, "none"),
-    "UI": cat("ui", 14, 1.125, 1.45, o.uiWeight ?? 450, o.uiTrack ?? 0.01, STEPS_UI, "none"),
-    "Code": cat("mono", 13, 1.125, 1.5, 450, 0, STEPS_UI, "none"),
+    "Display": cat("display", o.dBase ?? 60, o.dRatio ?? 1.25, o.dLead ?? 1.08, o.dWeight ?? 700, o.dTrack ?? -0.02, STEPS_5, o.dTransform ?? "none"),
+    "Heading Editorial": cat("heading", 28, o.heRatio ?? 1.25, o.heLead ?? 1.2, o.heWeight ?? 700, o.heTrack ?? -0.005, STEPS_5, "none"),
+    "Heading Context": cat("heading", 26, o.hcRatio ?? 1.2, o.hcLead ?? 1.2, o.hcWeight ?? 600, o.hcTrack ?? 0.1, STEPS_5, "uppercase"),
+    "Heading Eyebrow": cat("mono", 13, 1.15, o.eyeLead ?? 1.4, o.eyeWeight ?? 600, o.eyeTrack ?? 0.16, STEPS_5, "uppercase"),
+    "Body": cat("body", o.bBase ?? 16, o.bRatio ?? 1.2, o.bLead ?? 1.55, o.bWeight ?? 440, 0, STEPS_5, "none"),
+    "UI": cat("ui", 14, 1.125, o.uiLead ?? 1.4, o.uiWeight ?? 480, o.uiTrack ?? 0.006, STEPS_UI, "none"),
+    "Code": cat("mono", 13, 1.125, 1.5, o.codeWeight ?? 460, o.codeTrack ?? 0, STEPS_UI, "none"),
   };
 }
 
+// Each treatment expresses a distinct VOICE through case, weight contrast, tracking, leading, and scale —
+// not just a font swap. Per the directive + ui-compose-typography: Display is title/sentence case
+// everywhere except Brutalist (the one earned ALL-CAPS), with bespoke specimen copy living in the UI.
 export const TYPE_TREATMENTS = [
-  { id: "product", label: "Product / Lifestyle", note: "Neutral geometric sans — screen-native, calm, versatile.",
+  // Product — calm geometric sans, gentle hierarchy, title-case display. The everyday system voice.
+  { id: "product", label: "Product / Lifestyle", note: "Neutral geometric sans, title-case display — screen-native, calm, versatile.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: make7({ dWeight: 800, dTrack: -0.02 }) },
-  { id: "luxury", label: "Luxury / Premium", note: "Elegant high-contrast serif display, airy sans, wide tracking.",
+    categories: make7({ dBase: 54, dRatio: 1.25, dWeight: 700, dTrack: -0.02, dLead: 1.1, heWeight: 620, bLead: 1.55, uiLead: 1.35, eyeTrack: 0.14 }) },
+  // Luxury — high-contrast serif set LIGHT and large, airy prose, wide-tracked labels. Restraint, not shout.
+  { id: "luxury", label: "Luxury / Premium", note: "High-contrast serif display set light and large, airy sans body, wide-tracked labels — restraint over shout.",
     fonts: { display: "Source Serif 4", heading: "Source Serif 4", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: make7({ dBase: 72, dWeight: 400, dTrack: -0.01, dLead: 1.05, heWeight: 600, heLead: 1.3, hcRatio: 1.25, bBase: 17, bRatio: 1.25, bLead: 1.65, uiTrack: 0.04, eyeTrack: 0.22 }) },
-  { id: "editorial", label: "Editorial / Magazine", note: "Serif headlines, sans body, mono metadata.",
+    categories: make7({ dBase: 76, dRatio: 1.25, dWeight: 400, dTrack: -0.005, dLead: 1.12, heWeight: 500, heLead: 1.3, heTrack: 0, hcRatio: 1.25, hcWeight: 500, hcTrack: 0.18, bBase: 17, bRatio: 1.25, bLead: 1.65, bWeight: 400, uiTrack: 0.04, uiLead: 1.45, eyeWeight: 500, eyeTrack: 0.26 }) },
+  // Editorial — serif headlines in title case, tight sans subheads, sans body tuned for long-form reading.
+  { id: "editorial", label: "Editorial / Magazine", note: "Serif headlines in title case, tight sans subheads, sans body for long-form reading, mono metadata.",
     fonts: { display: "Source Serif 4", heading: "Inter Tight", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: make7({ dWeight: 700, dTrack: -0.015, dLead: 1.0, heWeight: 800, bBase: 18, bRatio: 1.25, eyeTrack: 0.2 }) },
-  { id: "technical", label: "Technical / Data", note: "Mono-forward — tabular figures, dense, tight leading.",
+    categories: make7({ dBase: 60, dRatio: 1.25, dWeight: 650, dTrack: -0.015, dLead: 1.06, heWeight: 750, heTrack: -0.01, bBase: 18, bRatio: 1.25, bLead: 1.6, eyeTrack: 0.2 }) },
+  // Technical — mono-forward, tabular, dense, tight leading. Display reads as data, not a slogan.
+  { id: "technical", label: "Technical / Data", note: "Mono-forward — tabular figures, dense, tight leading, restrained scale. Display reads as data, not slogan.",
     fonts: { display: "Inter", heading: "Inter", body: "Inter", ui: "JetBrains Mono", mono: "JetBrains Mono" },
-    categories: make7({ dBase: 48, dRatio: 1.25, dWeight: 700, dTrack: -0.01, dLead: 1.05, heWeight: 700, heRatio: 1.2, bBase: 15, uiTrack: 0 }) },
-  { id: "statement", label: "Brutalist / Statement", note: "One heavy grotesque, tight tracking, dramatic jumps.",
+    categories: make7({ dBase: 42, dRatio: 1.2, dWeight: 650, dTrack: -0.01, dLead: 1.12, heWeight: 600, heRatio: 1.2, hcRatio: 1.18, hcTrack: 0.08, bBase: 15, bRatio: 1.2, bLead: 1.5, uiTrack: 0, uiLead: 1.35 }) },
+  // Brutalist — one heavy grotesque, the earned ALL-CAPS display, tight tracking, dramatic size jumps.
+  { id: "statement", label: "Brutalist / Statement", note: "One heavy grotesque, ALL-CAPS display, tight tracking, dramatic size jumps — the loud voice, used on purpose.",
     fonts: { display: "Inter Tight", heading: "Inter Tight", body: "Inter", ui: "Inter", mono: "JetBrains Mono" },
-    categories: make7({ dBase: 80, dRatio: 1.5, dWeight: 900, dTrack: -0.04, heWeight: 800, heRatio: 1.4, hcRatio: 1.3, hcTrack: 0.16, bRatio: 1.25, bWeight: 500, uiWeight: 500 }) },
+    categories: make7({ dBase: 84, dRatio: 1.5, dWeight: 900, dTrack: -0.04, dLead: 0.96, dTransform: "uppercase", heWeight: 800, heRatio: 1.4, heTrack: -0.02, hcRatio: 1.3, hcWeight: 700, hcTrack: 0.12, bRatio: 1.25, bWeight: 500, uiWeight: 550, uiTrack: 0.02, eyeWeight: 700, eyeTrack: 0.12 }) },
 ];
 
 export const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };

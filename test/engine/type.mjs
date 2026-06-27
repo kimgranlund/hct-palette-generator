@@ -16,8 +16,14 @@ ok(T.TYPE_TREATMENTS.some((t) => t.id === "product") && T.TYPE_TREATMENTS.some((
   const s = T.typeScale({ treatment: "product", bodyBase: 16 });
   ok(s.roleOf["Heading Eyebrow"] === "mono" && s.roleOf["Code"] === "mono", "Eyebrow + Code map to the mono font role");
   ok(s.roleOf["Display"] === "display" && s.roleOf["Heading Editorial"] === "heading" && s.roleOf["Body"] === "body" && s.roleOf["UI"] === "ui", "Display/Heading/Body/UI map to their roles");
-  ok(s.categories["Display"].MD.textTransform === "uppercase" && s.categories["Heading Context"].MD.textTransform === "uppercase" && s.categories["Heading Eyebrow"].MD.textTransform === "uppercase", "Display + Context + Eyebrow are UPPERCASE voices");
-  ok(s.categories["Heading Editorial"].MD.textTransform === "none" && s.categories["Body"].MD.textTransform === "none", "Editorial + Body are sentence-case (no transform)");
+  // CASE is per-treatment now: Context + Eyebrow are the standing UPPERCASE "caps voices"; Display is
+  // title/sentence case by default (only Brutalist opts Display into caps — checked below).
+  ok(s.categories["Heading Context"].MD.textTransform === "uppercase" && s.categories["Heading Eyebrow"].MD.textTransform === "uppercase", "Context + Eyebrow are the UPPERCASE caps voices");
+  ok(s.categories["Display"].MD.textTransform === "none" && s.categories["Heading Editorial"].MD.textTransform === "none" && s.categories["Body"].MD.textTransform === "none", "Display + Editorial + Body are title/sentence case by default (Display no longer forced ALL-CAPS)");
+  // only the Brutalist/Statement treatment earns the ALL-CAPS display
+  const st = T.typeScale({ treatment: "statement" });
+  ok(st.categories["Display"].MD.textTransform === "uppercase", "Brutalist/Statement is the one treatment whose Display is ALL-CAPS");
+  ok(T.TYPE_TREATMENTS.filter((t) => t.categories["Display"].transform === "uppercase").length === 1, "exactly ONE treatment (Brutalist) sets an uppercase Display");
   // Context/Eyebrow caps track POSITIVE (open up); Display caps track NEGATIVE (tighten)
   ok(s.categories["Heading Context"].XL.letterSpacing > 0 && s.categories["Heading Eyebrow"].XL.letterSpacing > 0, "caps headings track positive (open)");
   ok(s.categories["Display"].XL.letterSpacing < 0, "Display caps track negative (tighten)");
@@ -34,8 +40,8 @@ ok(T.TYPE_TREATMENTS.some((t) => t.id === "product") && T.TYPE_TREATMENTS.some((
   ok(sizes.every((v, i) => i === 0 || v > sizes[i - 1]), `Body sizes strictly increase XS→XL (${sizes})`);
   // ratio check: LG/MD ≈ the treatment ratio (1.2 for product Body) within rounding
   ok(Math.abs(body.LG.size / body.MD.size - 1.2) < 0.08, `Body LG/MD ≈ 1.2 (got ${(body.LG.size / body.MD.size).toFixed(3)})`);
-  // line-height = size × leading (Body leading 1.5)
-  ok(body.MD.lineHeight === Math.round(16 * 1.5), `Body MD line-height = size×1.5 (got ${body.MD.lineHeight})`);
+  // line-height = size × leading (Body prose leading 1.55, inside the 1.45–1.65 band)
+  ok(body.MD.lineHeight === Math.round(16 * 1.55), `Body MD line-height = size×1.55 (got ${body.MD.lineHeight})`);
   // UI has 8 steps incl. 3XS..2XL
   ok(["3XS", "2XS", "XS", "SM", "MD", "LG", "XL", "2XL"].every((k) => s.categories.UI[k]), "UI has the 8-step ramp 3XS..2XL");
 }
