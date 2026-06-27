@@ -1,4 +1,4 @@
-// figma-semantic-binder/code.js — the HCT cascade binder runtime.
+// figma-semantic-binder/code.js — the Color Tokens cascade binder runtime.
 //
 // Runs inside Figma (uses the `figma` global). It gives the live raw->semantic cascade that
 // native JSON import cannot (knowledge-05 §1): each semantic role is aliased to the REAL raw
@@ -119,7 +119,7 @@ async function main() {
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   const rawColl = collections.find((c) => c.name === RAW_COLLECTION);
   if (!rawColl) {
-    figma.notify("Raw collection not found: " + RAW_COLLECTION);
+    figma.notify('No "Color Primitives" collection found — apply your palette in Color Tokens first, then run the Binder.', { error: true });
     figma.closePlugin();
     return;
   }
@@ -163,9 +163,15 @@ async function main() {
   }
 
   figma.notify(
-    "Bound " + bound + " roles" + (missing.length ? (", missing raw target: " + missing[0]) : "")
+    "Bound " + bound + " roles" + (missing.length ? (", " + missing.length + " skipped (raw colour missing)") : "")
   );
   figma.closePlugin();
 }
 
-main();
+// Never surface a raw error / stack to the user (Figma policy): log the technical detail to the console,
+// show a friendly message, and close cleanly.
+main().catch((e) => {
+  console.error("[Color Tokens Semantic Binder] bind failed:", e);
+  figma.notify("Couldn't bind the semantic variables. Please try again — if it keeps happening, email support@nonoun.io.", { error: true });
+  figma.closePlugin();
+});

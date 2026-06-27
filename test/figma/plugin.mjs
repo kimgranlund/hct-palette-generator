@@ -34,6 +34,14 @@ if (/\bfetch\s*\(|new\s+(XMLHttpRequest|WebSocket)|\bimport\s*\(/.test(codeNoCom
 // to run with "Syntax error: Unexpected token {"). Guard it statically. Write `catch (e) {`.
 if (/\bcatch\s*\{/.test(codeNoComments)) FAIL("vmsyntax", "code.js uses optional catch binding (`catch {`) — Figma's plugin VM rejects it; use `catch (e) {`");
 
+// ── compliance: no RAW developer error surfaced to users, no stale product branding ─────────────
+// Figma policy rejects plugins that show raw error text / stack traces. The catch must notify a
+// friendly, handled message (technical detail goes to console.error, not figma.notify).
+if (/figma\.notify\([^;]*\b(?:e\.message|String\(e\)|err\.message|\.stack)\b/.test(codeNoComments))
+  FAIL("compliance", "code.js surfaces a raw error in figma.notify — show a friendly message; log the detail to console only");
+if (/figma\.notify\([^;]*HCT/.test(codeNoComments))
+  FAIL("compliance", "a user-facing figma.notify still says 'HCT' (stale branding) — the product is 'Color Tokens by NONOUN'");
+
 // ── ui.html: the generator + the Figma bridge ───────────────────────────────────
 if (!existsSync(`${HERE}/ui.html`)) FAIL("ui", "ui.html not generated — run gen-ui.mjs");
 else {

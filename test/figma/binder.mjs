@@ -30,15 +30,29 @@ if (dangling.length) FAIL("bindings", `${dangling.length} dangling target(s), e.
 const plan = P.bindingPlan(NAMES);
 if (!Array.isArray(plan) || plan.length !== 37 * NAMES.length) FAIL("bindings", `bindingPlan length ${plan && plan.length}, want ${37 * NAMES.length}`);
 
-// ── hpg-plugin-offline: manifest parses + networkAccess "none"; code.js syntactically valid ─
+// ── hpg-plugin-offline: manifest parses + declares NO network access (current Figma manifest format:
+//    networkAccess.allowedDomains = ["none"]); code.js syntactically valid ─
 try {
   const man = JSON.parse(readFileSync(join(HERE, "figma-semantic-binder/manifest.json"), "utf8"));
-  if (man.networkAccess !== "none") FAIL("offline", `manifest.networkAccess = ${JSON.stringify(man.networkAccess)}, want "none"`);
+  const na = man.networkAccess;
+  const offline = na && typeof na === "object" && Array.isArray(na.allowedDomains) && na.allowedDomains.length === 1 && na.allowedDomains[0] === "none";
+  if (!offline) FAIL("offline", `manifest.networkAccess = ${JSON.stringify(na)}, want { allowedDomains: ["none"] }`);
   if (man.main !== "code.js") FAIL("offline", `manifest.main = ${man.main}`);
 } catch (e) { FAIL("offline", `manifest.json: ${e.message}`); }
 try {
   execSync(`node --check "${join(HERE, "figma-semantic-binder/code.js")}"`, { stdio: "pipe" });
 } catch (e) { FAIL("offline", `code.js failed node --check: ${String(e.stderr || e).slice(0, 120)}`); }
+
+// ── compliance: the binder surfaces no raw error, carries no stale "HCT" branding, and top-level
+//    bind errors are handled (main().catch) so the user never sees an unhandled plugin crash ─
+try {
+  const bcode = readFileSync(join(HERE, "figma-semantic-binder/code.js"), "utf8").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  if (/figma\.notify\([^;]*\b(?:e\.message|String\(e\)|\.stack)\b/.test(bcode)) FAIL("compliance", "binder surfaces a raw error in figma.notify");
+  if (/figma\.notify\([^;]*HCT/.test(bcode)) FAIL("compliance", "binder has a user-facing 'HCT' notify (stale branding)");
+  if (!/main\(\)\s*\.catch\s*\(/.test(bcode)) FAIL("compliance", "binder's main() is not wrapped in .catch — an unhandled error would crash with a raw message");
+  const bman = JSON.parse(readFileSync(join(HERE, "figma-semantic-binder/manifest.json"), "utf8"));
+  if (/HCT/.test(bman.name || "")) FAIL("compliance", `binder manifest name still says HCT: ${bman.name}`);
+} catch (e) { FAIL("compliance", `binder compliance scan: ${e.message}`); }
 
 // ── PARITY GUARD: the runtime code.js HARDCODES roleTable() (the Figma sandbox can't import the
 //    .mjs), so it's a second copy of the validated role table that node --check can't catch drifting.

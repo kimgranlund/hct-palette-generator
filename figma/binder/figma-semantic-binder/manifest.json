@@ -1,11 +1,15 @@
 {
-  "name": "HCT Semantic Binder",
-  "id": "hct-semantic-binder",
+  "name": "Color Tokens Semantic Binder",
+  "id": "color-tokens-semantic-binder",
   "api": "1.0.0",
   "main": "code.js",
   "editorType": [
     "figma"
   ],
   "documentAccess": "dynamic-page",
-  "networkAccess": "none"
+  "networkAccess": {
+    "allowedDomains": [
+      "none"
+    ]
+  }
 }
