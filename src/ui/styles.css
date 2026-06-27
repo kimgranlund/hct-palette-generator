@@ -1115,7 +1115,10 @@ dialog.settings::backdrop { background: rgba(10,14,22,.34); }
 .type-spec.is-tokens .type-spec-line { background: transparent; }
 
 /* typography analysis — the seven-group series (display · 3 headings · body · ui · code), shared palette */
-.ty-line { fill: none; stroke-width: 1.5; }
+/* the .ty-sN series classes ride BOTH the line <path> and the dot <circle>; the dots need their `fill`,
+   so qualify the line rule (0,2,0) to outrank `.ty-sN` (0,1,0) — otherwise the series fill leaks onto the
+   open path, closing it into a filled wedge. Keep fill:none winning regardless of source order. */
+.an-svg .ty-line { fill: none; stroke-width: 1.5; }
 .ty-dot { stroke: none; }
 .ty-s0 { stroke: var(--accent); fill: var(--accent); }                                                      /* Display */
 .ty-s1 { stroke: color-mix(in srgb, var(--accent) 70%, #e0e0e0); fill: color-mix(in srgb, var(--accent) 70%, #e0e0e0); } /* H·Editorial */
