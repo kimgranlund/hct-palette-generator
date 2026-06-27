@@ -1226,6 +1226,25 @@ const npChip = app.querySelector(".newpal-chip");
 ok(npChip && !!npChip.getAttribute("title") && (npChip.textContent || "") === "", "(np8e) context chips are swatch-only (name in title, no inline text)");
 app.closeNewPalette(); flushRaf();
 
+// ── (set) Settings modal: the prime-accent mapping (550/450 ↔ 500/500) + persistence ──
+app.openSet(app.sets[0].id); flushRaf();
+app.openSettings(); flushRaf();
+ok(app.settingsOpen === true && !!app.querySelector(".settings"), "(set) openSettings shows the Settings <dialog>");
+ok(app.querySelectorAll(".settings-row").length >= 2, "(set) Settings has the token-mapping rows (accent + on-colors)");
+const { projectView: pvSet } = await import("../../src/ui/model.mjs");
+const primeRefs = (doc) => { const vp = pvSet(doc).palettes[0]; const prime = vp.roles.find((r) => r.suffix === ""); const at = (st) => vp.ramp.find((s) => s.stop === st).hex; return { prime, h550: at(550), h450: at(450), h500: at(500) }; };
+app.commit((d) => { d.accentRef = "mode"; }); flushRaf();
+let rset = primeRefs(app.doc);
+ok(rset.prime.lightHex === rset.h550 && rset.prime.darkHex === rset.h450, `(set) accentRef 'mode' → prime resolves 550/450 (${rset.prime.lightHex}/${rset.prime.darkHex})`);
+app.commit((d) => { d.accentRef = "single"; }); flushRaf();
+rset = primeRefs(app.doc);
+ok(rset.prime.lightHex === rset.h500 && rset.prime.darkHex === rset.h500, `(set) accentRef 'single' → prime resolves 500/500 in both modes (${rset.prime.lightHex}/${rset.prime.darkHex})`);
+const { serialize: serSet, hydrate: hydSet } = await import("../../src/ui/persist.js");
+ok(hydSet(serSet(app.doc)).accentRef === "single", "(set) accentRef round-trips through persist");
+app.commit((d) => { d.accentRef = "mode"; }); // restore default
+app.closeSettings(); flushRaf();
+ok(app.settingsOpen === false, "(set) closeSettings dismisses the modal");
+
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {
   console.error("HEADLESS BOOT FAIL:");

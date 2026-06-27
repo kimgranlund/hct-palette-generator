@@ -18,7 +18,7 @@
 // theme light/dark/auto.
 
 import { paletteStops, EXPORT_STOPS, DEFAULT_CONTROLS } from "./tonal.js";
-import { semanticRoles, refKey, applyRoleOverrides, applyOnColorContrast } from "./semantic.js";
+import { semanticRoles, refKey, applyRoleOverrides, applyOnColorContrast, applyAccentRef } from "./semantic.js";
 
 // WCAG relative luminance of an [r,g,b] (0..255) triple — for the opt-in contrast on-color pick.
 const relLumExp = (rgb) => {
@@ -129,6 +129,7 @@ function controlsOf(state) {
     toneMode: state.toneMode ?? DEFAULT_CONTROLS.toneMode,
     vibrancy: state.vibrancy ?? DEFAULT_CONTROLS.vibrancy,
     onColorMode: state.onColorMode ?? DEFAULT_CONTROLS.onColorMode,
+    accentRef: state.accentRef ?? DEFAULT_CONTROLS.accentRef,
     relChroma: state.relChroma ?? DEFAULT_CONTROLS.relChroma,
     chromaFloor: state.chromaFloor ?? DEFAULT_CONTROLS.chromaFloor,
   };
@@ -204,7 +205,7 @@ function derivePalette(palette, controls, overrides) {
   // on-color policy: "contrast" mode flips the accent on-colors to the better-contrasting end
   // BEFORE per-doc overrides (so an explicit override still wins). No-op in the default "fixed" mode.
   const lumOf = (ref) => { const rgb = byStop.get(Number(ref)); return rgb ? relLumExp(rgb) : 0; };
-  const onAdjusted = applyOnColorContrast(semanticRoles(n), n, lumOf, controls.onColorMode);
+  const onAdjusted = applyOnColorContrast(applyAccentRef(semanticRoles(n), controls.accentRef), n, lumOf, controls.onColorMode);
   const roles = applyRoleOverrides(onAdjusted, overrides).map((r) => {
     const L = resolveRef(r.light);
     const D = resolveRef(r.dark);

@@ -141,6 +141,14 @@ try {
   console.log("  · screenshot → smoke-out/apply-gate.png");
   await evalJS(`(()=>{${el}.closeApplyGate();${el}.setInFigma(false);})()`); await sleep(150);
 
+  // Settings modal: token-mapping prefs (primary accent 550/450 ↔ 500/500, on-colors).
+  await evalJS(`${el}.openSettings()`); await sleep(300);
+  ok(await evalJS(`(()=>{const d=${el}.querySelector("dialog.settings");return !!d && d.open && ${el}.querySelectorAll(".settings-row").length>=2})()`), "Settings modal opens with the token-mapping rows");
+  const setShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "settings.png"), Buffer.from(setShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/settings.png");
+  await evalJS(`${el}.closeSettings()`); await sleep(120);
+
   const shot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "editor.png"), Buffer.from(shot.data, "base64"));
   console.log("  · screenshot → smoke-out/editor.png");

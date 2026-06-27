@@ -192,3 +192,17 @@ export function applyOnColorContrast(roles, n, lumOf, onColorMode) {
     return { ...r, light: pick('550', ends), dark: pick('450', ends) };
   });
 }
+
+/**
+ * applyAccentRef — RESOLUTION-LAYER: re-point the PRIME accent role (the one with an empty suffix) to a
+ * single mode-agnostic stop. "mode" (default) keeps 550 (light) / 450 (dark); "single" maps BOTH modes to
+ * 500. Only the prime accent (suffix === '') changes — its variants (Dim/Bright/Low/High) and every other
+ * role are untouched, and the canonical `semanticRoles` table is unchanged (so the refs-canonical gate
+ * holds), exactly like `applyOnColorContrast`.
+ * @param {{key,suffix,light,dark}[]} roles
+ * @param {string} [accentRef] "mode" (default) | "single"
+ */
+export function applyAccentRef(roles, accentRef) {
+  if (accentRef !== 'single') return roles;
+  return roles.map((r) => (r.suffix === '' ? { ...r, light: '500', dark: '500' } : r));
+}

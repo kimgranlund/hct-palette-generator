@@ -57,6 +57,8 @@ export const DOMAINS = {
   vibrancy: { kind: "number", min: 0, max: 100, default: 0 },
   // on-color policy: "fixed" (050 both modes, ADR-003) | "contrast" (WCAG-aware flip, OD-001). Default fixed.
   onColorMode: { kind: "enum", values: ["fixed", "contrast"], default: "fixed" },
+  // prime-accent ref: "mode" (550/450 per scheme) | "single" (500/500, mode-agnostic). Default mode.
+  accentRef: { kind: "enum", values: ["mode", "single"], default: "mode" },
   // even-mode light/dark chroma floor, % of gamut (see tonal.js). Default on, so absent → 40 not 0.
   chromaFloor: { kind: "number", min: 0, max: 100, default: 40 },
   theme: { kind: "enum", values: ["auto", "light", "dark"], default: "auto" },
@@ -232,6 +234,7 @@ export function hydrate(snapshot) {
     toneMode: clampEnum(s.toneMode, DOMAINS.toneMode.values, DOMAINS.toneMode.default),
     vibrancy: clampNumber(s.vibrancy ?? DOMAINS.vibrancy.default, DOMAINS.vibrancy.min, DOMAINS.vibrancy.max),
     onColorMode: clampEnum(s.onColorMode, DOMAINS.onColorMode.values, DOMAINS.onColorMode.default),
+    accentRef: clampEnum(s.accentRef, DOMAINS.accentRef.values, DOMAINS.accentRef.default),
     theme: clampEnum(s.theme, DOMAINS.theme.values, DOMAINS.theme.default),
     selected,
     roleOverrides: clampOverrides(s.roleOverrides),

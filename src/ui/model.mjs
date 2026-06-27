@@ -25,7 +25,7 @@ import {
   EXPORT_STOPS,
   DEFAULT_CONTROLS,
 } from "../engine/tonal.js";
-import { semanticRoles, refKey, applyRoleOverrides, applyOnColorContrast } from "../engine/semantic.js";
+import { semanticRoles, refKey, applyRoleOverrides, applyOnColorContrast, applyAccentRef } from "../engine/semantic.js";
 import {
   exportCSS,
   exportOKLCH,
@@ -114,6 +114,7 @@ export function defaultDocument() {
     toneMode: DEFAULT_CONTROLS.toneMode,
     vibrancy: DEFAULT_CONTROLS.vibrancy,
     onColorMode: DEFAULT_CONTROLS.onColorMode,
+    accentRef: DEFAULT_CONTROLS.accentRef,
     theme: "auto",
     selected: 0,
     roleOverrides: {}, // per-doc semantic-mapping re-points (empty = canonical role table)
@@ -137,6 +138,7 @@ function controlsOf(doc) {
     toneMode: doc.toneMode ?? DEFAULT_CONTROLS.toneMode,
     vibrancy: doc.vibrancy ?? DEFAULT_CONTROLS.vibrancy,
     onColorMode: doc.onColorMode ?? DEFAULT_CONTROLS.onColorMode,
+    accentRef: doc.accentRef ?? DEFAULT_CONTROLS.accentRef,
   };
 }
 
@@ -162,6 +164,7 @@ function stateOf(doc) {
     toneMode: c.toneMode,
     vibrancy: c.vibrancy,
     onColorMode: c.onColorMode,
+    accentRef: c.accentRef,
   };
 }
 
@@ -321,7 +324,9 @@ export function projectView(doc) {
     // on-color policy: in "contrast" mode flip the accent on-colors to the better-contrasting end
     // (vs the resolved accent fill) BEFORE per-doc overrides, so an explicit override still wins.
     const lumOf = (ref) => { const hit = byStop.get(Number(ref)); return hit ? relLum(hit.rgb) : 0; };
-    const baseRoles = applyOnColorContrast(semanticRoles(n), n, lumOf, controls.onColorMode);
+    // accent ref ("single" → prime accent 500/500) then on-color policy — both resolution-layer, BEFORE
+    // per-doc overrides so an explicit override still wins.
+    const baseRoles = applyOnColorContrast(applyAccentRef(semanticRoles(n), controls.accentRef), n, lumOf, controls.onColorMode);
     const roles = applyRoleOverrides(baseRoles, doc.roleOverrides).map((r) => ({
       key: r.key,
       suffix: r.suffix,

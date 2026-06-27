@@ -68,6 +68,10 @@ export const DEFAULT_CONTROLS = {
   // "contrast" (OD-001 opt-in): on{N}/on{N}Variant flip to the end with the better WCAG contrast vs
   // the accent fill (550/450) per mode. Applied in projectView + derivePalette via applyOnColorContrast.
   onColorMode: "fixed",
+  // Prime-accent ref (resolution layer, not the ramp). "mode" (default): the prime accent role resolves
+  // to 550 (light) / 450 (dark) — mode-specific, better contrast per scheme. "single": both modes map to
+  // 500 — one mode-agnostic accent token. Applied via applyAccentRef alongside applyOnColorContrast.
+  accentRef: "mode",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

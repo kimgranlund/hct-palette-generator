@@ -310,6 +310,7 @@ class HctApp extends HTMLElement {
     this.applyGateOpen = false;
     this.applyGateRebuild = false; // the pending action: false = apply, true = regroup
     this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
+    this.settingsOpen = false; // the Settings modal (token-mapping + app prefs)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
     this.hover = null; // hovered swatch info for footers
     this.search = "";
@@ -666,6 +667,7 @@ class HctApp extends HTMLElement {
     this._syncDrawer(); // (re)open/close the native <dialog> to match exportOpen (top layer)
     this._syncNewPal(); // same, for the New-Palette modal
     this._syncApplyGate(); // same, for the Apply-to-Figma consent gate
+    this._syncSettings(); // same, for the Settings modal
   }
 
   // _syncDrawer — reconcile the native export <dialog> with this.exportOpen AFTER each render.
@@ -1184,6 +1186,7 @@ class HctApp extends HTMLElement {
       this.renderDrawer(view),
       this.renderNewPalette(view),
       this.renderApplyGate(),
+      this.renderSettings(),
       this.toastEl || (this.toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" })),
     );
   }
@@ -1225,6 +1228,7 @@ class HctApp extends HTMLElement {
       btn(icon("arrow-counter-clockwise"), { cls: "undo-btn", title: "Undo (⌘Z)", ariaLabel: "Undo", disabled: !this.canUndo(), onclick: () => this.undo() }),
       btn(icon("arrow-clockwise"), { cls: "redo-btn", title: "Redo (⇧⌘Z)", ariaLabel: "Redo", disabled: !this.canRedo(), onclick: () => this.redo() }),
       this.themeBtn(),
+      btn(icon("gear"), { cls: "settings-btn", title: "Settings — token mapping & preferences", ariaLabel: "Settings", onclick: () => this.openSettings() }),
       btn([icon("plus"), "New"], { onclick: () => this.createSet() }),
       btn([icon("export"), "Export"], { variant: "primary", cls: "export-open-btn", title: "Open export drawer", onclick: () => this.toggleDrawer(true) }),
     );
@@ -3884,6 +3888,76 @@ class HctApp extends HTMLElement {
         h("div", { class: "spacer" }),
         btn("Cancel", { onclick: () => this.closeApplyGate() }),
         btn(rebuild ? "Regroup variables" : "Apply variables", { variant: "primary", cls: "apply-gate-go", onclick: () => this.confirmApplyGate() }),
+      ),
+    );
+  }
+
+  // ── Settings modal (token mapping + preferences) ──────────────────────────────────────
+  openSettings() { this.settingsOpen = true; this.render(); }
+  closeSettings() { this.settingsOpen = false; this.render(); }
+  _syncSettings() {
+    const d = this.querySelector(".settings");
+    if (!d || typeof d.showModal !== "function") return;
+    if (this.settingsOpen && !d.open) { try { d.showModal(); } catch { /* not attached */ } }
+    else if (!this.settingsOpen && d.open) { try { d.close(); } catch { /* already closed */ } }
+  }
+
+  // a labeled setting row: a title + description on the left, a segmented control on the right.
+  _settingRow(title, desc, items, value, onSelect, idPrefix) {
+    return h(
+      "div",
+      { class: "settings-row" },
+      h("div", { class: "settings-row-text" }, h("b", {}, title), h("small", {}, desc)),
+      this.segmented(items, value, onSelect, { ariaLabel: title, role: "group", cls: "settings-seg", idPrefix }),
+    );
+  }
+
+  renderSettings() {
+    const d = this.doc;
+    const accentRef = d.accentRef === "single" ? "single" : "mode";
+    const onColorMode = d.onColorMode === "contrast" ? "contrast" : "fixed";
+    return h(
+      "dialog",
+      {
+        class: "settings",
+        "aria-label": "Settings",
+        onclick: (e) => { if (e.target === e.currentTarget) this.closeSettings(); },
+        oncancel: (e) => { e.preventDefault(); this.closeSettings(); },
+      },
+      h(
+        "div",
+        { class: "drawer-head" },
+        h("h3", {}, icon("gear"), "Settings"),
+        h("div", { class: "spacer" }),
+        btn(icon("x"), { ariaLabel: "Close settings", onclick: () => this.closeSettings() }),
+      ),
+      h(
+        "div",
+        { class: "settings-body" },
+        h("div", { class: "settings-section-title" }, "Token mapping"),
+        this._settingRow(
+          "Primary accent",
+          "How the prime accent role exports. Mode-specific picks the better-contrast stop per scheme; Single uses one mode-agnostic token.",
+          [{ id: "mode", label: "Mode-specific · 550 / 450" }, { id: "single", label: "Single · 500 / 500" }],
+          accentRef,
+          (id) => this.commit((doc) => { doc.accentRef = id; }),
+          "setaccent",
+        ),
+        this._settingRow(
+          "On-colors",
+          "Text/icon colors on accent fills. Fixed pins the light tint (050 / 200); Contrast flips to the WCAG-safer end per mode.",
+          [{ id: "fixed", label: "Fixed · 050 / 200" }, { id: "contrast", label: "WCAG contrast" }],
+          onColorMode,
+          (id) => this.commit((doc) => { doc.onColorMode = id; }),
+          "setoncolor",
+        ),
+        h("p", { class: "settings-note" }, "These are resolution-layer mapping choices — they re-point how roles resolve, not the ramps. They travel with the set and apply to every export."),
+      ),
+      h(
+        "div",
+        { class: "settings-foot" },
+        h("div", { class: "spacer" }),
+        btn("Done", { variant: "primary", onclick: () => this.closeSettings() }),
       ),
     );
   }

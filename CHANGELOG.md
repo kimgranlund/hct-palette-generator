@@ -11,6 +11,11 @@ they landed on `main` and reference the squash-merged PR that introduced them.
 ### 2026-06-26
 
 #### Added
+- **Settings modal** (⚙ in the header) for doc-level **token-mapping** preferences. First controls:
+  **Primary accent** — `Mode-specific · 550 / 450` *(default)* vs `Single · 500 / 500` (one
+  mode-agnostic accent token) — and **On-colors** (`fixed` / WCAG-`contrast`, surfaced here too). A
+  resolution-layer choice (`applyAccentRef`) that re-points how the prime accent role resolves without
+  touching the ramp or the canonical role table; travels with the set + applies to every export.
 - **"Back up your variables first" consent gate** before "Apply Variables → Figma" (and Regroup). A
   centered modal explains that applying creates/overwrites the `Color Primitives` + `Color Modes`
   variable collections (same-named variables are overwritten — which can intentionally re-skin bound

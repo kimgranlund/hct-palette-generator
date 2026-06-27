@@ -86,6 +86,26 @@ if (!succ.some((r) => r.key === "onSuccess") || !succ.some((r) => r.key === "suc
   if (surf.light !== surf0.light || surf.dark !== surf0.dark) FAIL("oncolors", "contrast mode must not touch non-on roles");
 }
 
+// ── prime-accent ref: applyAccentRef "single" maps the prime accent (empty suffix) to 500/500;
+//    "mode" (default) leaves 550/450; nothing else (variants, on-colors, surfaces) moves. ──
+{
+  const P = S.semanticRoles("primary");
+  const prime0 = P.find((r) => r.suffix === "");
+  if (!prime0 || prime0.light !== "550" || prime0.dark !== "450") FAIL("oncolors", `prime accent default ${prime0 && prime0.light}/${prime0 && prime0.dark}, want 550/450`);
+  // "mode" (default) → unchanged
+  const m = S.applyAccentRef(P, "mode").find((r) => r.suffix === "");
+  if (m.light !== "550" || m.dark !== "450") FAIL("oncolors", "applyAccentRef 'mode' must not change the prime accent");
+  // "single" → 500/500 on the prime accent only
+  const sgl = S.applyAccentRef(P, "single");
+  const ps = sgl.find((r) => r.suffix === "");
+  if (ps.light !== "500" || ps.dark !== "500") FAIL("oncolors", `applyAccentRef 'single': prime ${ps.light}/${ps.dark}, want 500/500`);
+  // a variant (e.g. -dim) and a non-accent role (surface) are untouched
+  const dim = sgl.find((r) => r.suffix === "-dim"), dim0 = P.find((r) => r.suffix === "-dim");
+  const sf = sgl.find((r) => r.key === "surface"), sf0 = P.find((r) => r.key === "surface");
+  if (dim.light !== dim0.light || dim.dark !== dim0.dark) FAIL("oncolors", "applyAccentRef 'single' must not touch accent variants");
+  if (sf.light !== sf0.light || sf.dark !== sf0.dark) FAIL("oncolors", "applyAccentRef 'single' must not touch non-accent roles");
+}
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
 for (const g of ["roles", "oncolors", "refs-canonical", "surface-mode"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 1.38 — 2026-06-26 — Settings modal + `accentRef` prime-accent mapping
+
+A new control `accentRef` (`"mode"` default / `"single"`) lets the **prime accent role** export as either
+`550`(light)/`450`(dark) — mode-specific, better contrast per scheme — or a single mode-agnostic `500`.
+It's a **resolution-layer** adjustment (`applyAccentRef` in `semantic.js`, applied in `projectView` +
+`derivePalette` alongside `applyOnColorContrast`): only the prime accent (empty-suffix role) moves; its
+variants, on-colors, surfaces, and the canonical `semanticRoles` table are untouched, so the
+`refs-canonical` gate holds. Threaded through `DEFAULT_CONTROLS` / `controlsOf` / `stateOf` /
+`exports.controlsOf` / `persist` (enum domain `mode|single`). Surfaced in a new **Settings modal** (⚙
+header, native top-layer `<dialog>`) that also hosts the existing `onColorMode` toggle as token-mapping
+prefs. Covered by an engine unit test (`single` → 500/500 on the prime only; `mode` unchanged; variants
++ non-accent roles untouched), a `(set)` headless integration (the prime resolves 500/500, persist
+round-trip), the persist fuzz-roundtrip, and a real-browser smoke check.
+
 ## 1.37 — 2026-06-26 — spec/reference docs brought current (naming + new features)
 
 A pass over the internal `docs/spec/**` corpus. **Naming:** the Figma collections `raw-colors` /
