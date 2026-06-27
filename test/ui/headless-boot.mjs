@@ -412,7 +412,7 @@ const { projectView: _pvJ } = await import("../../src/ui/model.mjs");
 // half-steps, so they live in fullRamp (the 19-stop display `ramp` does not carry them).
 const edgeHex = (theme) => { const p = _pvJ(app.doc).palettes[app.selectedIndex()]; return p.fullRamp.find((s) => s.stop === (theme === "dark" ? 875 : 125)).hex; };
 const bgAttr = () => (app.querySelector(".canvas-area").getAttribute("style") || "");
-app.canvasTheme = "light"; app.doc.lmax = 100; app.selectPalette(0); app.render(); flushRaf();
+app.colorMode = "light"; app.doc.lmax = 100; app.selectPalette(0); app.render(); flushRaf();
 ok(app.canvasBg() === edgeHex("light"), `(j1) light canvas bg = the selected palette's 125 near-edge (got ${app.canvasBg()})`);
 // the point of a near-edge stop over 050: even at lmax=100 (where 050 is pure white) the backdrop keeps the tint.
 ok(app.canvasBg() !== "#FFFFFF", `(j1b) at lmax=100 the 125-stop backdrop is NOT pure white (got ${app.canvasBg()})`);
@@ -425,13 +425,13 @@ app.selectPalette(2); app.render(); const _bgA = app.canvasBg();
 app.selectPalette(7); app.render(); const _bgB = app.canvasBg();
 ok(_bgA !== _bgB, `(j3b) the backdrop follows palette selection (p2 ${_bgA} vs p7 ${_bgB})`);
 // dark preview = the selected palette's 875 dark near-edge.
-app.canvasTheme = "dark"; app.doc.lmin = 5; app.selectPalette(0); app.render(); flushRaf();
+app.colorMode = "dark"; app.doc.lmin = 5; app.selectPalette(0); app.render(); flushRaf();
 ok(app.canvasBg() === edgeHex("dark"), `(j4) dark canvas bg = the selected palette's 875 near-edge (got ${app.canvasBg()})`);
 // a LIVE drag of lmin repaints the backdrop via liveRefresh (no full render), still from the palette's 875.
 app.doc.lmin = 20; app.liveRefresh(); flushRaf();
 ok(app.querySelector(".canvas-area").style.getPropertyValue("--canvas-bg") === edgeHex("dark"), `(j5) liveRefresh repaints --canvas-bg from the palette's 875 stop (got ${app.querySelector(".canvas-area").style.getPropertyValue("--canvas-bg")})`);
 // (j6) a click on EMPTY canvas (not a ramp-row) clears the selection → backdrop reverts to neutral gray.
-app.canvasTheme = "light"; app.doc.lmax = 90; app.canvasView = "palettes"; app.selectPalette(0); app.render(); flushRaf();
+app.colorMode = "light"; app.doc.lmax = 90; app.canvasView = "palettes"; app.selectPalette(0); app.render(); flushRaf();
 const _selBg = app.canvasBg();
 const _areaJ = app.querySelector(".canvas-area");
 _areaJ.dispatch("click", { target: _areaJ });            // target = the area itself = empty canvas
@@ -444,22 +444,22 @@ ok(app.canvasBg() === edgeHex("light"), `(j7) re-selecting restores the palette 
 // (j8) each palette ROW container is tinted with that palette's OWN stop — 75 in light canvas
 //      preview, 925 in dark (symmetric, so the var(--ink) name text stays readable on it). 75/925
 //      are EXPORT-only half-steps → read from fullRamp, not the 19-stop display ramp.
-app.canvasTheme = "light"; app.render(); flushRaf();
+app.colorMode = "light"; app.render(); flushRaf();
 const _stopHex = (pi, stop) => _pvJ(app.doc).palettes[pi].fullRamp.find((s) => s.stop === stop).hex;
 const _row0 = app.querySelectorAll(".ramp-row[data-pi]")[0];
 const _c75 = _stopHex(Number(_row0.dataset.pi), 75);
 ok((_row0.getAttribute("style") || "").includes(_c75), `(j8) light preview: container row painted with the palette's 75 stop (${_c75}; got "${_row0.getAttribute("style")}")`);
-app.canvasTheme = "dark"; app.render(); flushRaf();
+app.colorMode = "dark"; app.render(); flushRaf();
 const _row0d = app.querySelectorAll(".ramp-row[data-pi]")[0];
 const _c925 = _stopHex(Number(_row0d.dataset.pi), 925);
 ok((_row0d.getAttribute("style") || "").includes(_c925), `(j8b) dark preview: container row painted with the palette's 925 stop, not 75 (${_c925}; got "${_row0d.getAttribute("style")}")`);
-app.canvasTheme = "light"; app.render(); flushRaf();
+app.colorMode = "light"; app.render(); flushRaf();
 
 // ── (k) live example card present on ALL 3 tabs, painted from selected roles ──────────
 const { projectView: _pv } = await import("../../src/ui/model.mjs");
 const styleOf = (el) => (el ? el.getAttribute("style") || "" : "");
 const surfaceOf = (pal, d) => { const r = pal.roles.find((x) => x.key === "surface"); return d ? r.darkHex : r.lightHex; };
-app.canvasTheme = "light"; app.render(); flushRaf();
+app.colorMode = "light"; app.render(); flushRaf();
 for (const seg of ["palette", "global", "roles"]) {
   app.setSegment(seg); flushRaf();
   ok(!!app.querySelector(".seg-example") && !!app.querySelector(".example-card"), `(k1:${seg}) example card present on the ${seg} tab`);
@@ -471,13 +471,28 @@ const kMain = kp.roles.find((r) => r.suffix === "").lightHex;
 ok(styleOf(app.querySelector(".example-card")).includes(surfaceOf(kp, false)), `(k2) card surface = palette surface role (${surfaceOf(kp, false)})`);
 ok(styleOf(app.querySelector(".ex-btn")).includes(kMain), `(k3) primary button = palette main role (${kMain})`);
 // flipping the canvas ◐ swaps the card to the dark refs (different from light).
-app.canvasTheme = "dark"; app.render(); flushRaf();
+app.colorMode = "dark"; app.render(); flushRaf();
 ok(styleOf(app.querySelector(".example-card")).includes(surfaceOf(kp, true)) && surfaceOf(kp, true) !== surfaceOf(kp, false), `(k4) canvas ◐ flips the card to the dark ref (${surfaceOf(kp, true)})`);
 // a live control drag repaints the card with new role colors, no full render.
-app.canvasTheme = "light"; app.render(); flushRaf();
+app.colorMode = "light"; app.render(); flushRaf();
 app.doc.palettes[app.selectedIndex()].chroma = 8; app.liveRefresh(); flushRaf();
 const kSurface3 = surfaceOf(_pv(app.doc).palettes[app.selectedIndex()], false);
 ok(styleOf(app.querySelector(".example-card")).includes(kSurface3), `(k5) liveRefresh repaints the card from new role colors (${kSurface3})`);
+
+// ── (cm) unified Mode control — Light · Dark · Both; Both renders the side-by-side Compare ──
+app.colorMode = "light"; app.canvasView = "palettes"; app.render(); flushRaf();
+ok(walk(app, (e) => e.tagName === "BUTTON" && e.getAttribute && e.getAttribute("data-fk") === "cmode:both").length === 1, "(cm) the Color canvas header shows the Light·Dark·Both Mode control");
+app.setColorMode("both"); flushRaf();
+{
+  const cols = (app.querySelectorAll ? app.querySelectorAll(".compare-col") : []);
+  ok(cols.length === 2, `(cm) Both mode renders two Compare columns (got ${cols.length})`);
+  ok(cols.length === 2 && (cols[0].className || "").includes("canvas-scheme-light") && (cols[1].className || "").includes("canvas-scheme-dark"), "(cm) the Compare columns force Light then Dark schemes");
+  // each column carries its own near-edge --canvas-bg (light vs dark differ)
+  const bg = (c) => ((c.getAttribute && c.getAttribute("style")) || "");
+  ok(cols.length === 2 && bg(cols[0]).includes("--canvas-bg") && bg(cols[1]).includes("--canvas-bg") && bg(cols[0]) !== bg(cols[1]), "(cm) each Compare column paints its own light/dark near-edge ground");
+}
+app.setColorMode("light"); flushRaf();
+ok(!app.querySelector(".compare-col") && !!app.querySelector(".canvas-scene"), "(cm) leaving Both restores the single canvas scene");
 
 // ── (l) wheel/zoom keeps the content point UNDER THE CURSOR fixed ──────────────────────
 const sceneEl = app.querySelector(".canvas-scene");

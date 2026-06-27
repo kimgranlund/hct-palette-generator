@@ -464,6 +464,17 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   transform-origin: 0 0;
   will-change: transform;
 }
+/* Color "Both" / Compare — the scene rendered in Light + Dark side by side, in ONE pannable scene so
+   pan/zoom/fit move both columns together. Each column forces its own color-scheme (so light-dark()
+   tokens + var(--ink) resolve per column) and carries its own --canvas-bg near-edge ground. */
+.canvas-area.canvas-compare { background: var(--bg); }
+.canvas-scene.compare { display: flex; gap: 32px; align-items: flex-start; }
+.compare-col { position: relative; padding: 12px 14px 16px; border-radius: var(--r-lg);
+  background: var(--canvas-bg, var(--bg)); box-shadow: 0 0 0 1px var(--line); }
+.compare-col.canvas-scheme-light { color-scheme: light; }
+.compare-col.canvas-scheme-dark  { color-scheme: dark; }
+.compare-col-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 8px 4px; }
 /* canvas = the ramps as the 2D space; each row IS the palette navigator */
 .ramp-stack { display: flex; flex-direction: column; gap: 12px; padding: 4px; }
 .ramp-row {

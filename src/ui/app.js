@@ -388,6 +388,7 @@ class HctApp extends HTMLElement {
     this.panesLeft = true; // left analysis rail shown (ui-session state, like segment — never persisted)
     this.panesRight = true; // right inspector shown
     this.canvasTheme = "system"; // canvas preview color-scheme: system (follow OS) | light | dark — INDEPENDENT of app chrome ◐
+    this.colorMode = "light"; // Color section value-mode control: light | dark | both (both = the side-by-side Compare view) — ui-session
     this.canvasView = "palettes"; // canvas content: palettes (the ramps) | scrims | mapping (the role→raw table)
     this.section = "color"; // editor section: color | typography | geometry — ui-session, routes the whole editor (never persisted)
     this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (metrics only) — type-section sub-state
@@ -526,6 +527,7 @@ class HctApp extends HTMLElement {
 
   _liveRefreshNow() {
     if (this.section !== "color") return; // type/geom have no live color-drag; their panes refresh on full render()
+    if (this.colorMode === "both") { this.render(); return; } // Compare's two scheme columns rebuild on a full render
     const view = projectView(this.doc);
     this._view = view;
 
@@ -1440,6 +1442,11 @@ class HctApp extends HTMLElement {
   // resolvedCanvasScheme — the concrete light/dark the canvas paints in: "system" maps to the OS
   // preference (prefers-color-scheme), everything else is itself.
   resolvedCanvasScheme() {
+    if (this._schemeOverride) return this._schemeOverride; // a Compare column forces its own scheme while it builds
+    // the Color section's scheme is driven by its Mode control (light/dark); "both" renders Compare, and any
+    // non-column use (e.g. the right-pane example) falls back to the last concrete scheme below.
+    if (this.section === "color" && (this.colorMode === "light" || this.colorMode === "dark")) return this.colorMode;
+    if (this.section === "color" && this.colorMode === "both") return "light"; // a sensible single-scheme fallback off-canvas
     if (this.canvasTheme === "system") {
       return typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
@@ -2471,8 +2478,10 @@ class HctApp extends HTMLElement {
           this.render();
         },
       }),
-      // canvas preview color-scheme (sun/moon/auto) — independent of the app chrome.
-      this.canvasThemeBtn(),
+      // unified Mode control — the Color section's value modes: Light · Dark · Both (Both = the side-by-side
+      // Compare view). Generalizes the old sun/moon/auto scheme toggle (Type/Geom keep canvasThemeBtn until
+      // breakpoints land).
+      this.colorModeControl(),
       btn(icon("minus"), { ariaLabel: "Zoom out", onclick: () => this.zoomBy(-1) }),
       h("span", { class: "zoom-readout", role: "status", "aria-live": "polite", "aria-label": "Zoom level" }, Math.round(this.viewport.zoom * 100) + "%"),
       btn(icon("plus"), { ariaLabel: "Zoom in", onclick: () => this.zoomBy(1) }),
@@ -2556,6 +2565,9 @@ class HctApp extends HTMLElement {
   // view is a DATA TABLE, not a visual scene — it scrolls instead of pan/zoom (is-table).
   renderCanvasArea(view) {
     const isTable = this.canvasView === "mapping";
+    // Color "Both" mode → the side-by-side Compare (Palettes/Scrims only; the Mapping table already shows
+    // both modes' refs, so it renders normally).
+    if (this.section === "color" && this.colorMode === "both" && !isTable) return this.renderCompareArea(view);
     const scene = this._canvasScene(view);
     const area = h(
       "div",
@@ -2574,6 +2586,52 @@ class HctApp extends HTMLElement {
       requestAnimationFrame(() => this.applyTransform());
     }
     return area;
+  }
+
+  // colorModeControl — the unified Mode control in the Color canvas header (Light · Dark · Both). It
+  // replaces the old sun/moon/auto scheme toggle: Light/Dark preview a single value mode, Both opens the
+  // side-by-side Compare. (Type/Geom keep canvasThemeBtn until breakpoints add their modes — Phase 5.)
+  colorModeControl() {
+    return this.segmented(
+      [
+        { id: "light", label: "Light", title: "Preview the Light value mode" },
+        { id: "dark", label: "Dark", title: "Preview the Dark value mode" },
+        { id: "both", label: "Both", title: "Compare — Light & Dark side by side" },
+      ],
+      this.colorMode,
+      (id) => this.setColorMode(id),
+      { cls: "canvas-seg", ariaLabel: "Color value mode", role: "group", idPrefix: "cmode" },
+    );
+  }
+  setColorMode(v) { this.colorMode = v; this.render(); }
+
+  // renderCompareArea — the Color "Both" mode: the canvas scene rendered in Light AND Dark, side by side,
+  // inside ONE pannable .canvas-scene (so pan/zoom/fit move both columns together). Each column forces its
+  // own scheme via _schemeOverride, so canvasBg() + every resolvedCanvasScheme() read while the scene
+  // builds resolves per-column.
+  renderCompareArea(view) {
+    const area = h(
+      "div",
+      { class: "canvas-area canvas-compare", role: "group", "aria-label": "Compare — Light and Dark side by side · drag to pan, wheel to zoom" },
+      h("div", { class: "canvas-scene compare" },
+        this._compareColumn(view, "light"),
+        this._compareColumn(view, "dark")),
+    );
+    this.wirePanZoom(area);
+    requestAnimationFrame(() => this.applyTransform());
+    return area;
+  }
+  _compareColumn(view, scheme) {
+    this._schemeOverride = scheme; // force resolvedCanvasScheme() while this column's scene + bg resolve
+    const bg = this.canvasBg();
+    const scene = this._canvasScene(view);
+    this._schemeOverride = null;
+    return h(
+      "div",
+      { class: "compare-col canvas-scheme-" + scheme, style: "--canvas-bg:" + bg },
+      h("div", { class: "compare-col-label" }, scheme === "dark" ? "Dark" : "Light"),
+      scene,
+    );
   }
 
   setTypeSpecMode(v) { this.typeSpecMode = v; this.render(); }

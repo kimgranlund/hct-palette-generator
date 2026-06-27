@@ -92,7 +92,7 @@ try {
   // cross-scheme regression: dragging a row while the canvas preview is LIGHT but the app chrome is
   // DARK must render the floating clone in the CANVAS scheme (light) — its light-dark() tokens resolve
   // where it visually belongs, not the dark host it's re-parented into. Only meaningful cross-scheme.
-  await evalJS(`(()=>{${el}.theme="dark";${el}.canvasTheme="light";${el}.render();})()`); await sleep(150);
+  await evalJS(`(()=>{${el}.theme="dark";${el}.colorMode="light";${el}.render();})()`); await sleep(150);
   const xsPt = await evalJS(`(()=>{const h=${el}.querySelector(".drag-handle");if(!h)return null;const r=h.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
   if (xsPt) {
     await evalJS(`(()=>{const h=${el}.querySelector(".drag-handle");h.dispatchEvent(new PointerEvent("pointerdown",{clientX:${xsPt.x},clientY:${xsPt.y},bubbles:true,cancelable:true}));document.dispatchEvent(new PointerEvent("pointermove",{clientX:${xsPt.x},clientY:${xsPt.y + 60},bubbles:true,cancelable:true}));})()`);
@@ -100,7 +100,16 @@ try {
     ok(await evalJS(`(()=>{const g=${el}.querySelector(".drag-ghost");return !!g && getComputedStyle(g).colorScheme.includes("light")})()`), "drag-ghost resolves in the canvas scheme (light), not the dark host");
     await evalJS(`document.dispatchEvent(new PointerEvent("pointerup",{bubbles:true,cancelable:true}))`); await sleep(80);
   }
-  await evalJS(`(()=>{${el}.theme="system";${el}.canvasTheme="system";${el}.render();})()`); await sleep(150);
+  await evalJS(`(()=>{${el}.theme="system";${el}.canvasTheme="system";${el}.colorMode="light";${el}.render();})()`); await sleep(150);
+
+  // Color "Both" / Compare mode — the Mode control's third option renders the scene in Light + Dark
+  // side by side (two .compare-col, each forcing its own color-scheme) in one pannable canvas.
+  await evalJS(`${el}.setColorMode("both")`); await sleep(200);
+  ok(await evalJS(`(()=>{const c=${el}.querySelectorAll(".canvas-compare .compare-col");return c.length===2 && getComputedStyle(c[0]).colorScheme.includes("light") && getComputedStyle(c[1]).colorScheme.includes("dark")})()`), "Color Both mode renders a Light + Dark Compare (two scheme-forced columns)");
+  const cmpShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "compare.png"), Buffer.from(cmpShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/compare.png");
+  await evalJS(`${el}.setColorMode("light")`); await sleep(120);
 
   // drag-to-reorder: a real handle-drag lifts a floating clone (.drag-ghost) and opens a dashed drop
   // placeholder (.drop-ghost) at the landing slot; the source row collapses.
