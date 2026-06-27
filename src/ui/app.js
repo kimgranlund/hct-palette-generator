@@ -1129,7 +1129,7 @@ class HctApp extends HTMLElement {
         h(
           "div",
           { class: "fir-text" },
-          h("strong", {}, "This file has a saved HCT palette"),
+          h("strong", {}, "This file has a saved palette set"),
           h("span", { class: "fir-sub" }, `${np} ${np === 1 ? "palette" : "palettes"} with full controls — opens exactly as saved.`),
         ),
         h("div", { class: "spacer" }),
@@ -3707,7 +3707,7 @@ class HctApp extends HTMLElement {
                 ),
                 btn([icon("download"), "Binder plugin"], {
                   cls: "figma-plugin-btn",
-                  title: "Download the HCT Semantic Binder plugin (manifest.json + code.js). In Figma: Plugins → Development → Import plugin from manifest — it aliases each semantic role to its raw variable so editing a raw color cascades.",
+                  title: "Download the Color Tokens Semantic Binder plugin (manifest.json + code.js). In Figma: Plugins → Development → Import plugin from manifest — it aliases each semantic role to its raw variable so editing a raw color cascades.",
                   onclick: () => this.downloadFigmaPlugin(),
                 }),
                 // Opt-in (inside Figma only): re-create Color Modes so it adopts the grouped order
@@ -4413,7 +4413,7 @@ class HctApp extends HTMLElement {
     return { total, drifted, absent };
   }
 
-  // downloadFigmaPlugin — the HCT Semantic Binder plugin's two files (manifest.json +
+  // downloadFigmaPlugin — the Color Tokens Semantic Binder plugin's two files (manifest.json +
   // code.js). Drop both into one folder, then Figma → Plugins → Development → Import
   // plugin from manifest. It creates the raw→semantic alias cascade native import can't.
   downloadFigmaPlugin() {

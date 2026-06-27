@@ -598,7 +598,7 @@ ok(app.figmaFile === "dark", "(s6) clicking a mode-file button switches the prev
 // ── (t) the Binder plugin is inlined + downloadable from the Figma tab ────────────────
 const { FIGMA_PLUGIN: FP } = await import("../../src/ui/figma-plugin-assets.js");
 ok(FP && !!FP.manifest && !!FP.code && FP.code.length > 1000, "(t1) the Binder plugin (manifest + code) is inlined");
-ok(JSON.parse(FP.manifest).id === "hct-semantic-binder", "(t2) the plugin manifest is valid + identifies the binder");
+ok(JSON.parse(FP.manifest).id === "color-tokens-semantic-binder", "(t2) the plugin manifest is valid + identifies the binder");
 app.exportOpen = true; app.exportTab = "figma"; app.render(); flushRaf();
 ok(!!app.querySelector(".figma-plugin-btn"), "(t3) the Figma tab offers a 'Binder plugin' download");
 let dl = 0; const realDl = app.download.bind(app);

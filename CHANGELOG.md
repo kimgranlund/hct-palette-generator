@@ -67,6 +67,14 @@ they landed on `main` and reference the squash-merged PR that introduced them.
   **Regroup always re-warns**. Doubles as Figma's required explicit-consent-before-modifying gate.
 
 #### Changed
+- **Figma plugin compliance pass (launch prep).** Both plugins now show **friendly, handled errors** —
+  the technical detail goes to `console.error`, and users see an actionable message ("Color Tokens couldn't
+  apply the variables… email support@nonoun.io") instead of a raw error string (Figma store policy). The
+  companion plugin is renamed **"HCT Semantic Binder" → "Color Tokens Semantic Binder"** (id
+  `color-tokens-semantic-binder`) and its manifest `networkAccess` moved to the current object form
+  (`{ "allowedDomains": ["none"] }`). Stale **"HCT"** *product* branding is scrubbed from every user-facing
+  string (the *color-model* term HCT stays in the engine, where it's accurate). Regression-guarded in
+  `test/figma/{plugin,binder}.mjs`.
 - The Figma plugin's in-file config key `hct-config` → **`nonoun-color-tokens-config`** (aligns with
   `SETS_KEY`'s `nonoun-color-tokens-*` naming). `readConfig` falls back to the legacy `hct-config` key,
   so files saved before the rename still load and migrate forward on the next save.

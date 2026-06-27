@@ -1,4 +1,4 @@
-// code.js — HCT Palette Generator, Figma plugin SANDBOX (the `main`).
+// code.js — Color Tokens by NONOUN, Figma plugin SANDBOX (the `main`).
 //
 // Runs in Figma's plugin VM: the `figma` global is available, but there is NO DOM, no
 // fetch/XMLHttpRequest/WebSocket, no localStorage (ADR-010 / AC-P3 — offline by design;
@@ -46,6 +46,17 @@ function readConfig() {
   try { return JSON.parse(raw); } catch (e) { return null; } // NB: param required — Figma's plugin VM rejects optional catch binding (ES2019)
 }
 
+// ACTIONS — each request mapped to a human action, so a failure reads as "couldn't <do X>" instead of a
+// raw developer error (Figma policy: never surface raw error text / stack traces to users).
+const ACTIONS = {
+  apply: "apply the variables",
+  "save-config": "save the palette set",
+  "load-config": "load the palette set",
+  "read-variables": "read this file's variables",
+  "load-sets": "load your palettes",
+  "save-sets": "save your palettes",
+};
+
 figma.ui.onmessage = async (msg) => {
   if (!msg) return;
   try {
@@ -54,18 +65,18 @@ figma.ui.onmessage = async (msg) => {
       // Embed the exact params in the file ALONGSIDE the variables, so a later read round-trips
       // losslessly (the variables alone can only seed an approximate hue/chroma).
       if (msg.config) writeConfig(msg.config);
-      figma.notify(`HCT: ${r.raw} raw + ${r.semantic} semantic vars (Light/Dark)` + (r.rebuilt ? ", regrouped" : "") + (r.pruned ? `, ${r.pruned} stale pruned` : ""));
+      figma.notify(`Applied ${r.raw} primitives + ${r.semantic} semantic variables (Light / Dark)` + (r.rebuilt ? ", regrouped" : "") + (r.pruned ? `, ${r.pruned} stale pruned` : ""));
     } else if (msg.type === "save-config") {
       writeConfig(msg.config);
-      figma.notify("HCT: config saved into this file");
+      figma.notify("Palette set saved into this file");
     } else if (msg.type === "load-config") {
       const config = readConfig();
       figma.ui.postMessage({ type: "config-loaded", config });
-      if (!config) figma.notify("HCT: no saved config in this file");
+      if (!config) figma.notify("No saved palette set in this file");
     } else if (msg.type === "read-variables") {
       const live = await readRawColors(); // read-only reference for the drift diff
       figma.ui.postMessage({ type: "variables-read", found: live.found, raw: live.raw });
-      if (!live.found) figma.notify("HCT: no Color Primitives collection in this file yet");
+      if (!live.found) figma.notify('No "Color Primitives" collection in this file yet');
     } else if (msg.type === "load-sets") {
       // the gallery's saved sets, from this user's clientStorage (null on first run).
       const sets = await figma.clientStorage.getAsync(SETS_KEY);
@@ -75,7 +86,11 @@ figma.ui.onmessage = async (msg) => {
       await figma.clientStorage.setAsync(SETS_KEY, Array.isArray(msg.sets) ? msg.sets : []);
     }
   } catch (e) {
-    figma.notify("HCT failed: " + (e && e.message ? e.message : String(e)), { error: true });
+    // Log the technical detail to the console for debugging; show the user a friendly, actionable
+    // message naming what was attempted (never the raw error / stack).
+    console.error("[Color Tokens] '" + (msg && msg.type) + "' failed:", e);
+    const what = (msg && ACTIONS[msg.type]) || "complete that action";
+    figma.notify("Color Tokens couldn't " + what + ". Please try again — if it keeps happening, email support@nonoun.io.", { error: true });
   }
 };
 
