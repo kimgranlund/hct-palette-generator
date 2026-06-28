@@ -575,9 +575,14 @@ nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabb
 .map-head small { color: var(--ink-dim); }
 /* overflow:visible (not hidden) so the STICKY thead + first column stick to the scrolling .canvas-scene,
    not to the table's own box — overflow!=visible would make the table the scrollport and headers would
-   scroll away. The radius is dropped (it needed overflow:hidden to clip; the .canvas-area shell owns rounding). */
+   scroll away. The radius is dropped: it needed overflow:hidden to clip, which would re-trap the scrollport;
+   the table is square-cornered inside the (square) .canvas-area. */
 .map-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--panel); border: 1px solid var(--line); overflow: visible; }
 .map-table th { text-align: left; font-weight: 600; color: var(--ink-dim); padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
+/* the pinned header's bottom rule as an inset box-shadow, NOT only the collapsed border: under
+   border-collapse, WebKit can paint a sticky th's border at its scrolled-away position (header loses its
+   rule). A box-shadow isn't part of the collapsed grid, so it pins cleanly in every engine. */
+.map-table thead th { box-shadow: inset 0 -1px 0 var(--line); }
 .map-table td { padding: 5px 10px; border-bottom: 1px solid var(--line-2); }
 .map-row.map-role-top td { border-top: 2px solid var(--line); }
 .map-mode { color: var(--ink-dim); width: 52px; }
