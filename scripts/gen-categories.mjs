@@ -70,10 +70,12 @@ const PRIME_TONE = toneAt(550, 0, 0, DEFAULT_CONTROLS);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const palette = (name, hex, oklch, sw) => {
   const rgb = hexToRgb(hex);
-  const { hue, chroma } = cam16FromRgb(rgb);
+  // chroma is a %-of-peak (hue-space-agnostic) recovered from CAM16; the HUE is now the SOURCE OKLCH
+  // hue (oklch[2]) so the baked-in hueSpace:"oklch" renders the curated family at its true OKLCH hue.
+  const { chroma } = cam16FromRgb(rgb);
   return {
     name,
-    hue: Math.round(((hue % 360) + 360) % 360),
+    hue: ((Math.round(Number(oklch[2])) % 360) + 360) % 360, // round THEN wrap so 359.7 → 0, not 360
     chroma: Math.round(Math.min(100, Math.max(0, chroma))),
     skew: 0,
     lift: Math.round(clamp(lstarFromRgb(rgb) - PRIME_TONE, -40, 40)),

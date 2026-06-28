@@ -273,29 +273,27 @@ export function peakC(hue) {
 
 // ── oklchToCam16Hue — sample a fixed mid OKLCH color, read its CAM16 hue ──────
 const _oh = new Map();
-export function oklchToCam16Hue(h) {
-  const key = h.toFixed(2);
+export function oklchToCam16Hue(h, chromaFrac = 1) {
+  const target = ((h % 360) + 360) % 360;
+  const cf = Math.min(1, Math.max(0, chromaFrac));
+  const key = target.toFixed(2) + ":" + cf.toFixed(3);
   const hit = _oh.get(key);
   if (hit !== undefined) return hit;
-  const L = 0.72;
-  const a = 0.1 * Math.cos((h * Math.PI) / 180);
-  const b = 0.1 * Math.sin((h * Math.PI) / 180);
-  // OKLab -> LMS' -> LMS (cube) -> linear sRGB
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
-  const l = l_ ** 3;
-  const m = m_ ** 3;
-  const s = s_ ** 3;
-  let R = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-  let G = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  let B = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
-  // clamp negatives, treat as linear sRGB in 0..1 -> scale to 0..100 -> XYZ -> CAM16 hue.
-  R = Math.max(0, R);
-  G = Math.max(0, G);
-  B = Math.max(0, B);
-  const xyz = matMul(SRGB_TO_XYZ, [R * 100, G * 100, B * 100]);
-  const hue = cam16FromXyz(xyz[0], xyz[1], xyz[2]).hue;
-  _oh.set(key, hue);
-  return hue;
+  // The ACCURATE, CHROMA-AWARE inverse of the render path: find the CAM16 hue X such that a color at
+  // `chromaFrac` of X's peak chroma (and peak tone) renders at OKLCH hue `target` — so the palette's
+  // IDENTITY color (the key, at its own chroma) lands on the requested OKLCH hue. The OKLCH↔CAM16 hue
+  // map shifts with chroma (Abney), so a fixed sample is wrong at one end (the old L=0.72/C=0.1 drifted
+  // ~15° on vivid blues; a cusp-only anchor drifts ~11° on muted hues) — anchoring at the palette's own
+  // chroma is right across the board. f(X) is ~monotonic, slope ≈1, so the step X ← X − (f(X) − target)
+  // is Newton with derivative ≈1; a chroma floor keeps the hue well-defined for near-greys.
+  let x = target; // first-order seed: CAM16 hue ≈ OKLCH hue
+  for (let i = 0; i < 12; i++) {
+    const pk = peakC(x);
+    const got = hctToOklch(x, Math.max(cf * pk.c, 8), pk.tone)[2];
+    const err = (((got - target) % 360) + 540) % 360 - 180; // signed (got − target) ∈ (−180, 180]
+    if (Math.abs(err) < 1e-3) break;
+    x = (((x - err) % 360) + 360) % 360;
+  }
+  _oh.set(key, x);
+  return x;
 }

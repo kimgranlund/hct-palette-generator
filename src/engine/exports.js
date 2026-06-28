@@ -123,7 +123,7 @@ function controlsOf(state) {
     dampCurve: state.dampCurve ?? DEFAULT_CONTROLS.dampCurve,
     dampAmp: state.dampAmp ?? DEFAULT_CONTROLS.dampAmp,
     dampBias: state.dampBias ?? DEFAULT_CONTROLS.dampBias,
-    hueSpace: state.hueSpace ?? DEFAULT_CONTROLS.hueSpace,
+    hueSpace: state.hueSpace ?? "cam16", // a raw legacy state without the field was authored in cam16 (mirror the UI's legacy-preservation stamp); a live doc always carries it explicitly
     // distribution mode + its shapers — previously dropped here, so exports always used the
     // default mode regardless of the doc. Threaded now so exports match what the UI renders.
     toneMode: state.toneMode ?? DEFAULT_CONTROLS.toneMode,

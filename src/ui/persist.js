@@ -50,7 +50,11 @@ export const DOMAINS = {
   dampCurve: { kind: "number", min: 0.5, max: 4, default: 1.5 },
   dampAmp: { kind: "number", min: 0, max: 100, default: 0 },
   dampBias: { kind: "number", min: -100, max: 100, default: 0 },
-  hueSpace: { kind: "enum", values: ["cam16", "oklch"], default: "cam16" },
+  // Hue space (see tonal.js DEFAULT_CONTROLS.hueSpace). Default "oklch" (the slider value IS the OKLCH
+  // hue). A doc PERSISTED with hueSpace:"cam16" round-trips as cam16 (legacy preserved); an absent field
+  // hydrates to "oklch" (the new default). The legacy-storage stamp (app.js openSet) keeps a pre-hueSpace
+  // STORED set rendering in cam16 — only a brand-new/imported config without hueSpace adopts oklch here.
+  hueSpace: { kind: "enum", values: ["cam16", "oklch"], default: "oklch" },
   // ramp distribution mode (see tonal.js DEFAULT_CONTROLS.toneMode). Default "perceptual".
   toneMode: { kind: "enum", values: ["even", "perceptual", "peak"], default: "perceptual" },
   // perceptual-path vibrancy: 0 = even lightness, 100 = cusp-anchored center (see tonal.js). Default 0.

@@ -85,6 +85,23 @@ for (let i = 0; i < 50; i++) {
   if (a !== b || b !== c) { FAIL("oklch-deterministic", `non-deterministic at h=${h.toFixed(2)}: ${a},${b},${c}`); break; }
 }
 
+// ── GATE hct-oklch-inverse — oklchToCam16Hue is the ACCURATE inverse of the render path: the CAM16 hue
+// it returns must render (at its cusp) back to the requested OKLCH hue. This is what makes an OKLCH-native
+// palette land on its stored hue — the old fixed-sample version drifted 6-15° at the blue/violet pole. ──
+let invMaxD = 0;
+for (let H = 0; H < 360 && invMaxD <= 3; H += 3) {
+  // CHROMA-AWARE: the inverse must round-trip at the anchored chroma fraction (the Abney-correct fix —
+  // a fixed anchor drifts at the other end). Check vivid (cusp) AND muted (half-peak).
+  for (const cf of [1, 0.5]) {
+    const x = E.oklchToCam16Hue(H, cf);
+    const pk = E.peakC(x);
+    const back = E.hctToOklch(x, Math.max(cf * pk.c, 8), pk.tone)[2];
+    const d = Math.abs((((back - H) % 360) + 540) % 360 - 180);
+    if (d > invMaxD) invMaxD = d;
+    if (d > 3) { FAIL("hct-oklch-inverse", `OKLCH ${H}° @cf${cf} → cam16 ${x.toFixed(1)} renders OKLCH ${back.toFixed(1)} (Δ${d.toFixed(2)}° > 3)`); break; }
+  }
+}
+
 // ── GATE hct-oklch — the FLOAT HCT→OKLCH readout (no 8-bit round-trip). It must describe the SAME
 // color hctToRgb renders, so oklchToRgb(hctToOklch(...)) ≈ hctToRgb(...).rgb for in-gamut colors;
 // values stay in range; it's deterministic; a neutral collapses to ~0 chroma. ──────────────────
@@ -106,7 +123,7 @@ for (let i = 0; i < 200; i++) {
 if (E.hctToOklch(120, 0, 50)[1] > 0.02) FAIL("hct-oklch", `near-neutral not achromatic (C=${E.hctToOklch(120, 0, 50)[1]})`);
 
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-const GATES = ["anchor-roundtrip", "random-roundtrip", "gamut-ceiling", "branches", "oklch-deterministic", "hct-oklch"];
+const GATES = ["anchor-roundtrip", "random-roundtrip", "gamut-ceiling", "branches", "oklch-deterministic", "hct-oklch", "hct-oklch-inverse"];
 for (const g of GATES) {
   const gf = fails.filter((f) => f.startsWith(g + ":"));
   console.log(`  ${gf.length ? "FAIL" : "pass"}  ${g}${gf.length ? "  — " + gf[0].slice(g.length + 2) : ""}`);

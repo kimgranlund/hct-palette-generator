@@ -68,6 +68,17 @@ if (!deepEq(hyd2.palettes[0].chroma, base.palettes[0].chroma)) FAIL("clamp", "cl
     FAIL("field-default", `absent lmin/lmax/damp hydrated to ${hp.lmin}/${hp.lmax}/${hp.damp}, want 5/100/80 (not the domain floors)`);
 }
 
+// ── huespace-default (OKLCH-native flip): a doc PERSISTED with hueSpace:"cam16" round-trips as cam16
+//    (legacy preserved); a doc WITHOUT a hueSpace hydrates to "oklch" (the new default). ────────────
+{
+  const seed = inDomainState();
+  const cam = U.hydrate(U.serialize({ ...seed, hueSpace: "cam16" }));
+  if (cam.hueSpace !== "cam16") FAIL("huespace-default", `a doc saved hueSpace:"cam16" hydrated to ${cam.hueSpace}, want cam16 (legacy preserved)`);
+  const pre = U.serialize(seed); delete pre.hueSpace;          // a doc with NO hueSpace field
+  const none = U.hydrate(pre);
+  if (none.hueSpace !== "oklch") FAIL("huespace-default", `a doc without hueSpace hydrated to ${none.hueSpace}, want oklch (new default)`);
+}
+
 // ── hpg-export-theme-invariant: exporters ignore state.theme ──────────────────────────────
 const st = { palettes: [{ name: "Primary", hue: 267, chroma: 95, skew: -20, lift: 0, on: true }], curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16", theme: "auto" };
 const out = (theme) => JSON.stringify({ css: X.exportCSS({ ...st, theme }), json: X.exportJSON({ ...st, theme }), dtcg: X.exportDTCG({ ...st, theme }, {}) });
@@ -75,7 +86,7 @@ const oL = out("light"), oD = out("dark"), oA = out("auto");
 if (!(oL === oD && oD === oA)) FAIL("theme-invariant", "export output differs across theme light/dark/auto");
 
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-for (const g of ["roundtrip", "clamp", "field-default", "theme-invariant"]) {
+for (const g of ["roundtrip", "clamp", "field-default", "huespace-default", "theme-invariant"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }

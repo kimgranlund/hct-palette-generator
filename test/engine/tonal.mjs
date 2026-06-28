@@ -16,8 +16,10 @@ const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json
 const DEFAULTS = RT.defaults;                       // 8 palettes {name,hue,chroma,skew,lift,on}
 const STOPS = T.EXPORT_STOPS;
 // The gates below validate the CIELAB "even" path (curve/skew/lift/damp/relChroma + L*-fidelity). Pin
-// toneMode:"even" and chromaFloor:0 — the perceptual/peak paths and the chroma floor have their own gates.
-const CTL = { ...(T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16" }), toneMode: "even", chromaFloor: 0 };
+// toneMode:"even" and chromaFloor:0 — the perceptual/peak paths and the chroma floor have their own
+// gates. Pin hueSpace:"cam16" too: these gates feed the role-table CAM16 hues straight through effHue
+// (the OKLCH-native default would re-interpret 267° as an OKLCH hue and move the whole ramp geometry).
+const CTL = { ...(T.DEFAULT_CONTROLS || { curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80 }), hueSpace: "cam16", toneMode: "even", chromaFloor: 0 };
 const CURVES = ["linear", "sine", "cubic", "logistic", "exp"];
 const SKEWS = [-100, -50, 0, 50, 100];
 

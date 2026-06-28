@@ -6,6 +6,8 @@ import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import * as M from "../../src/ui/model.mjs";
+import { paletteStops, STOPS } from "../../src/engine/tonal.js";
+import { PRESETS as NATURE_PRESETS } from "../../src/ui/categories/nature.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const UI = join(HERE, "..", "..", "src", "ui"); // the shell files live in src/ui/
@@ -47,8 +49,68 @@ try { execSync(`node --check "${join(UI, "app.js")}"`, { stdio: "pipe" }); } cat
 const html = existsSync(join(UI, "index.html")) ? readFileSync(join(UI, "index.html"), "utf8") : "";
 if (!/type=["']module["']/.test(html) || !/app\.js/.test(html)) FAIL("shell", "index.html does not load app.js as a module");
 
+// ── OKLCH-NATIVE HUE MODEL (the slider value IS the OKLCH hue) ─────────────────────────────
+// Helper: the worst per-stop RGB distance between two rendered ramps (0 = identical render).
+const rampRgbDist = (a, b) => { let m = 0; for (let i = 0; i < a.length; i++) { const x = a[i].rgb, y = b[i].rgb; const d = Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); if (d > m) m = d; } return m; };
+
+// (a) defaultDocument is OKLCH-native and each starter renders ≈ its intended (cam16) color: the
+//     on-the-fly cam16→oklch hue conversion round-trips through the engine within the hue-space
+//     precision (a few RGB units; the blue Primary is the loose pole — see fidelity note).
+{
+  const RT = JSON.parse(readFileSync(join(HERE, "..", "..", "docs", "spec", "data", "role-table.json"), "utf8"));
+  const dd = M.defaultDocument();
+  if (dd.hueSpace !== "oklch") FAIL("oklch-native", `defaultDocument hueSpace ${dd.hueSpace}, want "oklch"`);
+  const ctl = { curve: dd.curve, tension: dd.tension, lmin: dd.lmin, lmax: dd.lmax, damp: dd.damp, dampCurve: dd.dampCurve, dampAmp: dd.dampAmp, dampBias: dd.dampBias, relChroma: dd.relChroma, chromaFloor: dd.chromaFloor, toneMode: dd.toneMode, vibrancy: dd.vibrancy };
+  let worst = 0, wname = null;
+  for (let i = 0; i < dd.palettes.length; i++) {
+    const np = dd.palettes[i], op = RT.defaults[i];
+    const nr = paletteStops({ hue: np.hue, chroma: np.chroma, skew: np.skew, lift: np.lift }, { ...ctl, hueSpace: "oklch" }, STOPS);
+    const or = paletteStops({ hue: op.hue, chroma: op.chroma, skew: op.skew, lift: op.lift }, { ...ctl, hueSpace: "cam16" }, STOPS);
+    const d = rampRgbDist(nr, or); if (d > worst) { worst = d; wname = np.name; }
+    // the conversion must MOVE the stored hue off the raw cam16 value (it's now an OKLCH hue), except
+    // where the two spaces coincide (small Δ rounds to the same integer) — so assert it's a valid degree.
+    if (!(np.hue >= 0 && np.hue <= 360)) FAIL("oklch-native", `starter ${np.name} hue ${np.hue} out of range`);
+  }
+  // 30 RGB units (~Δ8° cam16 at the blue pole × high chroma) is the documented worst-case fidelity bound.
+  if (worst > 30) FAIL("oklch-native", `starter ramp drifted ${worst.toFixed(1)} RGB from the cam16 intent (worst ${wname}), want ≤30`);
+}
+
+// (b) seedFromKeyColor returns the INPUT's OWN OKLCH hue (consistent with the OKLCH-native space):
+//     seed of [L, C, 200] has hue ≈ 200.
+{
+  for (const H of [200, 30, 270, 355]) {
+    const seed = M.seedFromKeyColor([0.6, 0.12, H]);
+    if (!seed) { FAIL("oklch-native", `seedFromKeyColor([0.6,0.12,${H}]) returned null`); break; }
+    let d = Math.abs(seed.hue - H); if (d > 180) d = 360 - d;
+    if (d > 1) FAIL("oklch-native", `seedFromKeyColor hue ${seed.hue}, want ≈${H} (the input's OKLCH hue)`);
+  }
+}
+
+// (c) a gen-categories sample palette's STORED hue ≈ its source oklch[2], and the set bakes hueSpace:"oklch".
+{
+  const preset = NATURE_PRESETS[0];
+  if (preset.hueSpace !== "oklch") FAIL("oklch-native", `category preset hueSpace ${preset.hueSpace}, want "oklch"`);
+  for (const pal of preset.palettes) {
+    if (!pal.keyColors || !pal.keyColors[0]) continue;
+    const src = ((pal.keyColors[0].oklch[2] % 360) + 360) % 360;
+    let d = Math.abs(pal.hue - src); if (d > 180) d = 360 - d;
+    if (d > 1) { FAIL("oklch-native", `category ${pal.name} stored hue ${pal.hue} vs source oklch ${src.toFixed(1)} (Δ${d.toFixed(1)})`); break; }
+  }
+}
+
+// (d) persist: a doc WITH hueSpace:"cam16" round-trips as cam16 (legacy preserved); a doc WITHOUT a
+//     hueSpace hydrates to "oklch" (the new default). Imported from persist.js (the storage clamp).
+{
+  const P = await import("../../src/ui/persist.js");
+  const base = { palettes: [{ name: "P", hue: 200, chroma: 50, skew: 0, lift: 0, on: true }] };
+  const cam = P.hydrate(P.serialize({ ...base, hueSpace: "cam16" }));
+  if (cam.hueSpace !== "cam16") FAIL("oklch-native", `persist: a doc saved cam16 hydrated to ${cam.hueSpace}, want cam16 (legacy preserved)`);
+  const none = P.hydrate(P.serialize({ ...base })); // no hueSpace field
+  if (none.hueSpace !== "oklch") FAIL("oklch-native", `persist: a doc without hueSpace hydrated to ${none.hueSpace}, want oklch (new default)`);
+}
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────────────
-for (const g of ["model", "exports", "shell"]) {
+for (const g of ["model", "exports", "shell", "oklch-native"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }

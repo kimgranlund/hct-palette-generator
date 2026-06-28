@@ -37,7 +37,11 @@ export const DEFAULT_CONTROLS = {
   dampCurve: 1.5,
   dampAmp: 0,
   dampBias: 0,
-  hueSpace: "cam16",
+  // Hue space the per-palette `hue` is expressed in. "oklch" (default): the slider value IS the OKLCH
+  // hue — resolved to a CAM16 hue once per palette via effHue→oklchToCam16Hue. "cam16": the hue is a
+  // CAM16 hue, passed straight through. (Legacy docs that predate the OKLCH-native flip carry "cam16"
+  // explicitly and keep rendering in cam16 — see persist.js / app.js openSet.)
+  hueSpace: "oklch",
   // Chroma basis. false (default): the chroma control is % of the BASE-hue PEAK — per-hue, but the
   // ABSOLUTE chroma still varies with each hue's gamut, so hues come out unequally saturated. true:
   // it's % of EACH STOP's own gamut ceiling, so every hue fills the same fraction of its gamut →
@@ -81,8 +85,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 // 'oklch' inputs are mapped through the engine; 'cam16' (default) pass straight.
 // Compute this a single time and feed the SAME value to every stop so the
 // emitted CAM16 hue is constant across the ramp (hue-stability).
-export function effHue(hue, hueSpace) {
-  return hueSpace === "oklch" ? oklchToCam16Hue(hue) : hue;
+// chromaFrac (0..1, default 1) anchors the OKLCH→CAM16 inverse at the palette's OWN chroma (chroma
+// is %-of-peak), so the identity color lands on the requested OKLCH hue regardless of saturation.
+export function effHue(hue, hueSpace, chromaFrac = 1) {
+  return hueSpace === "oklch" ? oklchToCam16Hue(hue, chromaFrac) : hue;
 }
 
 // shape — remap normalized position p∈[0,1] (0=light end, 1=dark end) to q∈[0,1].
@@ -134,7 +140,7 @@ export function paletteStops(palette, controls, stops) {
   if (mode === "perceptual" || mode === "peak") return okhslStops(palette, controls, stops, mode);
   // Resolve the BASE hue once. The per-stop hue may be EDGE-ROTATED below (hueShift);
   // when hueShift=0 every stop uses baseHue (the flat-hue, hue-stability default).
-  const baseHue = effHue(palette.hue, controls.hueSpace);
+  const baseHue = effHue(palette.hue, controls.hueSpace, (palette.chroma ?? 0) / 100);
   const shift = palette.hueShift ?? 0; // edge hue rotation: ±deg at the ends
   const sameDir = palette.hueSameDir === true; // true = both ends bend the SAME way (|s|), else opposite (s)
   const pk = peakC(baseHue).c; // the BASE hue's max chroma in sRGB
@@ -207,7 +213,7 @@ function okhslLAt(lstar) {
 }
 
 function okhslStops(palette, controls, stops, mode) {
-  const baseHue = effHue(palette.hue, controls.hueSpace);
+  const baseHue = effHue(palette.hue, controls.hueSpace, (palette.chroma ?? 0) / 100);
   const pk = peakC(baseHue);                                       // { c, tone } — the cusp
   const hOk = rgbToOkhsl(hctToRgb(baseHue, pk.c, pk.tone).rgb).h;  // the palette's hue in OKHSL space
   const shift = palette.hueShift ?? 0;

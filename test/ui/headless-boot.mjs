@@ -1160,8 +1160,8 @@ ok(vpKC && vpKC.keyColors && vpKC.keyColors.length === 1 && vpKC.keyColors[0].ro
    && typeof vpKC.keyColors[0].nearStop === "number" && typeof vpKC.keyColors[0].drift === "number" && /^oklch\(/.test(vpKC.keyColors[0].css || ""),
    "(kc2) the key color is placed on the ramp (role + nearStop + drift + oklch css)");
 const driftBefore = vpKC.keyColors[0].drift;
-// seed the palette from the key color → hue/chroma match the recovered seed
-const seed = seedKC(KO);
+// seed the palette from the key color → hue/chroma match the recovered seed IN THE DOC'S HUE SPACE
+const seed = seedKC(KO, app.doc.hueSpace);
 app.seedFromKey(0, "dominant"); flushRaf();
 ok(app.doc.palettes[0].hue === seed.hue && app.doc.palettes[0].chroma === seed.chroma,
    `(kc3) 'seed from key' sets the palette hue/chroma from the color (got ${app.doc.palettes[0].hue}/${app.doc.palettes[0].chroma}, want ${seed.hue}/${seed.chroma})`);
@@ -1469,6 +1469,21 @@ ok(!app.doc.geometry.modes && app.geomMode === "base", "(geo-bp) deleting the ac
 app.commit((d) => { d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); // restore default
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".geom-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(geo) returning to Color restores the ramp canvas (color untouched)");
+
+// ── (hs) OKLCH-native flip: a LEGACY stored set (no hueSpace field) opens as cam16 (preserved),
+//        a set saved with hueSpace:"oklch" opens as oklch. The app.js openSet legacy stamp. ────────
+{
+  const minimalPalettes = [{ name: "primary", hue: 200, chroma: 60, skew: 0, lift: 0, on: true }];
+  // a pre-hueSpace stored doc — plain object with NO hueSpace (legacy data authored under cam16).
+  const legacyRec = { id: "set-legacy-hs", name: "Legacy", doc: { name: "Legacy", palettes: minimalPalettes }, updated: Date.now() };
+  // a modern stored doc carrying hueSpace:"oklch".
+  const oklchRec = { id: "set-oklch-hs", name: "OKLCH", doc: { name: "OKLCH", palettes: minimalPalettes, hueSpace: "oklch" }, updated: Date.now() };
+  app.sets.push(legacyRec, oklchRec);
+  app.openSet("set-legacy-hs"); flushRaf();
+  ok(app.doc.hueSpace === "cam16", `(hs) a legacy stored set (no hueSpace) opens as cam16, got ${app.doc.hueSpace}`);
+  app.openSet("set-oklch-hs"); flushRaf();
+  ok(app.doc.hueSpace === "oklch", `(hs) a set saved hueSpace:"oklch" opens as oklch, got ${app.doc.hueSpace}`);
+}
 
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {

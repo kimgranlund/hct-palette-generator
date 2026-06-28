@@ -111,6 +111,16 @@ function newSet(name) {
   return { id: "set-" + Math.random().toString(36).slice(2, 9), name, doc, updated: Date.now() };
 }
 
+// hydrateStoredDoc — hydrate a doc read from PERSISTENT storage (a saved set record). The OKLCH-native
+// default flip means an ABSENT hueSpace now hydrates to "oklch" — correct for a brand-new doc, but a
+// STORED set that predates the hueSpace field was authored under cam16 and must KEEP rendering in cam16.
+// So we stamp "cam16" on a stored doc that lacks the field BEFORE hydrate (legacy preservation). A doc
+// saved with hueSpace already set (every doc since the field landed) round-trips through untouched.
+function hydrateStoredDoc(stored) {
+  const d = stored && typeof stored === "object" && stored.hueSpace == null ? { ...stored, hueSpace: "cam16" } : stored;
+  return hydrate(d);
+}
+
 // ── app-theme injection (dogfooding) ────────────────────────────────────────────
 // The chrome themes itself with the tokens the tool generates. On boot we run the
 // tool's own `exportCSS` over the FIXED 8 default palettes (appThemeCSS) and inject
@@ -461,7 +471,7 @@ class HctApp extends HTMLElement {
     const rec = this.sets.find((s) => s.id === id);
     if (!rec) return;
     this.activeId = id;
-    this.doc = hydrate(rec.doc);
+    this.doc = hydrateStoredDoc(rec.doc); // legacy stamp: a pre-hueSpace STORED set stays cam16
     this.doc.name = rec.name;
     this.savedSnapshot = JSON.stringify(serialize(this.doc));
     this.sel = { kind: "palette", id: Math.min(this.doc.selected || 0, this.doc.palettes.length - 1) };
@@ -856,7 +866,7 @@ class HctApp extends HTMLElement {
     const visible = this.sets.filter((s) => !q || s.name.toLowerCase().includes(q));
 
     const tiles = visible.map((rec) => {
-      const v = projectView(hydrate(rec.doc));
+      const v = projectView(hydrateStoredDoc(rec.doc)); // legacy stamp: a pre-hueSpace STORED set renders as cam16
       const enabled = v.palettes.filter((p) => p.on);
       const strip = h(
         "div",
@@ -2205,7 +2215,7 @@ class HctApp extends HTMLElement {
       const samples = this.newPalSamples(view);
       if (!samples.length) return null;
       target = tab === "environmental" ? deriveNeutral(samples) : deriveRelative(this.newPalRel, samples);
-      const s = seedFromKeyColor(target) || { hue: 200, chroma: 60 };
+      const s = seedFromKeyColor(target, this.doc.hueSpace) || { hue: 200, chroma: 60 };
       pal = { name: "_probe", hue: s.hue, chroma: s.chroma, on: true, keyColors: [{ role: "dominant", oklch: target.map(Number) }] };
     }
     let pv;
@@ -2346,7 +2356,7 @@ class HctApp extends HTMLElement {
           value: (proposed && proposed.hex) || "#888888",
           // live: recover hue/chroma from the picked color + refresh the preview in place (don't
           // rebuild the input mid-pick — that would detach the OS color panel).
-          oninput: (e) => { const s = seedFromKeyColor(hexToOklch(e.target.value)); if (s) { c.hue = s.hue; c.chroma = s.chroma; this._refreshNewPalPreview(); } },
+          oninput: (e) => { const s = seedFromKeyColor(hexToOklch(e.target.value), this.doc.hueSpace); if (s) { c.hue = s.hue; c.chroma = s.chroma; this._refreshNewPalPreview(); } },
           // settle: full render so the Hue/Chroma sliders move to reflect the picked color.
           onchange: () => this.render(),
         }),
@@ -4186,11 +4196,12 @@ class HctApp extends HTMLElement {
     this.commit((d) => { (d.palettes[i].keyColors = (d.palettes[i].keyColors || []).filter((k) => k.role !== role)).push({ role, oklch }); });
   }
 
-  // seedFromKey — set the palette's hue + chroma from a key color (CAM16 recovery), so the
-  // generated ramp's family matches the brand color. One undo step.
+  // seedFromKey — set the palette's hue + chroma from a key color, in the ACTIVE doc's hue space
+  // (OKLCH for new docs, CAM16 for a preserved legacy doc), so the generated ramp's family matches the
+  // brand color. One undo step.
   seedFromKey(i, role) {
     const kc = (this.doc.palettes[i].keyColors || []).find((k) => k.role === role);
-    const s = kc && seedFromKeyColor(kc.oklch);
+    const s = kc && seedFromKeyColor(kc.oklch, this.doc.hueSpace);
     if (!s) return;
     this.commit((d) => { d.palettes[i].hue = s.hue; d.palettes[i].chroma = s.chroma; });
   }
@@ -5606,10 +5617,11 @@ class HctApp extends HTMLElement {
     this.openConfigAsSet(config, "Loaded from project");
   }
 
-  // openConfigAsSet — shape-clamp an (untrusted) config and open it as a new set. hydrate() domain-clamps
-  // every field, so a junk/partial config is sanitized, never trusted as-is.
+  // openConfigAsSet — shape-clamp an (untrusted) config and open it as a new set. hydrateStoredDoc()
+  // domain-clamps every field AND applies the legacy stamp (a config lacking hueSpace was authored under
+  // cam16 — keep it cam16, consistent with openSet), so a junk/partial config is sanitized + preserved.
   openConfigAsSet(config, toastMsg) {
-    const doc = hydrate(config);
+    const doc = hydrateStoredDoc(config);
     const name = (typeof config.name === "string" && config.name.trim()) || "Project";
     doc.name = name;
     const id = "set-" + Date.now().toString(36);
