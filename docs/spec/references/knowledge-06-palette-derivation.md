@@ -73,8 +73,10 @@ neutral.
 ## 5. From a target to a palette
 
 For Relative/Environmental the engine returns a target OKLCH; the UI seeds the palette's `hue`+`chroma`
-from it (`seedFromKeyColor`, the same CAM16 inversion `configFromVariables` uses) and retains the target
-as the `dominant` key colour, so the ramp re-derives around it through the perceptual lens. Custom sets
+from it (`seedFromKeyColor(oklch, hueSpace="oklch")`, the same seeding `configFromVariables` uses —
+under the default it returns the input's OKLCH hue, or CAM16 for a legacy `hueSpace:"cam16"` doc) and
+retains the target as the `dominant` key colour, so the ramp re-derives around it through the perceptual
+lens. Custom sets
 `hue`/`chroma` straight (no retained key colour). A single `_newPalProposed` PROJECTS the would-be
 palette (a throwaway `projectView`) and is the source of truth for **both** the live preview and
 `createNewPalette` — they cannot drift.

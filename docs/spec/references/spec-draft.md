@@ -93,7 +93,8 @@ Full detail per layer: `references/knowledge-01..05`. An auxiliary engine module
 See `references/knowledge-01-color-engine.md` and `data/verification-anchors.json`.
 Key contracts: `hctToRgb(hue,chroma,tone) -> {rgb,inGamut,lstar}` (binary-search J to hit
 L\*; neutral path below 0.4 chroma; black/white at tone 0/100); `maxChromaInGamut`,
-`peakC`, `oklchToCam16Hue` (sampled, ADR-008). Fixed viewing conditions (ADR-009).
+`peakC`, `oklchToCam16Hue` (chroma-aware Newton inverse, ADR-011), `hctToOklch` (high-res
+HCT→OKLCH). Fixed viewing conditions (ADR-009).
 Acceptance: roundtrip `max_channel_delta <= 2` (current: 0).
 
 ## 6. Tonal-Scale Generation 📐
@@ -124,7 +125,7 @@ interface State {
   dampCurve: number;        // 0.5..4   falloff exponent γ (default 1.5)
   dampAmp: number;          // 0..100   mid-tone chroma amplify (default 0)
   dampBias: number;         // -100..100  light↔dark asymmetry (default 0)
-  hueSpace: 'cam16'|'oklch';
+  hueSpace: 'cam16'|'oklch';  // default 'oklch' (ADR-011); legacy docs carry 'cam16' explicitly
   theme: 'system'|'light'|'dark';
   palettes: Palette[];
   selected: number;
@@ -182,8 +183,9 @@ plugin; `prefers-reduced-motion`.
 | Mode flip isolated in semantic layer | per-token light/dark | works for non-mirror mappings; maps to Figma collections |
 | Resolved DTCG + plugin for cascade | aliasData-only import | native import reliability + a real cascade path |
 
-💡 The OKLCH-input bridge concedes a few degrees of hue drift (ADR-008) to let OKLCH-native
-designers work in familiar numbers without changing the output color math.
+💡 OKLCH is now the default input hue space (ADR-011). The chroma-aware OKLCH→CAM16 inverse
+lands the rendered identity color on the stored OKLCH hue to ~0.00° (no more drift), so
+OKLCH-native designers work in familiar numbers without changing the output color math.
 
 ## 13. Anti-Patterns
 

@@ -41,7 +41,7 @@
 | `dampCurve` | 0.5–4 | 1.5 | falloff exponent γ — where damping bites (low = broad into mids, high = confined to the ends) |
 | `dampAmp` | 0–100 | 0 | mid-tone chroma amplify — boosts the mids toward the gamut ceiling (multiplier > 1) |
 | `dampBias` | -100..100 | 0 | light(−)↔dark(+) asymmetry of the damping |
-| `hueSpace` | cam16 / oklch | cam16 | how input hues are read |
+| `hueSpace` | cam16 / oklch | oklch | how input hues are read (default flipped to OKLCH; cam16 stays selectable, and legacy cam16 docs carry `hueSpace:"cam16"` explicitly) |
 | `theme` | auto / light / dark | auto | UI appearance only (not exported) |
 
 Per-palette: `{ name, hue 0–360, chroma 0–100, skew -100..100, lift -40..40, hueShift -60..60, hueSameDir:bool, on:bool }`.
@@ -94,7 +94,7 @@ toneAt(stop, skew, lift):
 ## 5. Chroma targeting and edge damping
 
 ```
-hue    = effHue(palette.hue)             // cam16 hue, possibly mapped from oklch
+hue    = effHue(palette.hue, hueSpace, palette.chroma/100)  // cam16 hue; if hueSpace=oklch, the chroma-aware OKLCH→CAM16 inverse anchored at this palette's chroma
 pk     = peakC(hue).c                     // hue's own max chroma in sRGB
 target = (palette.chroma / 100) * pk      // chroma control is % of the hue's peak
 

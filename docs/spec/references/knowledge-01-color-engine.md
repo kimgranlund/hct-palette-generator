@@ -12,7 +12,7 @@
 5. `hctToRgb` contract
 6. `maxChromaInGamut` (gamut ceiling)
 7. `peakC` (per-hue chroma peak)
-8. `oklchToCam16Hue` (hue-space bridge)
+8. `oklchToCam16Hue` (hue-space bridge) · `hctToOklch` (high-res HCT → OKLCH)
 9. Determinism and caching
 10. Verification anchors
 
@@ -142,27 +142,44 @@ peakC(hue) -> { c:number, tone:number }   // the hue's maximum achievable chroma
 
 ## 8. `oklchToCam16Hue` (hue-space bridge)
 
-The UI lets the user enter hues in either CAM16 or OKLCH. When OKLCH is selected, an input
-hue `h` is mapped to the equivalent CAM16 hue by sampling a mid color at that OKLCH hue and
-reading its CAM16 angle:
+OKLCH is now the **default** input hue space (see `hueSpace`, knowledge-02 §; `cam16` stays
+selectable, and legacy docs saved under cam16 carry `hueSpace:"cam16"` explicitly and keep
+rendering in cam16). When a palette's hue is read as OKLCH, `oklchToCam16Hue(h, chromaFrac=1)`
+maps it to the equivalent CAM16 hue so the render path (which works in CAM16) lands the
+identity color on the stored OKLCH hue:
 
 ```
-oklchToCam16Hue(h):
-  L=0.72, a=0.10*cos(h°), b=0.10*sin(h°)     // a fixed mid OKLCH sample
-  -> OKLab cube -> linear sRGB (clamp >=0) -> XYZ -> cam16FromXyz(...).hue
-  memoize by h.toFixed(2)
+oklchToCam16Hue(h, chromaFrac=1):
+  // Newton inverse of the render path: find the CAM16 hue whose color, rendered at
+  // chromaFrac of that hue's peak chroma, has OKLCH hue == h.
+  memoize by h.toFixed(2)+'|'+chromaFrac.toFixed(3)
 ```
 
-> 💡 This is a *sampled* mapping, not an analytic one — the CAM16 hue at a given OKLCH hue
-> varies slightly with L and C. The fixed sample (L=0.72, C=0.10) is a deliberate
-> compromise; expect a few degrees of drift vs. an exact per-color mapping (see ADR-008
-> in `decision-records.md`).
+> 💡 This is an **accurate, chroma-aware** inverse. The OKLCH↔CAM16 hue map shifts with
+> chroma (the **Abney effect**), so a fixed or cusp-only anchor is wrong at the other end.
+> Anchoring the solve at the palette's OWN chroma (`chromaFrac = palette.chroma/100`, passed
+> via `effHue`) makes the rendered identity color land on the stored OKLCH hue to ~0.00°.
+> Engine gate: `hct-oklch-inverse` (`test/engine/hct.mjs`). (Supersedes the old fixed-sample
+> mapping; see ADR-008 / ADR-011 in `decision-records.md`.)
+
+## 8b. `hctToOklch` (high-res HCT → OKLCH)
+
+```
+hctToOklch(hue, chroma, tone) -> [L, C, H°]   // float, the perceptual OKLCH of an HCT color
+```
+- Reuses the CAM16 J-solve from `hctToRgb`, then converts the converged **linear sRGB**
+  straight through OKLab — **no 8-bit round-trip**. This is the high-res HCT→OKLCH used for
+  analysis and readouts.
+- **Principle:** HEX is only ever derived for consumption; perceptual coordinates come from
+  the model at full precision (never measured back off an 8-bit hex). `projectView` emits
+  `keyOklch` (each palette's key color in high-res OKLCH); the key HEX is derived from it.
 
 ## 9. Determinism and caching
 
 - No RNG, no clock, no locale. Same inputs → identical outputs.
-- Three memo caches: `_mc` (maxChroma), `_pk` (peakC), `_oh` (oklch hue). Keys use
-  `toFixed(2)` so cache hits are exact within 0.01° / 0.01 tone.
+- Three memo caches: `_mc` (maxChroma), `_pk` (peakC), `_oh` (oklch hue, keyed by hue +
+  chromaFrac). Keys use `toFixed(2)` (chromaFrac `toFixed(3)`) so cache hits are exact within
+  0.01° / 0.01 tone.
 - The engine exists in three implementations (artifact inline, `gen.js`, the plugin shares
   the contrast-free portions). They must agree; see `rubrics/parity-checklist.md`.
 
