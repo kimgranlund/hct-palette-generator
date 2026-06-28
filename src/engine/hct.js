@@ -6,6 +6,7 @@
 //
 // Public contract (the grading harness imports exactly these):
 //   hctToRgb(hue, chroma, tone) -> { rgb:[r,g,b] (0-255 ints), inGamut:boolean, lstar }
+//   hctToOklch(hue, chroma, tone) -> [L, C, H°] (FLOAT — high-res, no 8-bit round-trip)
 //   cam16FromRgb([r,g,b])       -> { hue, chroma, J }
 //   lstarFromRgb([r,g,b])       -> CIELAB L* (0-100)
 //   maxChromaInGamut(hue, tone) -> number
@@ -170,15 +171,15 @@ function xyzFromCam16(J, C, hue) {
 }
 
 // ── hctToRgb — branches in order (endpoints, neutral gray, then J tone-search) ─
-export function hctToRgb(hue, chroma, tone) {
+// _hctToLinRGB — the shared CAM16 solve: HCT -> converged linear sRGB (0..100 scale) + lstar + inGamut.
+// hctToRgb delins this to 0..255 ints; hctToOklch converts the SAME float pixel to OKLab — so a
+// perceptual readout reflects the high-res model, never an 8-bit round-trip.
+function _hctToLinRGB(hue, chroma, tone) {
   // 1) tone clamps to pure black / white.
-  if (tone <= 0) return { rgb: [0, 0, 0], inGamut: true, lstar: 0 };
-  if (tone >= 100) return { rgb: [255, 255, 255], inGamut: true, lstar: 100 };
+  if (tone <= 0) return { linRGB: [0, 0, 0], inGamut: true, lstar: 0 };
+  if (tone >= 100) return { linRGB: [100, 100, 100], inGamut: true, lstar: 100 };
   // 3) near-neutral: CAM16 inversion is noisy below 0.4 chroma — emit gray at the tone.
-  if (chroma < 0.4) {
-    const v = delin(yFromL(tone));
-    return { rgb: [v, v, v], inGamut: true, lstar: tone };
-  }
+  if (chroma < 0.4) { const y = yFromL(tone); return { linRGB: [y, y, y], inGamut: true, lstar: tone }; }
   // 4) binary-search CAM16 lightness J so the resulting Y reproduces the target tone (L*).
   let lo = 0;
   let hi = 100;
@@ -191,11 +192,35 @@ export function hctToRgb(hue, chroma, tone) {
     if (lMid < tone) lo = mid;
     else hi = mid;
   }
-  // final XYZ at the converged J -> linear sRGB -> gamut test -> delin to 0..255.
+  // final XYZ at the converged J -> linear sRGB -> gamut test.
   const linRGB = matMul(XYZ_TO_SRGB, xyz);
   const inGamut = linRGB.every((ch) => ch >= -0.0001 && ch <= 100.0001);
-  const rgb = linRGB.map((ch) => delin(ch));
-  return { rgb, inGamut, lstar: lFromY(xyz[1]) };
+  return { linRGB, inGamut, lstar: lFromY(xyz[1]) };
+}
+
+export function hctToRgb(hue, chroma, tone) {
+  const { linRGB, inGamut, lstar } = _hctToLinRGB(hue, chroma, tone);
+  return { rgb: linRGB.map((ch) => delin(ch)), inGamut, lstar };
+}
+
+// hctToOklch(hue, chroma, tone) -> [L, C, H°] in FLOAT. Reuses the CAM16 solve, then sends the
+// converged linear sRGB straight through OKLab (Björn Ottosson's matrices — the same constants as
+// okhsl.js linearSrgbToOklab; inlined to keep hct.js dependency-free). NO 8-bit step, so analysis /
+// readouts read the perceptual coords from the high-res model, not the rendered pixel.
+export function hctToOklch(hue, chroma, tone) {
+  const { linRGB } = _hctToLinRGB(hue, chroma, tone);
+  const r = Math.min(Math.max(linRGB[0] / 100, 0), 1);
+  const g = Math.min(Math.max(linRGB[1] / 100, 0), 1);
+  const b = Math.min(Math.max(linRGB[2] / 100, 0), 1);
+  const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+  const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+  const bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+  let H = (Math.atan2(bb, a) * 180) / Math.PI;
+  H = ((H % 360) + 360) % 360;
+  return [L, Math.hypot(a, bb), H];
 }
 
 // ── Forward helpers from sRGB ────────────────────────────────────────────────

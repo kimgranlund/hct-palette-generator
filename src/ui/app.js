@@ -2055,7 +2055,7 @@ class HctApp extends HTMLElement {
   // or its identity is near-grey — so a derived/leading neutral never becomes the Relative primary.
   _isNeutralPalette(p, vp) {
     if (/\b(neutral|grey|gray)\b/i.test(String((p && p.name) || ""))) return true;
-    return !!(vp && vp.key && hexToOklch(vp.key)[1] < 0.02);
+    return !!(vp && vp.keyOklch && vp.keyOklch[1] < 0.02);
   }
 
   // the included context palette indices in PRIORITY ORDER: non-neutral palettes first (in palette
@@ -2074,7 +2074,7 @@ class HctApp extends HTMLElement {
   // samples for A/B = each included palette's vivid identity color as OKLCH [L,C,H], PRIORITY-ORDERED
   // (samples[0] = the primary, so deriveRelative pivots on it — see derive.mjs).
   newPalSamples(view) {
-    return this._orderedContext(view).map((i) => hexToOklch(view.palettes[i].key));
+    return this._orderedContext(view).map((i) => view.palettes[i].keyOklch);
   }
 
   // the primary context color (the highest-priority, first non-neutral included palette) — the hex
@@ -2212,7 +2212,7 @@ class HctApp extends HTMLElement {
     try { pv = projectView({ ...this.doc, palettes: [pal] }); } catch { return null; }
     const vp = pv.palettes[0];
     // the proposed dot's polar position: target hue/chroma for A/B; the rendered identity for Custom.
-    const oklch = target || hexToOklch(vp.key);
+    const oklch = target || vp.keyOklch;
     return { pal, view: pv, vp, hex: vp.key, target, pos: { H: oklch[2], C: oklch[1] } };
   }
 
@@ -2243,8 +2243,8 @@ class HctApp extends HTMLElement {
     const dots = [];
     for (const i of ctx) {
       const vp = view.palettes[i];
-      if (!vp || !vp.key) continue;
-      const [, C, H] = hexToOklch(vp.key);
+      if (!vp || !vp.keyOklch) continue;
+      const [, C, H] = vp.keyOklch;
       dots.push({ H, C, fill: vp.key, on: false });
     }
     if (proposed) dots.push({ H: proposed.pos.H, C: proposed.pos.C, fill: proposed.hex, on: true });
@@ -4182,7 +4182,7 @@ class HctApp extends HTMLElement {
   addKeyColor(i, role) {
     const vp = (this._view || projectView(this.doc)).palettes[i];
     if (!vp) return;
-    const oklch = hexToOklch(vp.key);
+    const oklch = vp.keyOklch; // store the HIGH-RES key OKLCH, not a re-measured 8-bit hex
     this.commit((d) => { (d.palettes[i].keyColors = (d.palettes[i].keyColors || []).filter((k) => k.role !== role)).push({ role, oklch }); });
   }
 

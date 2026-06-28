@@ -13,6 +13,7 @@
 
 import {
   hctToRgb,
+  hctToOklch,
   lstarFromRgb,
   cam16FromRgb,
   peakC,
@@ -384,7 +385,11 @@ export function projectView(doc) {
     // ramp damps mid-stop chroma, so a ramp stop reads muted; this is what the gallery tile should show).
     const baseHue = effHue(p.hue, controls.hueSpace);
     const pk = peakC(baseHue);
-    const keyHex = "#" + hctToRgb(baseHue, ((p.chroma ?? 0) / 100) * pk.c, pk.tone).rgb
+    const keyChroma = ((p.chroma ?? 0) / 100) * pk.c;
+    // keyOklch = the key color's HIGH-RES OKLCH (float, no 8-bit round-trip) — the model's source of
+    // truth for perceptual readouts/analysis; keyHex is DERIVED from the same HCT for consumption.
+    const keyOklch = hctToOklch(baseHue, keyChroma, pk.tone);
+    const keyHex = "#" + hctToRgb(baseHue, keyChroma, pk.tone).rgb
       .map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 
     // keyColors = retained brand colors placed on the ramp through the perceptual lens.
@@ -392,7 +397,7 @@ export function projectView(doc) {
 
     // ramp = 19 core display stops; fullRamp = all 25 EXPORT_STOPS (the extended view).
     palettes.push({
-      name: p.name, on: p.on !== false, key: keyHex, ramp, fullRamp: fullStops, roles, keyColors,
+      name: p.name, on: p.on !== false, key: keyHex, keyOklch, ramp, fullRamp: fullStops, roles, keyColors,
       // curated story (present for preset palettes): the color's evocative name, role, description.
       ...(p.colorName ? { colorName: p.colorName } : {}),
       ...(p.colorRole ? { colorRole: p.colorRole } : {}),
