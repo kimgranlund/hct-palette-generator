@@ -395,7 +395,7 @@ class HctApp extends HTMLElement {
     this.colorMode = "light"; // Color section value-mode control: light | dark | both (both = the side-by-side Compare view) — ui-session
     this.canvasView = "palettes"; // canvas content: palettes (the ramps) | scrims | mapping (the role→raw table)
     this.section = "color"; // editor section: color | typography | geometry — ui-session, routes the whole editor (never persisted)
-    this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (read-only token matrix: Base + breakpoints) — type-section sub-state
+    this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (editable token matrix: Base + breakpoints) — type-section sub-state
     this.typeMode = "base"; // active Typography breakpoint mode: "base" | a doc.type.modes[].id (Phase 5) — ui-session
     this.stopsMode = "core"; // palette ramp density: core (19 display stops) | extended (25 EXPORT_STOPS)
     this.mapTextMode = false; // Mapping table raw-token editor: false = select menu, true = free text input
@@ -421,7 +421,7 @@ class HctApp extends HTMLElement {
     this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
     this.settingsOpen = false; // the Settings page (token-mapping + app prefs)
     this.settingsSection = "mapping"; // which Settings nav item is active (left-nav page layout)
-    this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (read-only token matrix: Base + breakpoints) — geom-section sub-state
+    this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (editable token matrix: Base + breakpoints) — geom-section sub-state
     this.geomMode = "base"; // active Geometry breakpoint mode: "base" | a doc.geometry.modes[].id (Phase 5) — ui-session
     this.geomSegment = "ramp"; // right-pane Geometry inspector tab: ramp | radius | space (ui-session)
     this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
@@ -2810,7 +2810,7 @@ class HctApp extends HTMLElement {
 
   // renderTypeCanvas — the Typography center. Specimen mode renders the full live specimen in the same
   // pannable/zoomable .canvas-area + .canvas-scene shell the color ramps use (wirePanZoom + applyTransform).
-  // Tokens mode renders a READ-ONLY token MATRIX (rows = steps, cols = Base + each breakpoint) in the
+  // Tokens mode renders an EDITABLE token MATRIX (Phase 3 — per-cell size/height overrides + ↺) (rows = steps, cols = Base + each breakpoint) in the
   // scrolling .is-table shell instead — exactly how Color's Mapping view flips (see renderCanvasArea).
   renderTypeCanvas(view) {
     if (this.typeSpecMode === "tokens") return this._tokensTableArea("Typography tokens — Base + breakpoints", this.renderTypeTokensTable());
@@ -5333,7 +5333,7 @@ class HctApp extends HTMLElement {
 
   // renderGeomCanvas — the Geometry center. Controls mode renders the full dimensional dataset (the 6-size
   // control ramp + radius + space) in the pannable/zoomable .canvas-area + .canvas-scene shell. Tokens mode
-  // renders a READ-ONLY token MATRIX (rows = sizes, cols = Base + each breakpoint) in the scrolling
+  // renders an EDITABLE token MATRIX (Phase 3 — per-cell size/height overrides + ↺) (rows = sizes, cols = Base + each breakpoint) in the scrolling
   // .is-table shell instead — mirrors renderTypeCanvas / Color's Mapping flip.
   renderGeomCanvas(view) {
     if (this.geomSpecMode === "tokens") return this._tokensTableArea("Geometry tokens — Base + breakpoints", this.renderGeomTokensTable());

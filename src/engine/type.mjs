@@ -102,7 +102,7 @@ function buildCategory(name, p, factor, overrides) {
       letterSpacing: round(derived * p.trackingEm, 2), // tracking STAYS on the modular-scale size (ratified "size lever; tracking/weight unchanged")
       weight: p.weight,
       textTransform: p.transform || "none",
-      paragraphSpacing: size,
+      paragraphSpacing: size, // paragraph rhythm intentionally tracks the resolved size (like lineHeight), not the derived scale
       paragraphIndent: 0,
     };
   }
