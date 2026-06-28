@@ -92,13 +92,14 @@ export const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
 function buildCategory(name, p, factor, overrides) {
   const out = {};
   for (const [step, n] of p.steps) {
-    let size = Math.max(8, Math.round(p.base * factor * p.ratio ** n));
+    const derived = Math.max(8, Math.round(p.base * factor * p.ratio ** n)); // the modular-scale size — the lever for tracking + weight (they STAY on the scale)
+    let size = derived;
     const ov = overrides && overrides[name + "|" + step];
-    if (typeof ov === "number" && Number.isFinite(ov) && ov > 0) size = Math.round(ov);
+    if (typeof ov === "number" && Number.isFinite(ov) && ov > 0) size = Math.round(ov); // the override moves SIZE (and line re-derives from it) — tracking/weight do NOT track it
     out[step] = {
       size,
-      lineHeight: Math.round(size * p.leading),
-      letterSpacing: round(size * p.trackingEm, 2),
+      lineHeight: Math.round(size * p.leading), // line-height TRACKS the override (re-derives from the resolved size)
+      letterSpacing: round(derived * p.trackingEm, 2), // tracking STAYS on the modular-scale size (ratified "size lever; tracking/weight unchanged")
       weight: p.weight,
       textTransform: p.transform || "none",
       paragraphSpacing: size,

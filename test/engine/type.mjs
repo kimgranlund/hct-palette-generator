@@ -106,6 +106,17 @@ ok(T.typeScale({ treatment: "nope" }).treatment === T.TYPE_TREATMENTS[0].id, "un
   ok(ov.categories.Body.LG.size === baseline.categories.Body.LG.size && ov.categories.Display.XL.size === baseline.categories.Display.XL.size, "an override touches only its (voice|step) cell, no others");
   // a non-positive / non-numeric override is ignored (no effect) — the cell stays derived.
   ok(JSON.stringify(T.typeScale({ treatment: "product", bodyBase: 16, overrides: { "Body|MD": 0, "Body|LG": -5, "Display|XL": NaN } })) === JSON.stringify(baseline), "non-positive / NaN overrides are ignored (no effect)");
+  // NON-ZERO-TRACKING pin (Body|MD has trackingEm 0 → 0===0 masks the bug). Display tracks NEGATIVE, so
+  // overriding a Display step's SIZE must NOT move tracking (it stays on the modular-scale size) or weight —
+  // only size changes and line-height re-derives. This pins the "size lever; tracking/weight stay" rule.
+  const displayP = T.TYPE_TREATMENTS.find((x) => x.id === "product").categories.Display; // leading 1.1, trackingEm -0.02 (non-zero)
+  const ovD = T.typeScale({ treatment: "product", bodyBase: 16, overrides: { "Display|MD": 88 } });
+  ok(displayP.trackingEm !== 0, `Display tracking is non-zero (got ${displayP.trackingEm}) — the assertion below is meaningful`);
+  ok(ovD.categories.Display.MD.size === 88, `Display override sets the size (got ${ovD.categories.Display.MD.size}, want 88)`);
+  ok(ovD.categories.Display.MD.size !== baseline.categories.Display.MD.size, "the Display override actually moves the size off baseline");
+  ok(ovD.categories.Display.MD.letterSpacing === baseline.categories.Display.MD.letterSpacing, `Display tracking is UNCHANGED by a size override (got ${ovD.categories.Display.MD.letterSpacing}, baseline ${baseline.categories.Display.MD.letterSpacing}) — tracking stays on the modular-scale size`);
+  ok(ovD.categories.Display.MD.weight === baseline.categories.Display.MD.weight, "Display weight is UNCHANGED by a size override");
+  ok(ovD.categories.Display.MD.lineHeight === Math.round(88 * displayP.leading), `Display line-height re-derives from the override (got ${ovD.categories.Display.MD.lineHeight}, want ${Math.round(88 * displayP.leading)})`);
 }
 
 // ── DTCG emit: fontFamily group + composite typography tokens ──

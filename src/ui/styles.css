@@ -621,8 +621,9 @@ nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabb
    Rows = steps grouped by voice/size; columns = Base + one per breakpoint mode. Extends .map-table
    (sticky head, monospace code cells); the first column (token name) is sticky-left too. */
 .tok-wrap { max-width: min(100%, 1040px); margin: 0 auto; }
-.tok-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
+.tok-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 2px 10px; }
 .tok-head small { color: var(--ink-dim); }
+.tok-hint { flex-basis: 100%; font-style: italic; color: var(--ink-dim); }
 .tok-table { table-layout: auto; }
 .tok-table td, .tok-table th { vertical-align: top; }
 /* the token-name FIRST column. The sticky setup is authored correctly for a tbody-<th> matrix:

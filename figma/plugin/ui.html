@@ -625,8 +625,9 @@ nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabb
    Rows = steps grouped by voice/size; columns = Base + one per breakpoint mode. Extends .map-table
    (sticky head, monospace code cells); the first column (token name) is sticky-left too. */
 .tok-wrap { max-width: min(100%, 1040px); margin: 0 auto; }
-.tok-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
+.tok-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 2px 10px; }
 .tok-head small { color: var(--ink-dim); }
+.tok-hint { flex-basis: 100%; font-style: italic; color: var(--ink-dim); }
 .tok-table { table-layout: auto; }
 .tok-table td, .tok-table th { vertical-align: top; }
 /* the token-name FIRST column. The sticky setup is authored correctly for a tbody-<th> matrix:
@@ -2527,13 +2528,14 @@ const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
 function buildCategory(name, p, factor, overrides) {
   const out = {};
   for (const [step, n] of p.steps) {
-    let size = Math.max(8, Math.round(p.base * factor * p.ratio ** n));
+    const derived = Math.max(8, Math.round(p.base * factor * p.ratio ** n)); // the modular-scale size — the lever for tracking + weight (they STAY on the scale)
+    let size = derived;
     const ov = overrides && overrides[name + "|" + step];
-    if (typeof ov === "number" && Number.isFinite(ov) && ov > 0) size = Math.round(ov);
+    if (typeof ov === "number" && Number.isFinite(ov) && ov > 0) size = Math.round(ov); // the override moves SIZE (and line re-derives from it) — tracking/weight do NOT track it
     out[step] = {
       size,
-      lineHeight: Math.round(size * p.leading),
-      letterSpacing: round(size * p.trackingEm, 2),
+      lineHeight: Math.round(size * p.leading), // line-height TRACKS the override (re-derives from the resolved size)
+      letterSpacing: round(derived * p.trackingEm, 2), // tracking STAYS on the modular-scale size (ratified "size lever; tracking/weight unchanged")
       weight: p.weight,
       textTransform: p.transform || "none",
       paragraphSpacing: size,
@@ -3082,12 +3084,17 @@ const clampMinWidth = (v) => { const n = Number(v); return Number.isFinite(n) &&
 // clampTokenOverrides — the per-cell SIZE/HEIGHT override map (Phase 3 of the Tokens matrix), flat
 // `{ "<voice>|<step>|<modeKey>": <number> }` for type / `{ "<size>|<modeKey>": <number> }` for geom. Each
 // value is a positive number clamped into [min, max]; non-numeric / non-finite / ≤0 entries are DROPPED
-// (an invalid cell is simply not overridden). Returns {} when nothing valid is present so the consumer only
-// attaches when non-empty — keeping the hydrate identity gate (absent stays absent, like roleOverrides).
-function clampTokenOverrides(o, min, max) {
+// (an invalid cell is simply not overridden). MALFORMED keys are dropped too: the key must split into
+// exactly `parts` "|"-segments (3 for type "<voice>|<step>|<modeKey>", 2 for geom "<size>|<modeKey>") with a
+// non-empty modeKey (the last segment) — defensive, so a corrupt persisted map can't smuggle junk forward.
+// Returns {} when nothing valid is present so the consumer only attaches when non-empty — keeping the
+// hydrate identity gate (absent stays absent, like roleOverrides).
+function clampTokenOverrides(o, min, max, parts) {
   if (!o || typeof o !== "object") return {};
   const out = {};
   for (const k of Object.keys(o)) {
+    const seg = k.split("|");
+    if (parts && (seg.length !== parts || !seg[seg.length - 1])) continue; // drop malformed (wrong arity / empty modeKey)
     const n = Number(o[k]);
     if (!Number.isFinite(n) || n <= 0) continue;          // drop invalid (NaN / non-number / non-positive)
     out[k] = Math.round(Math.min(max, Math.max(min, n))); // clamp into range; integer px
@@ -3106,7 +3113,7 @@ function clampType(t) {
   const out = { treatment, bodyBase };
   // tokenOverrides (Phase 3) — per-cell size overrides. OPTIONAL: only attach when non-empty so a config
   // without overrides round-trips identically. Type sizes clamp into [1, 512] px.
-  const tov = clampTokenOverrides(t.tokenOverrides, 1, 512);
+  const tov = clampTokenOverrides(t.tokenOverrides, 1, 512, 3); // type keys: "<voice>|<step>|<modeKey>" (3 segments)
   if (Object.keys(tov).length) out.tokenOverrides = tov;
   // breakpoint MODES (Phase 5) — each a named bodyBase override. OPTIONAL: only attach when present, so a
   // config without modes round-trips identically (the hydrate identity gate). Each mode = { id, name, bodyBase }.
@@ -3130,7 +3137,7 @@ function clampGeometry(g) {
   const out = { treatment, baseHeight };
   // tokenOverrides (Phase 3) — per-cell control-HEIGHT overrides. OPTIONAL, like type.tokenOverrides (the
   // identity gate holds when absent). Geom heights clamp into [8, 256] px.
-  const gov = clampTokenOverrides(g.tokenOverrides, 8, 256);
+  const gov = clampTokenOverrides(g.tokenOverrides, 8, 256, 2); // geom keys: "<size>|<modeKey>" (2 segments)
   if (Object.keys(gov).length) out.tokenOverrides = gov;
   // breakpoint MODES (Phase 5) — each a named baseHeight override. OPTIONAL, like type.modes (the identity
   // gate holds when absent). Each mode = { id, name, baseHeight }.
@@ -4401,8 +4408,30 @@ const { geomScale, DEFAULT_GEOMETRY } = __M.geometry;
 // geometryScale — the resolved geometry for a doc, COMPOSED with its type scale so a control's text size
 // (the per-step `font`) comes from the brand's Typography UI voice (one source of truth). The single place
 // the two systems are joined; brandKit + the app's Geometry modal/exports all go through it.
-function geometryScale(doc) {
-  return geomScale(doc.geometry || DEFAULT_GEOMETRY, { typeScale: typeScale(doc.type || DEFAULT_TYPE) });
+// `opts.overrides` (optional) — the flat `<size>→height` BASE override slice; threaded into geomScale.
+// `opts.typeOverrides` (optional) — the flat `<voice>|<step>→size` BASE slice for the COMPOSED type scale,
+// so the shared per-step `font` carries the type overrides too.
+function geometryScale(doc, opts = {}) {
+  const tcfg = { ...(doc.type || DEFAULT_TYPE) };
+  if (opts.typeOverrides) tcfg.overrides = opts.typeOverrides;
+  return geomScale(doc.geometry || DEFAULT_GEOMETRY, { typeScale: typeScale(tcfg), overrides: opts.overrides });
+}
+
+// baseOverrideSlice — the flat per-cell override map for the BASE mode, sliced from a `tokenOverrides`
+// store keyed "<...>|<modeKey>". Mirrors app.js _typeOverridesFor/_geomOverridesFor for modeKey "base":
+// keep only the "...|base"-suffixed entries, strip the suffix, drop non-positive/non-finite values. Returns
+// undefined when there is nothing applicable, so the resolved scale stays byte-identical (the identity gate).
+function baseOverrideSlice(store) {
+  if (!store || typeof store !== "object") return undefined;
+  const out = {};
+  const suffix = "|base";
+  for (const k of Object.keys(store)) {
+    if (!k.endsWith(suffix)) continue;
+    const v = store[k];
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+    out[k.slice(0, k.length - suffix.length)] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 const { exportCSS, exportOKLCH, exportJSON, exportDTCG, exportUI3, exportTailwind, exportShadcn, SCRIM_BASES, SCRIM_STEPS } = __M.exports;
 
@@ -4569,8 +4598,12 @@ function brandKit(doc, systems) {
       kit.roles[slug(p.name)] = r;
     }
   }
-  if (sys.type) kit.type = typeScale(doc.type || DEFAULT_TYPE);
-  if (sys.geometry) kit.geometry = geometryScale(doc); // composed with the type scale (shared `font`)
+  // BASE-mode per-cell overrides reach the kit too (every other export carries them — the matrix Base
+  // column, CSS, DTCG). Slice the "|base"-suffixed entries of each tokenOverrides store and thread them in.
+  const typeOv = baseOverrideSlice(doc.type && doc.type.tokenOverrides);
+  const geomOv = baseOverrideSlice(doc.geometry && doc.geometry.tokenOverrides);
+  if (sys.type) kit.type = typeScale({ ...(doc.type || DEFAULT_TYPE), overrides: typeOv });
+  if (sys.geometry) kit.geometry = geometryScale(doc, { overrides: geomOv, typeOverrides: typeOv }); // composed with the (override-aware) type scale — shared `font` tracks too
   return kit;
 }
 
@@ -7525,6 +7558,13 @@ class HctApp extends HTMLElement {
       if (!d.type || !Array.isArray(d.type.modes)) return;
       d.type = { ...d.type, modes: d.type.modes.filter((m) => m.id !== id) };
       if (d.type.modes.length === 0) delete d.type.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.type.tokenOverrides) {
+        d.type = { ...d.type, tokenOverrides: { ...d.type.tokenOverrides } };
+        for (const k of Object.keys(d.type.tokenOverrides)) if (k.endsWith("|" + id)) delete d.type.tokenOverrides[k];
+        if (!Object.keys(d.type.tokenOverrides).length) delete d.type.tokenOverrides;
+      }
     });
   }
   renameTypeMode(id, name) {
@@ -7719,8 +7759,9 @@ class HctApp extends HTMLElement {
   // setTypeTokenOverride / clearTypeTokenOverride — write/reset one per-cell SIZE override (one undo step;
   // persisted). Mirrors setRoleOverride/clearRoleOverride. A non-positive/NaN size is ignored (use ↺ to reset).
   setTypeTokenOverride(voice, step, modeKey, size) {
-    const n = Math.round(Number(size));
+    let n = Math.round(Number(size));
     if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(1, Math.min(512, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist
     const key = voice + "|" + step + "|" + modeKey;
     this.commit((d) => {
       d.type = { ...(d.type || DEFAULT_TYPE) };
@@ -7737,8 +7778,9 @@ class HctApp extends HTMLElement {
     });
   }
   setGeomTokenOverride(size, modeKey, height) {
-    const n = Math.round(Number(height));
+    let n = Math.round(Number(height));
     if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(8, Math.min(256, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist (and a sub-floor height can't yield negative padding)
     const key = size + "|" + modeKey;
     this.commit((d) => {
       d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
@@ -7830,7 +7872,8 @@ class HctApp extends HTMLElement {
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Type tokens"),
-        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; line-height re-derives, tracking + weight stay.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -7905,7 +7948,8 @@ class HctApp extends HTMLElement {
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Geometry tokens"),
-        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; icon, font, padding + radius re-derive from the height.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -10039,6 +10083,13 @@ class HctApp extends HTMLElement {
       if (!d.geometry || !Array.isArray(d.geometry.modes)) return;
       d.geometry = { ...d.geometry, modes: d.geometry.modes.filter((m) => m.id !== id) };
       if (d.geometry.modes.length === 0) delete d.geometry.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.geometry.tokenOverrides) {
+        d.geometry = { ...d.geometry, tokenOverrides: { ...d.geometry.tokenOverrides } };
+        for (const k of Object.keys(d.geometry.tokenOverrides)) if (k.endsWith("|" + id)) delete d.geometry.tokenOverrides[k];
+        if (!Object.keys(d.geometry.tokenOverrides).length) delete d.geometry.tokenOverrides;
+      }
     });
   }
   renameGeomMode(id, name) {

@@ -2691,6 +2691,13 @@ class HctApp extends HTMLElement {
       if (!d.type || !Array.isArray(d.type.modes)) return;
       d.type = { ...d.type, modes: d.type.modes.filter((m) => m.id !== id) };
       if (d.type.modes.length === 0) delete d.type.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.type.tokenOverrides) {
+        d.type = { ...d.type, tokenOverrides: { ...d.type.tokenOverrides } };
+        for (const k of Object.keys(d.type.tokenOverrides)) if (k.endsWith("|" + id)) delete d.type.tokenOverrides[k];
+        if (!Object.keys(d.type.tokenOverrides).length) delete d.type.tokenOverrides;
+      }
     });
   }
   renameTypeMode(id, name) {
@@ -2885,8 +2892,9 @@ class HctApp extends HTMLElement {
   // setTypeTokenOverride / clearTypeTokenOverride — write/reset one per-cell SIZE override (one undo step;
   // persisted). Mirrors setRoleOverride/clearRoleOverride. A non-positive/NaN size is ignored (use ↺ to reset).
   setTypeTokenOverride(voice, step, modeKey, size) {
-    const n = Math.round(Number(size));
+    let n = Math.round(Number(size));
     if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(1, Math.min(512, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist
     const key = voice + "|" + step + "|" + modeKey;
     this.commit((d) => {
       d.type = { ...(d.type || DEFAULT_TYPE) };
@@ -2903,8 +2911,9 @@ class HctApp extends HTMLElement {
     });
   }
   setGeomTokenOverride(size, modeKey, height) {
-    const n = Math.round(Number(height));
+    let n = Math.round(Number(height));
     if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(8, Math.min(256, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist (and a sub-floor height can't yield negative padding)
     const key = size + "|" + modeKey;
     this.commit((d) => {
       d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
@@ -2996,7 +3005,8 @@ class HctApp extends HTMLElement {
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Type tokens"),
-        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; line-height re-derives, tracking + weight stay.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -3071,7 +3081,8 @@ class HctApp extends HTMLElement {
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Geometry tokens"),
-        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; icon, font, padding + radius re-derive from the height.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -5205,6 +5216,13 @@ class HctApp extends HTMLElement {
       if (!d.geometry || !Array.isArray(d.geometry.modes)) return;
       d.geometry = { ...d.geometry, modes: d.geometry.modes.filter((m) => m.id !== id) };
       if (d.geometry.modes.length === 0) delete d.geometry.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.geometry.tokenOverrides) {
+        d.geometry = { ...d.geometry, tokenOverrides: { ...d.geometry.tokenOverrides } };
+        for (const k of Object.keys(d.geometry.tokenOverrides)) if (k.endsWith("|" + id)) delete d.geometry.tokenOverrides[k];
+        if (!Object.keys(d.geometry.tokenOverrides).length) delete d.geometry.tokenOverrides;
+      }
     });
   }
   renameGeomMode(id, name) {

@@ -99,6 +99,14 @@ if (!deepEq(hyd2.palettes[0].chroma, base.palettes[0].chroma)) FAIL("clamp", "cl
   if ("tokenOverrides" in D.type) FAIL("token-overrides", "an all-invalid type tokenOverrides must hydrate ABSENT (not an empty object)");
   if ("tokenOverrides" in D.geometry) FAIL("token-overrides", "an all-invalid geom tokenOverrides must hydrate ABSENT (not an empty object)");
 
+  // MALFORMED keys are DROPPED defensively (type requires 3 "|"-segments, geom 2, non-empty modeKey) — a
+  // valid sibling key survives, proving only the junk is stripped (forward-safe persisted maps).
+  const M = U.hydrate(U.serialize({ ...inDomainState(),
+    type: { treatment: "product", bodyBase: 16, tokenOverrides: { "Body|MD|base": 40, "Body|MD": 30, "too|many|parts|here": 22, "Body|MD|": 18 } },
+    geometry: { treatment: "comfortable", baseHeight: 28, tokenOverrides: { "MD|base": 30, "MD": 24, "MD|sm|extra": 26, "MD|": 20 } } }));
+  if (!deepEq(M.type.tokenOverrides, { "Body|MD|base": 40 })) FAIL("token-overrides", `malformed type keys not dropped (kept only the well-formed): ${JSON.stringify(M.type.tokenOverrides)}`);
+  if (!deepEq(M.geometry.tokenOverrides, { "MD|base": 30 })) FAIL("token-overrides", `malformed geom keys not dropped (kept only the well-formed): ${JSON.stringify(M.geometry.tokenOverrides)}`);
+
   // ABSENT stays absent — a config without tokenOverrides round-trips identically (the identity gate).
   const A = U.hydrate(U.serialize({ ...inDomainState(), type: { treatment: "product", bodyBase: 16 }, geometry: { treatment: "comfortable", baseHeight: 28 } }));
   if ("tokenOverrides" in A.type || "tokenOverrides" in A.geometry) FAIL("token-overrides", "absent tokenOverrides must stay absent after hydrate");
