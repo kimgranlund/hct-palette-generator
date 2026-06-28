@@ -448,6 +448,8 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .mode-editor-row { display: flex; gap: 6px; align-items: center; }
 .mode-editor-row input { flex: 1; min-width: 0; }
 .mode-editor-unit { flex: none; font-size: 11px; color: var(--ink-faint); }
+.mode-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.mode-presets .mode-preset { font-variant-numeric: tabular-nums; }
 .zoom-readout { color: var(--ink-dim); min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
 
 .canvas-area {

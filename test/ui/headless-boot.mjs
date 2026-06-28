@@ -1366,6 +1366,15 @@ ok(app._activeType().bodyBase === 20 && tScale(app._activeType()).categories.Bod
 app.setTypeModeMinWidth(_bpId, 768); flushRaf();
 ok(app.doc.type.modes[0].minWidth === 768 && app._typeModeScales()[0].minWidth === 768, "(ty-bp) setTypeModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
 ok(app._typeModeDTCGFiles().length === 1 && app._typeModeDTCGFiles()[0].name === "type.768.tokens.json" && JSON.parse(app._typeModeDTCGFiles()[0].data).typography, "(ty-bp) the breakpoint emits a per-mode DTCG file keyed by width");
+// Phase 2: common-breakpoint quick-pick chips flank the min-width field (the number field stays for custom).
+const tPresets = () => walk(app, (e) => e.classList && e.classList.contains("mode-preset"));
+ok(tPresets().length === 6, `(ty-bp) the breakpoint editor offers 6 width quick-picks (got ${tPresets().length})`);
+const tOn = tPresets().filter((e) => e.classList.contains("on"));
+ok(tOn.length === 1 && txtOf(tOn[0]) === "768", "(ty-bp) the active quick-pick chip matches the current min-width (768)");
+const t992 = tPresets().find((e) => txtOf(e) === "992");
+if (t992) t992.click(); flushRaf();
+ok(app.doc.type.modes[0].minWidth === 992, "(ty-bp) clicking a quick-pick chip sets the active mode's min-width");
+app.setTypeModeMinWidth(_bpId, 768); flushRaf(); // restore for the matrix-column assertion below
 // the token MATRIX gains a column for the new breakpoint (Base + the ≥768px mode = 2 value columns)
 app.setTypeSpecMode("tokens"); flushRaf();
 ok(app._typeTokenColumns().length === 2 && app._typeTokenColumns()[0].id === "base" && app._typeTokenColumns()[1].minWidth === 768, "(ty-tok) the matrix has a column per breakpoint — Base + the ≥768px mode (sorted by minWidth)");
@@ -1437,6 +1446,14 @@ ok(app._activeGeometry().baseHeight === 40 && app._activeGeomScale().baseHeight 
 app.setGeomModeMinWidth(_gbpId, 600); flushRaf();
 ok(app.doc.geometry.modes[0].minWidth === 600 && app._geomModeScales()[0].minWidth === 600, "(geo-bp) setGeomModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
 ok(app._geomModeDTCGFiles().length === 1 && app._geomModeDTCGFiles()[0].name === "geometry.600.tokens.json" && JSON.parse(app._geomModeDTCGFiles()[0].data).size, "(geo-bp) the breakpoint emits a per-mode DTCG file keyed by width");
+// Phase 2: the same common-breakpoint quick-picks under the geom min-width field. 600 is custom → none active.
+const gPresets = () => walk(app, (e) => e.classList && e.classList.contains("mode-preset"));
+ok(gPresets().length === 6, `(geo-bp) the breakpoint editor offers 6 width quick-picks (got ${gPresets().length})`);
+ok(gPresets().filter((e) => e.classList.contains("on")).length === 0, "(geo-bp) no quick-pick is active when the width (600) is custom");
+const g1024 = gPresets().find((e) => txtOf(e) === "1024");
+if (g1024) g1024.click(); flushRaf();
+ok(app.doc.geometry.modes[0].minWidth === 1024, "(geo-bp) clicking a quick-pick chip sets the active mode's min-width");
+app.setGeomModeMinWidth(_gbpId, 600); flushRaf(); // restore for the matrix assertion below
 // the token MATRIX gains a column for the new breakpoint (Base + the ≥600px mode = 2 value columns)
 app.setGeomSpecMode("tokens"); flushRaf();
 ok(app._geomTokenColumns().length === 2 && app._geomTokenColumns()[0].id === "base" && app._geomTokenColumns()[1].minWidth === 600, "(geo-tok) the matrix has a column per breakpoint — Base + the ≥600px mode (sorted by minWidth)");

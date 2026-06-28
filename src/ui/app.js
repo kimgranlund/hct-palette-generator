@@ -350,6 +350,11 @@ const chip = (label, { mode = "status", on = false, tone = "", cls = "", title, 
     : h("span", { class: klass, title }, label);
 };
 
+// the common responsive breakpoint widths offered as one-click quick-picks beside the breakpoint-mode
+// min-width field (Phase 2 — chips, not a native <datalist>: the app owns its UI + Safari's datalist on
+// number inputs is unreliable). The number field stays for any custom width.
+const MODE_WIDTH_PRESETS = [480, 768, 992, 1024, 1280, 1440];
+
 // field — a labeled control row. ASSOCIATES the <label> with the control (label[for] +
 // control[id]) so the visible label IS the control's accessible name and clicking it
 // focuses the control — the association the inline .field rows lacked (Name / Distribution
@@ -2698,6 +2703,18 @@ class HctApp extends HTMLElement {
     });
   }
   // the Scale-tab editor block: a hint when on Base, or rename + delete for the active breakpoint mode.
+  // _modeWidthPresets — the common-breakpoint quick-picks under the min-width field (Phase 2). Each chip
+  // sets the active mode's minWidth through the SAME setter as the number field; the matching one is active.
+  _modeWidthPresets(active, onpick) {
+    const a = Number(active) || 0;
+    return h(
+      "div",
+      { class: "mode-presets", role: "group", "aria-label": "Common breakpoint widths" },
+      ...MODE_WIDTH_PRESETS.map((w) =>
+        chip(String(w), { mode: "interactive", on: a === w, cls: "mode-preset", title: `Set the breakpoint to ${w}px`, onclick: () => onpick(w) })),
+    );
+  }
+
   _typeModeEditor() {
     const t = this.doc.type || DEFAULT_TYPE;
     if (this.typeMode === "base") {
@@ -2727,6 +2744,7 @@ class HctApp extends HTMLElement {
           onchange: (e) => this.setTypeModeMinWidth(m.id, e.target.value) }),
         h("span", { class: "mode-editor-unit" }, "px"),
       ),
+      this._modeWidthPresets(m.minWidth, (w) => this.setTypeModeMinWidth(m.id, w)),
       h("p", { class: "insp-sub tyi-future" }, m.minWidth
         ? `Exports as @media (min-width: ${m.minWidth}px) — the size vars re-declare at this body size above ${m.minWidth}px.`
         : "Set a width to emit a CSS @media breakpoint in the export; blank = preview-only."),
@@ -5104,6 +5122,7 @@ class HctApp extends HTMLElement {
           onchange: (e) => this.setGeomModeMinWidth(m.id, e.target.value) }),
         h("span", { class: "mode-editor-unit" }, "px"),
       ),
+      this._modeWidthPresets(m.minWidth, (w) => this.setGeomModeMinWidth(m.id, w)),
       h("p", { class: "insp-sub tyi-future" }, m.minWidth
         ? `Exports as @media (min-width: ${m.minWidth}px) — the size vars re-declare at this base height above ${m.minWidth}px.`
         : "Set a width to emit a CSS @media breakpoint in the export; blank = preview-only."),
