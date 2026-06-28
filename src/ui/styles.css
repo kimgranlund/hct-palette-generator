@@ -439,6 +439,14 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .canvas-header .spacer { flex: 1; }
 .canvas-header .add-pal-btn { border: 1px dashed var(--line); }
 .canvas-header .add-pal-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* Typography breakpoint Mode control (canvas header) — the Base/modes segment + a "+" to add one */
+.mode-control { display: inline-flex; align-items: center; gap: 4px; }
+.mode-control .mode-add { flex: none; padding: 4px 6px; }
+/* the inspector mode editor: rename + delete the active breakpoint */
+.mode-editor { margin: 8px 0 2px; }
+.mode-editor-label { display: block; font-size: 11px; color: var(--ink-dim); margin-bottom: 4px; }
+.mode-editor-row { display: flex; gap: 6px; align-items: center; }
+.mode-editor-row input { flex: 1; min-width: 0; }
 .zoom-readout { color: var(--ink-dim); min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
 
 .canvas-area {

@@ -392,6 +392,7 @@ class HctApp extends HTMLElement {
     this.canvasView = "palettes"; // canvas content: palettes (the ramps) | scrims | mapping (the role→raw table)
     this.section = "color"; // editor section: color | typography | geometry — ui-session, routes the whole editor (never persisted)
     this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (metrics only) — type-section sub-state
+    this.typeMode = "base"; // active Typography breakpoint mode: "base" | a doc.type.modes[].id (Phase 5) — ui-session
     this.stopsMode = "core"; // palette ramp density: core (19 display stops) | extended (25 EXPORT_STOPS)
     this.mapTextMode = false; // Mapping table raw-token editor: false = select menu, true = free text input
     this.viewport = { panX: 0, panY: 0, zoom: 1 };
@@ -1506,7 +1507,7 @@ class HctApp extends HTMLElement {
   // diagnostics of the resolved scale. `view` is accepted for dispatch parity but unused (typography
   // is doc-driven, not palette-view-driven). Reuses .an-card / .an-svg / legend().
   typeAnalysisCards(view) {
-    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const scale = typeScale(this._activeType());
     const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
     const SHORT = { "Display": "Disp", "Heading Editorial": "H·Ed", "Heading Context": "H·Cx", "Heading Eyebrow": "H·Eye", "Body": "Body", "UI": "UI", "Code": "Code" };
     const series = Object.keys(scale.categories)
@@ -2636,6 +2637,90 @@ class HctApp extends HTMLElement {
 
   setTypeSpecMode(v) { this.typeSpecMode = v; this.render(); }
 
+  // ── Typography breakpoint modes (Phase 5) — named bodyBase variants layered over doc.type. The ACTIVE
+  // mode drives the canvas preview + the inspector; "base" is doc.type itself. (Per-mode Compare + export
+  // are the follow-up slices.) Modes persist on doc.type.modes = [{ id, name, bodyBase }].
+  _activeType() {
+    const t = this.doc.type || DEFAULT_TYPE;
+    if (this.typeMode === "base") return t;
+    const m = (t.modes || []).find((x) => x.id === this.typeMode);
+    return m ? { ...t, bodyBase: m.bodyBase } : t; // a deleted/unknown mode falls back to base
+  }
+  // the Mode control in the Typography canvas header: Base + each breakpoint, plus "+" to add one.
+  typeModeControl() {
+    const t = this.doc.type || DEFAULT_TYPE;
+    const modes = t.modes || [];
+    if (this.typeMode !== "base" && !modes.some((m) => m.id === this.typeMode)) this.typeMode = "base";
+    const items = [
+      { id: "base", label: "Base", title: `Base type scale · ${t.bodyBase ?? 16}px` },
+      ...modes.map((m) => ({ id: m.id, label: m.name || "Mode", title: `${m.name || "Mode"} · ${m.bodyBase}px body` })),
+    ];
+    return h(
+      "div",
+      { class: "mode-control" },
+      this.segmented(items, this.typeMode, (id) => { this.typeMode = id; this.render(); },
+        { cls: "canvas-seg", ariaLabel: "Typography breakpoint mode", role: "group", idPrefix: "tmode" }),
+      btn(icon("plus"), { cls: "mode-add", ariaLabel: "Add a breakpoint mode", title: "Add a breakpoint — a named scale with its own body size", onclick: () => this.addTypeMode() }),
+    );
+  }
+  addTypeMode() {
+    const id = "tm-" + Date.now().toString(36);
+    this.typeMode = id; // point at the new mode (resolves to base until the commit lands)
+    this.commit((d) => {
+      d.type = { ...(d.type || DEFAULT_TYPE) };
+      const modes = d.type.modes ? [...d.type.modes] : [];
+      modes.push({ id, name: "Mode " + (modes.length + 1), bodyBase: d.type.bodyBase ?? 16 });
+      d.type.modes = modes;
+    });
+  }
+  deleteTypeMode(id) {
+    if (this.typeMode === id) this.typeMode = "base";
+    this.commit((d) => {
+      if (!d.type || !Array.isArray(d.type.modes)) return;
+      d.type = { ...d.type, modes: d.type.modes.filter((m) => m.id !== id) };
+      if (d.type.modes.length === 0) delete d.type.modes;
+    });
+  }
+  renameTypeMode(id, name) {
+    this.commit((d) => {
+      if (!d.type || !Array.isArray(d.type.modes)) return;
+      d.type = { ...d.type, modes: d.type.modes.map((m) => (m.id === id ? { ...m, name: name || m.name } : m)) };
+    });
+  }
+  // the Scale-tab body-size slider edits the ACTIVE mode (base → doc.type.bodyBase; a mode → its bodyBase).
+  _setActiveTypeBodyBase(v) {
+    const bb = Math.round(v);
+    this.editDrag((d) => {
+      d.type = { ...(d.type || DEFAULT_TYPE) };
+      if (this.typeMode === "base") d.type.bodyBase = bb;
+      else d.type.modes = (d.type.modes || []).map((m) => (m.id === this.typeMode ? { ...m, bodyBase: bb } : m));
+    });
+  }
+  // the Scale-tab editor block: a hint when on Base, or rename + delete for the active breakpoint mode.
+  _typeModeEditor() {
+    const t = this.doc.type || DEFAULT_TYPE;
+    if (this.typeMode === "base") {
+      const n = (t.modes || []).length;
+      return h("p", { class: "insp-sub tyi-future" }, n
+        ? `${n} breakpoint mode${n > 1 ? "s" : ""} — switch them from the canvas header; each carries its own body size (per-mode export is coming).`
+        : "Add a breakpoint (the + in the canvas header) to give this scale a second body size for another screen — e.g. a smaller mobile body.");
+    }
+    const m = (t.modes || []).find((x) => x.id === this.typeMode);
+    if (!m) return false;
+    return h(
+      "div",
+      { class: "mode-editor" },
+      h("label", { class: "mode-editor-label", for: "fld-mode-name" }, "Breakpoint name"),
+      h(
+        "div",
+        { class: "mode-editor-row" },
+        h("input", { id: "fld-mode-name", type: "text", value: m.name, "data-fk": "tmode-name", "aria-label": "Breakpoint mode name",
+          onchange: (e) => this.renameTypeMode(m.id, e.target.value.trim()) }),
+        btn(icon("trash"), { ariaLabel: "Delete this breakpoint", title: "Delete this breakpoint mode", onclick: () => this.deleteTypeMode(m.id) }),
+      ),
+    );
+  }
+
   // renderTypeCanvasHeader — the Typography section's own canvas header: pane toggles + the
   // Specimen·Tokens mode segment + the reused fit/scheme/zoom controls. It deliberately omits the
   // color-only Palettes/Scrims/Mapping + stops segments and the "+ Palette" button.
@@ -2653,6 +2738,7 @@ class HctApp extends HTMLElement {
         (id) => this.setTypeSpecMode(id),
         { cls: "canvas-seg", ariaLabel: "Type specimen mode", role: "group", idPrefix: "tspec" },
       ),
+      this.typeModeControl(),
       h("div", { class: "spacer" }),
       btn(icon("crosshair"), {
         title: "Fit — reset the canvas view to centre at 100%",
@@ -2916,7 +3002,7 @@ class HctApp extends HTMLElement {
   // (var(--ink*) flips with the area's color-scheme) and the treatment's fonts (ensureTypeFonts).
   renderTypographyScene(view) {
     ensureTypeFonts();
-    const cfg = this.doc.type || DEFAULT_TYPE;
+    const cfg = this._activeType();
     const scale = typeScale(cfg);
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const tokensOnly = this.typeSpecMode === "tokens";
@@ -3484,7 +3570,7 @@ class HctApp extends HTMLElement {
   // typeScaleTab — the only WRITABLE controls (treatment + body-base), then a READ-ONLY per-voice
   // summary of what the treatment yields (ratio · leading · weight · tracking).
   typeScaleTab() {
-    const cfg = this.doc.type || DEFAULT_TYPE;
+    const cfg = this._activeType();
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const scale = typeScale(cfg);
     return h(
@@ -3500,7 +3586,8 @@ class HctApp extends HTMLElement {
           ...TYPE_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
         ),
       ),
-      this.slider("Body base", cfg.bodyBase, 12, 22, 1, (v) => fmt(v) + "px", (v) => this.editDrag((d) => { d.type = { ...(d.type || DEFAULT_TYPE), bodyBase: Math.round(v) }; })),
+      this.slider(this.typeMode === "base" ? "Body base" : "Body base · this breakpoint", cfg.bodyBase, 12, 22, 1, (v) => fmt(v) + "px", (v) => this._setActiveTypeBodyBase(v)),
+      this._typeModeEditor(),
       h("p", { class: "insp-sub tyi-note" }, t.note),
       h(
         "div",
@@ -3536,7 +3623,7 @@ class HctApp extends HTMLElement {
 
   // typeFontsTab — the 5 role→family bindings the treatment resolves to (read-only; custom fonts later).
   typeFontsTab() {
-    const cfg = this.doc.type || DEFAULT_TYPE;
+    const cfg = this._activeType();
     const scale = typeScale(cfg);
     const ROLE_LABEL = { display: "Display", heading: "Heading", body: "Body", ui: "UI", mono: "Mono" };
     return h(
@@ -3569,7 +3656,7 @@ class HctApp extends HTMLElement {
   // typeSpecimenTab — a compact in-pane specimen: each of the seven voices at its MD step. The full
   // scale (all 41 steps across the 7 groups) lives on the canvas.
   typeSpecimenTab(view) {
-    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const scale = typeScale(this._activeType());
     const cats = Object.keys(scale.categories);
     const repStep = (cat) => { const ks = Object.keys(scale.categories[cat]); return ks.includes("MD") ? "MD" : ks[Math.floor(ks.length / 2)]; };
     return h(
@@ -3595,7 +3682,7 @@ class HctApp extends HTMLElement {
   // typeExampleCard — the pinned live card: a heading + paragraph in the brand fonts AND the selected
   // palette's canvas colors (surface / onSurface / primary). Mirrors exampleCard's color resolution.
   typeExampleCard(view) {
-    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const scale = typeScale(this._activeType());
     const p = view.palettes[this.selectedIndex()];
     const roles = (p && p.roles) || [];
     const dark = this.resolvedCanvasScheme() === "dark";

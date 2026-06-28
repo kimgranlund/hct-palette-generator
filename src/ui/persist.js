@@ -252,10 +252,18 @@ const TYPE_TREATMENTS = ["product", "luxury", "editorial", "technical", "stateme
 function clampType(t) {
   t = (t && typeof t === "object") ? t : {};
   const treatment = TYPE_TREATMENTS.includes(t.treatment) ? t.treatment : "product";
-  let bodyBase = Number(t.bodyBase);
-  if (!Number.isFinite(bodyBase)) bodyBase = 16;
-  bodyBase = Math.max(10, Math.min(32, Math.round(bodyBase)));
-  return { treatment, bodyBase };
+  const clampBody = (v) => { const n = Number(v); return Math.max(10, Math.min(32, Number.isFinite(n) ? Math.round(n) : 16)); };
+  const bodyBase = clampBody(t.bodyBase);
+  const out = { treatment, bodyBase };
+  // breakpoint MODES (Phase 5) — each a named bodyBase override. OPTIONAL: only attach when present, so a
+  // config without modes round-trips identically (the hydrate identity gate). Each mode = { id, name, bodyBase }.
+  if (Array.isArray(t.modes) && t.modes.length) {
+    const modes = t.modes
+      .filter((m) => m && typeof m === "object" && typeof m.id === "string")
+      .map((m) => ({ id: m.id, name: typeof m.name === "string" ? m.name : "Mode", bodyBase: clampBody(m.bodyBase) }));
+    if (modes.length) out.modes = modes;
+  }
+  return out;
 }
 
 // clampGeometry — the dimensional config (treatment + base control height). Treatment to a known id, base

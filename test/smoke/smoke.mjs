@@ -186,7 +186,16 @@ try {
   const tyShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "typography.png"), Buffer.from(tyShot.data, "base64"));
   console.log("  · screenshot → smoke-out/typography.png (Luxury / Source Serif 4)");
-  await evalJS(`${el}.commit((d)=>{ d.type = { treatment: "product", bodyBase: 16 }; })`); await sleep(120);
+
+  // Typography breakpoint MODES (Phase 5): the Mode control adds a named bodyBase variant; switching it
+  // re-resolves the whole specimen at the mode's body size.
+  await evalJS(`${el}.addTypeMode(); ${el}._setActiveTypeBodyBase(13)`); await sleep(200);
+  ok(await evalJS(`(()=>{return ${el}.doc.type.modes && ${el}.doc.type.modes.length===1 && [...${el}.querySelectorAll('[data-fk^="tmode:"]')].length>=2 && ${el}._activeType().bodyBase===13})()`), "Typography breakpoint mode: + adds a mode, the Mode control shows Base + it, and the specimen re-resolves at the mode's body size");
+  const bpShot = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(resolve(OUT, "type-breakpoint.png"), Buffer.from(bpShot.data, "base64"));
+  console.log("  · screenshot → smoke-out/type-breakpoint.png");
+
+  await evalJS(`${el}.commit((d)=>{ d.type = { treatment: "product", bodyBase: 16 }; }); ${el}.typeMode="base"`); await sleep(120);
   await evalJS(`${el}.setSection("color")`); await sleep(120);
 
   // Geometry SECTION: the app-header switcher flips this.section → the full dimensional dataset (the 6-step

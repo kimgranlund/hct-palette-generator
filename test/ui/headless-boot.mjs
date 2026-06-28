@@ -1346,6 +1346,19 @@ app.downloadBytes = (bytes, name) => { typeZip = { bytes, name }; };
 app.downloadTypeTokens();
 ok(typeZip && /type-tokens\.zip$/.test(typeZip.name) && typeZip.bytes && typeZip.bytes.length > 200, `(ty) downloadTypeTokens emits a .zip (${typeZip && typeZip.name})`);
 app.downloadBytes = realDBty;
+// ── (ty-bp) Typography breakpoint MODES (Phase 5) — add/switch/edit/delete a named bodyBase variant ──
+app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); flushRaf();
+app.addTypeMode(); flushRaf();
+ok(Array.isArray(app.doc.type.modes) && app.doc.type.modes.length === 1 && app.typeMode === app.doc.type.modes[0].id, "(ty-bp) addTypeMode adds a mode + switches to it");
+ok(walk(app, (e) => e.tagName === "BUTTON" && e.getAttribute && /^tmode:/.test(e.getAttribute("data-fk") || "")).length >= 2, "(ty-bp) the canvas header Mode control shows Base + the new breakpoint");
+const _bpId = app.doc.type.modes[0].id;
+app._setActiveTypeBodyBase(20); app.commitDrag?.(); flushRaf();
+ok(app.doc.type.modes[0].bodyBase === 20 && app.doc.type.bodyBase === 16, "(ty-bp) the body-size slider edits the ACTIVE mode, not Base");
+ok(app._activeType().bodyBase === 20 && tScale(app._activeType()).categories.Body.MD.size === 20, "(ty-bp) the active mode drives the resolved scale (Body MD = the mode's body size)");
+app.typeMode = "base"; flushRaf();
+ok(app._activeType().bodyBase === 16, "(ty-bp) switching back to Base resolves the base body size");
+app.deleteTypeMode(_bpId); flushRaf();
+ok(!app.doc.type.modes && app.typeMode === "base", "(ty-bp) deleting the active mode drops it + falls back to Base");
 app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore default
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".type-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(ty) returning to Color restores the ramp canvas (color untouched)");
