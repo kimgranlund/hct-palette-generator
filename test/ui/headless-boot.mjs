@@ -1357,6 +1357,7 @@ ok(app.doc.type.modes[0].bodyBase === 20 && app.doc.type.bodyBase === 16, "(ty-b
 ok(app._activeType().bodyBase === 20 && tScale(app._activeType()).categories.Body.MD.size === 20, "(ty-bp) the active mode drives the resolved scale (Body MD = the mode's body size)");
 app.setTypeModeMinWidth(_bpId, 768); flushRaf();
 ok(app.doc.type.modes[0].minWidth === 768 && app._typeModeScales()[0].minWidth === 768, "(ty-bp) setTypeModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
+ok(app._typeModeDTCGFiles().length === 1 && app._typeModeDTCGFiles()[0].name === "type.768.tokens.json" && JSON.parse(app._typeModeDTCGFiles()[0].data).typography, "(ty-bp) the breakpoint emits a per-mode DTCG file keyed by width");
 app.typeMode = "base"; flushRaf();
 ok(app._activeType().bodyBase === 16, "(ty-bp) switching back to Base resolves the base body size");
 app.deleteTypeMode(_bpId); flushRaf();
@@ -1412,6 +1413,7 @@ ok(app.doc.geometry.modes[0].baseHeight === 40 && app.doc.geometry.baseHeight ==
 ok(app._activeGeometry().baseHeight === 40 && app._activeGeomScale().baseHeight === 40, "(geo-bp) the active mode drives the resolved geometry scale (baseHeight = the mode's)");
 app.setGeomModeMinWidth(_gbpId, 600); flushRaf();
 ok(app.doc.geometry.modes[0].minWidth === 600 && app._geomModeScales()[0].minWidth === 600, "(geo-bp) setGeomModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
+ok(app._geomModeDTCGFiles().length === 1 && app._geomModeDTCGFiles()[0].name === "geometry.600.tokens.json" && JSON.parse(app._geomModeDTCGFiles()[0].data).size, "(geo-bp) the breakpoint emits a per-mode DTCG file keyed by width");
 app.geomMode = "base"; flushRaf();
 ok(app._activeGeomScale().baseHeight === 28, "(geo-bp) switching back to Base resolves the base height");
 app.deleteGeomMode(_gbpId); flushRaf();

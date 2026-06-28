@@ -4495,6 +4495,7 @@ class HctApp extends HTMLElement {
       files.push(
         { name: "typography/type.css", data: typeTokensResponsiveCSS(tsc, this._typeModeScales()) },
         { name: "typography/type.tokens.json", data: tDtcg },
+        ...this._typeModeDTCGFiles("typography/type"),
         { name: "figma/type.tokens.json", data: tDtcg }, // importable as Figma text styles (via a tokens plugin)
       );
     }
@@ -4504,6 +4505,7 @@ class HctApp extends HTMLElement {
       files.push(
         { name: "geometry/geometry.css", data: geomTokensResponsiveCSS(gsc, this._geomModeScales()) },
         { name: "geometry/geometry.tokens.json", data: gDtcg },
+        ...this._geomModeDTCGFiles("geometry/geometry"),
         { name: "figma/dimension.variables.json", data: JSON.stringify(geomTokensFigma(gsc), null, 2) }, // a "Geometry" collection of Figma NUMBER (FLOAT) variables
       );
     }
@@ -4823,6 +4825,7 @@ class HctApp extends HTMLElement {
     const files = [
       { name: "type.css", data: typeTokensResponsiveCSS(scale, this._typeModeScales()) },
       { name: "type.tokens.json", data: JSON.stringify(typeTokensDTCG(scale), null, 2) },
+      ...this._typeModeDTCGFiles(),
     ];
     this.downloadBytes(zipStore(files), "type-tokens.zip", "application/zip");
     this.toast("Type tokens downloaded");
@@ -4868,6 +4871,16 @@ class HctApp extends HTMLElement {
   _geomModeScales() {
     const g = this.doc.geometry || DEFAULT_GEOMETRY;
     return (g.modes || []).map((m) => ({ name: m.name, minWidth: m.minWidth, scale: geometryScale({ ...this.doc, geometry: { ...g, baseHeight: m.baseHeight } }) }));
+  }
+  // per-breakpoint DTCG files — one valid standalone DTCG per mode that has a minWidth, keyed by the width
+  // (self-documenting + collision-free). No-width modes are preview-only, so they don't export (mirrors CSS).
+  _typeModeDTCGFiles(prefix = "type") {
+    return this._typeModeScales().filter((m) => Number(m.minWidth) > 0)
+      .map((m) => ({ name: `${prefix}.${Math.round(m.minWidth)}.tokens.json`, data: JSON.stringify(typeTokensDTCG(m.scale), null, 2) }));
+  }
+  _geomModeDTCGFiles(prefix = "geometry") {
+    return this._geomModeScales().filter((m) => Number(m.minWidth) > 0)
+      .map((m) => ({ name: `${prefix}.${Math.round(m.minWidth)}.tokens.json`, data: JSON.stringify(geomTokensDTCG(m.scale), null, 2) }));
   }
   geomModeControl() {
     const g = this.doc.geometry || DEFAULT_GEOMETRY;
@@ -4971,6 +4984,7 @@ class HctApp extends HTMLElement {
     const files = [
       { name: "geometry.css", data: geomTokensResponsiveCSS(scale, this._geomModeScales()) },
       { name: "geometry.tokens.json", data: JSON.stringify(geomTokensDTCG(scale), null, 2) },
+      ...this._geomModeDTCGFiles(),
       { name: "dimension.variables.json", data: JSON.stringify(geomTokensFigma(scale), null, 2) },
     ];
     this.downloadBytes(zipStore(files), "geometry-tokens.zip", "application/zip");
