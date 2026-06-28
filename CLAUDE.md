@@ -41,10 +41,9 @@ Canonical specs + rubrics: `docs/spec/` (e.g. `docs/spec/data/role-table.json` i
   hyperscript (not JSX), light DOM, native `<dialog>` + `showModal()`. Engines stay DOM-free + pure.
 - **Sections.** `this.section` (`color`|`typography`|`geometry`) routes `renderCenter`/`renderLeftPane`/
   `renderRightPane`. A section = a canvas header + a pannable `.canvas-scene` (the full dataset) + left
-  analysis cards + a right inspector. See the `building-editor-sections` skill.
+  analysis cards + a right inspector.
 - **53 semantic roles / palette.** `docs/spec/data/role-table.json` deep-equals `semanticRoles`; the
-  Figma `code.js` table mirrors it (parity-gated). Adding a role touches `semantic.js` + `role-table.json`
-  + `code.js` + the count-gate literals in `test/engine|figma|ui`.
+  Figma `code.js` table mirrors it (parity-gated) — so a role-count change moves several files in lockstep.
 - **Quote interpolated font-family names** with digits/spaces — `font-family:'Source Serif 4', serif`.
   Unquoted, WebKit/Safari drops the declaration (the digit is invalid); Chrome tolerates it.
 - **SVG line charts set `fill: none`** on the path (an open `<path>` fills by closing → wedge artifacts);
@@ -76,4 +75,4 @@ concurrently, isolate your commit in a `git worktree` off `origin/main`.
   local-only working folder (ignored via `.git/info/exclude`); it must never reach a commit.
 
 <!-- Enforcement: there are NO local hooks yet. The guards above (role-table parity, docs/other, font-quoting) are conventions + CI + the test gates, not enforced pre-commit. A Stop/pre-commit hook for the docs/other + parity guards would be the place to make them reliable. -->
-<!-- Depth lives in: docs/spec/ (specs + rubrics + the role-table answer key), the engine files' header comments (the centering law in geometry.mjs; the modular scale in type.mjs), and the building-editor-sections skill. Referenced as paths, not @-inlined, to keep this index thin. -->
+<!-- This file is the always-loaded INDEX of cross-cutting, always-true facts only. Domain PROCEDURES (changing an engine, adding a role/format, the Figma binder, building a section, shipping, palette research) are owned by on-demand skills/agents in .claude/ — discovered via their frontmatter descriptions, NOT routed from here. Conceptual depth: docs/spec/ + the engine files' header comments. Keep this thin; let the frontmatter system do the routing. -->
