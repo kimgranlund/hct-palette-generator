@@ -15,9 +15,10 @@ Format: Context → Decision → Rationale → Consequences → Status.
 - **Decision.** Use HCT: hue/chroma from CAM16, tone from CIELAB L\*.
 - **Rationale.** HCT holds hue and tone stable across a ramp while maximizing chroma within
   gamut at each tone, which yields perceptually even tonal scales for design-system ramps.
-  OKLCH is still offered as an *input hue space* (mapped to CAM16) and an *output format*.
-- **Consequences.** Heavier engine (full CAM16 forward+inverse). OKLCH input requires the
-  sampled hue bridge (ADR-008).
+  OKLCH is the **default** *input hue space* (mapped to CAM16) and an *output format*; cam16
+  stays selectable (ADR-011).
+- **Consequences.** Heavier engine (full CAM16 forward+inverse). OKLCH input requires a hue
+  bridge — now the chroma-aware inverse (ADR-011, superseding the sampled ADR-008).
 - **Status.** DECIDED.
 
 ## ADR-002 — Semantic export ships RESOLVED colors, not aliasData
@@ -119,7 +120,7 @@ Format: Context → Decision → Rationale → Consequences → Status.
   user might expect.
 - **Status.** DECIDED. Tracked as OD-003.
 
-## ADR-008 — OKLCH→CAM16 hue is a sampled mapping
+## ADR-008 — OKLCH→CAM16 hue is a sampled mapping  **(SUPERSEDED — see ADR-011)**
 - **Context.** Users may enter hues in OKLCH; the engine works in CAM16 hue.
 - **Decision.** Map an OKLCH hue to CAM16 by sampling one fixed mid color
   (L=0.72, C=0.10) at that OKLCH hue and reading its CAM16 angle. Memoized.
@@ -128,7 +129,9 @@ Format: Context → Decision → Rationale → Consequences → Status.
   reproducible compromise.
 - **Consequences.** A few degrees of drift vs. an exact mapping. Acceptable for hue *input*;
   not used for output color math.
-- **Status.** DECIDED.
+- **Status.** SUPERSEDED by ADR-011. The fixed mid-sample mapping (and its "few degrees of
+  drift") is gone: `oklchToCam16Hue` is now a chroma-aware Newton inverse that lands the
+  rendered identity color on the stored OKLCH hue to ~0.00°.
 
 ## ADR-009 — Fixed viewing conditions (no VC controls)
 - **Context.** CAM16 is parameterized by adapting luminance, surround, background.
@@ -153,6 +156,36 @@ Format: Context → Decision → Rationale → Consequences → Status.
   opens via `file://`). Authoring modular *and* distributing single-file are both satisfied — the
   "no build step" line means *no toolchain is required to run it*, not *the source must be one file*.
 
+## ADR-011 — OKLCH-native hue model + chroma-aware OKLCH→CAM16 inverse  (supersedes ADR-008)
+- **Context.** The per-palette `hue` was a CAM16 hue by default, and the OKLCH→CAM16 bridge
+  was a fixed mid-sample mapping (ADR-008) that drifted a few degrees (worst ~15° at the
+  blue/violet pole). The user is fluent in OKLCH; the drift made OKLCH-entered hues land off.
+- **Decision.**
+  1. **OKLCH-native.** The doc-level `hueSpace` default flips **cam16 → oklch** (`tonal.js`
+     `DEFAULT_CONTROLS.hueSpace`; `persist.js` `DOMAINS.hueSpace.default`). The per-palette
+     `hue` is an OKLCH hue by default. `cam16` stays selectable; legacy docs saved under
+     cam16 carry `hueSpace:"cam16"` explicitly and keep rendering in cam16 (preserved).
+  2. **Chroma-aware inverse.** `oklchToCam16Hue(h, chromaFrac=1)` becomes a Newton inverse of
+     the render path: it finds the CAM16 hue whose color, *at `chromaFrac` of that hue's peak
+     chroma*, renders at the target OKLCH hue. It is chroma-aware because the OKLCH↔CAM16 hue
+     map shifts with chroma (the **Abney effect**) — a fixed or cusp-only anchor is wrong at
+     the other end. `effHue(hue, hueSpace, chromaFrac=1)` passes `palette.chroma/100`.
+  3. **High-res HCT→OKLCH.** New `hctToOklch(hue, chroma, tone) → [L, C, H°]` reuses the CAM16
+     solve and converts the converged linear sRGB straight through OKLab — no 8-bit
+     round-trip. `projectView` emits `keyOklch`; the key HEX is derived from it.
+- **Rationale.** Anchoring the solve at the palette's own chroma makes the rendered identity
+  color land on the stored OKLCH hue to ~0.00°. **Principle:** HEX is only ever derived for
+  consumption; perceptual coords come from the model at full precision (never measured back
+  off an 8-bit hex).
+- **Consequences.** Producers emit OKLCH hues: `gen-categories` stores each preset's source
+  OKLCH hue and bakes `hueSpace:"oklch"`; `seedFromKeyColor(oklch, hueSpace="oklch")` returns
+  the input's OKLCH hue (or CAM16 for a legacy cam16 doc); `defaultDocument` converts the 8
+  starter CAM16 hues to OKLCH on the fly via `camHueToOklch`. **`role-table.json` is
+  UNCHANGED** — still the cam16 answer key; the parity gate is intact. `hctToRgb` is
+  byte-identical (refactored to share `_hctToLinRGB`). Engine gate: `hct-oklch-inverse`
+  (`test/engine/hct.mjs`).
+- **Status.** DECIDED.
+
 ---
 
 ## Quick map: decisions an enhancing agent is most likely to "fix" (don't)
@@ -161,4 +194,5 @@ Format: Context → Decision → Rationale → Consequences → Status.
 | ADR-003 | on-colors fail WCAG on Warning | explicit brand override; contrast-aware was removed on purpose |
 | ADR-004 | scrims unified onto one 500 ramp (SUPERSEDED) | scrims now a single 500 ramp; the former base-750-only decision is superseded |
 | ADR-002 | semantic could alias raw to cascade | native import errors on name-only aliasData; plugin does cascade |
+| ADR-011 | `role-table.json` still encodes cam16 hues though hueSpace is now OKLCH | role-table is the cam16 answer key for the parity gate; the OKLCH flip is at the doc/seed layer, not the role table |
 | ADR-007 | a real-looking Figma schema isn't imported | the schema is unverified/non-native |

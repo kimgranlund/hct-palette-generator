@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 1.47 — 2026-06-28 — OKLCH-native hue model + chroma-aware OKLCH↔CAM16 inverse (#116, #117)
+
+The per-palette `hue` is now an **OKLCH hue** by default: the doc-level `hueSpace` default flips
+**cam16 → oklch** (`tonal.js` `DEFAULT_CONTROLS.hueSpace`; `persist.js` `DOMAINS.hueSpace.default`).
+`cam16` stays selectable, and legacy docs saved under cam16 carry `hueSpace:"cam16"` explicitly and keep
+rendering in cam16 (preserved). `oklchToCam16Hue(h, chromaFrac=1)` is rebuilt from the old fixed-mid-sample
+mapping (L 0.72 / C 0.10, a few degrees of drift, worst ~15° at the blue/violet pole) into an **accurate,
+chroma-aware Newton inverse** of the render path: it finds the CAM16 hue whose color, *at `chromaFrac` of
+that hue's peak chroma*, renders at the target OKLCH hue. It is chroma-aware because the OKLCH↔CAM16 hue
+map shifts with chroma (the **Abney effect**) — a fixed or cusp-only anchor is wrong at the other end.
+Anchoring at the palette's own chroma (`effHue(hue, hueSpace, chromaFrac=1)`, passed `palette.chroma/100`)
+lands the rendered identity color on the stored OKLCH hue to ~0.00°. New `hctToOklch(hue, chroma, tone) →
+[L, C, H°]` reuses the CAM16 solve and converts the converged linear sRGB straight through OKLab (no 8-bit
+round-trip) — the high-res HCT→OKLCH for analysis/readouts; `projectView` now emits `keyOklch` (each
+palette's key color in high-res OKLCH, the key HEX derived from it). Producers emit OKLCH hues:
+`gen-categories` stores each preset's source OKLCH hue and bakes `hueSpace:"oklch"`; `seedFromKeyColor(oklch,
+hueSpace="oklch")` returns the input's OKLCH hue (or CAM16 for a legacy cam16 doc); `defaultDocument`
+converts the 8 starter CAM16 hues to OKLCH on the fly via `camHueToOklch`. **`role-table.json` is
+UNCHANGED** — still the cam16 answer key; the parity gate is intact. `hctToRgb` is byte-identical
+(refactored to share `_hctToLinRGB`). Engine gate: `hct-oklch-inverse` (`test/engine/hct.mjs`). See ADR-011
+(supersedes ADR-008).
+
 ## 1.46 — 2026-06-27 — Typography: the seven named groups (the full taxonomy)
 
 `type.mjs` expands from four voices to the canonical **seven groups** (`docs/spec/typography`): Display ·

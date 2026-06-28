@@ -24,7 +24,7 @@ engine safely. The conceptual *why* is owned by `docs/spec/references/knowledge-
 
 | File | Owns | Exports (the verified contract) |
 |---|---|---|
-| `src/engine/hct.js` | CAM16/HCT: perceptual hue·chroma·**tone (CIELAB L\*)**; the gamut-search core | `hctToRgb(hue,chroma,tone)→{rgb[0-255 ints],inGamut,lstar}`, `cam16FromRgb([r,g,b])→{hue,chroma,J}`, `lstarFromRgb([r,g,b])→L*`, `maxChromaInGamut(hue,tone)`, `peakC(hue)→{c,tone}`, `oklchToCam16Hue(h)` |
+| `src/engine/hct.js` | CAM16/HCT: perceptual hue·chroma·**tone (CIELAB L\*)**; the gamut-search core | `hctToRgb(hue,chroma,tone)→{rgb[0-255 ints],inGamut,lstar}`, `hctToOklch(hue,chroma,tone)→[L,C,H°]` **[FLOAT — high-res, no 8-bit round-trip; shares `_hctToLinRGB` with `hctToRgb`]**, `cam16FromRgb([r,g,b])→{hue,chroma,J}`, `lstarFromRgb([r,g,b])→L*`, `maxChromaInGamut(hue,tone)`, `peakC(hue)→{c,tone}`, `oklchToCam16Hue(h,chromaFrac=1)` **[chroma-AWARE Newton inverse]** |
 | `src/engine/okhsl.js` | Ottosson OKHSL ⇄ sRGB (the **perceptual** ramp path) + OKLCH→sRGB key-color seeding | `okhslToRgb(hueDeg,s,l)`, `oklchToRgb(L,C,H)` **[GAMUT-CLAMPED — out-of-gamut snaps to the boundary via `clamp255`; def L144, used L172]**, `rgbToOkhsl([r,g,b])→{h,s,l}` |
 | `src/engine/tonal.js` | the ramp builder: stop sets, `DEFAULT_CONTROLS`, both ramp paths | `STOPS`(19)·`EXTRA_STOPS`·`EXPORT_STOPS`(25), `DEFAULT_CONTROLS`, `effHue`, `toneAt`, `paletteStops` |
 | `src/engine/derive.mjs` | New-Palette math (pure, OKLCH, no imports) | `weightedMeanHue`, `deriveNeutral`, `deriveRelative`, `RELATIONSHIPS` |
@@ -46,6 +46,29 @@ mode, `:134` returns `okhslStops`):
 > it states which control feeds which path. The tonal verifier pins `toneMode:"even", chromaFloor:0`
 > (`tonal.mjs:20`) for the CIELAB gates and tests the OKHSL paths separately (`okhsl-modes`, `vibrancy`,
 > `cusp-pull`). knowledge-02 §2 owns the same warning — cite it.
+
+## The hue model is OKLCH-native (easy to miss — changed #117)
+
+The per-palette `hue` param is an **OKLCH hue** by default. `DEFAULT_CONTROLS.hueSpace` / the persist default is
+**`"oklch"`** (flipped from `"cam16"`). The engine still renders a **constant CAM16 hue** ramp, so the OKLCH
+hue is resolved to a CAM16 hue **once per palette** by `effHue(hue, hueSpace, chromaFrac)`:
+
+- **`oklchToCam16Hue(h, chromaFrac)` is an ACCURATE, CHROMA-AWARE Newton inverse** of the render path — NOT the
+  old fixed-sample (L 0.72 / C 0.10) approximation (that drifted ~15° at the blue/violet pole). It finds the
+  CAM16 hue whose color *at `chromaFrac` of that hue's peak chroma* renders at the target OKLCH hue. **It must
+  be chroma-aware** because the OKLCH↔CAM16 hue map shifts with chroma (the **Abney effect**): a fixed anchor is
+  wrong at one saturation end, a cusp-only anchor regresses muted hues (~11°). Callers pass the palette's own
+  chroma — `effHue(p.hue, hueSpace, (p.chroma)/100)` — so the identity color lands on the stored OKLCH hue to
+  ~0.00°. Gate: **`hct-oklch-inverse`** (vivid + muted round-trip ≤3°). The `_oh` memo keys on `target+":"+chromaFrac`.
+- **HEX is only ever derived for CONSUMPTION; perceptual coords come from the model at full precision.** Use
+  **`hctToOklch(h,c,t)`** (float, reuses the CAM16 solve → OKLab, no 8-bit step) for readouts/analysis — NEVER
+  measure OKLCH/hue back off an 8-bit `hexToOklch(key)`. `projectView` emits `keyOklch` (the high-res key OKLCH);
+  the key hex is derived from it. (Principle: the model is high-res; HEX is only ever derived for consumption.)
+- **Producers emit OKLCH hues:** `gen-categories` stores each preset's source OKLCH hue + bakes `hueSpace:"oklch"`;
+  `seedFromKeyColor(oklch, hueSpace)` returns the OKLCH hue (or CAM16 for a legacy doc); `defaultDocument` converts
+  the 8 starter CAM16 hues to OKLCH via `camHueToOklch` — **`role-table.json` is UNCHANGED** (still the cam16 answer
+  key; parity gate intact). Legacy docs saved under cam16 carry `hueSpace:"cam16"` explicitly and stay cam16.
+- **`hctToRgb` is byte-identical** (refactored to share `_hctToLinRGB` with `hctToOklch`) — the anchors don't move.
 
 ## The invariants you must never break (depth in `references/foundations.md`)
 
@@ -85,7 +108,7 @@ Run the four pure verifiers first (`hct`/`tonal`/`okhsl` print `pass`/`FAIL` per
 PASS/FAIL line; exit 1 fails), then the full suite:
 
 ```
-node test/engine/hct.mjs      # anchor-roundtrip · random-roundtrip · gamut-ceiling · branches · oklch-deterministic
+node test/engine/hct.mjs      # anchor-roundtrip · random-roundtrip · gamut-ceiling · branches · oklch-deterministic · hct-oklch (float HCT→OKLCH round-trips) · hct-oklch-inverse (chroma-aware oklchToCam16Hue ≤3° vivid+muted)
 node test/engine/okhsl.mjs    # roundtrip · boundary(s=1 on a gamut face) · monotone-s · neutral · anchor
 node test/engine/tonal.mjs    # ingamut · monotonic · white-endpoint · chroma-target · curve-fidelity · hue-stability · damping-curve · edge-hue · rel-chroma · okhsl-modes · chroma-floor · vibrancy
 node test/engine/derive.mjs   # weighted-mean hue (warm lean + 350°/10° wrap) · neutral clamp · the 6 relationships · priority-beats-chroma · no-NaN  (one PASS/FAIL line)

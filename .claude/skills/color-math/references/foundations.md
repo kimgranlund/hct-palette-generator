@@ -52,13 +52,23 @@ exports non-portable — knowledge-01 §3).
 - `peakC(hue)` — scan `t = 4..96 step 2`, return `{c,tone}` = the hue's max chroma and where it peaks.
   Memoized by `hue.toFixed(2)`. This is *why* the per-palette `chroma` control is "% of the hue's own peak"
   (100% = as saturated as this hue can get in sRGB), not a raw number.
-- `oklchToCam16Hue(h)` — sample a fixed mid OKLCH color (L 0.72, C 0.10) and read its CAM16 angle. A
-  *sampled* mapping (expect a few degrees drift; ADR-008), memoized by `h.toFixed(2)`.
+- `hctToOklch(h, c, t)` — the HCT color's OKLCH `[L, C, H°]` in **float**: reuses the CAM16 solve (`_hctToLinRGB`,
+  shared with `hctToRgb`) and converts the converged linear sRGB straight through OKLab — **no 8-bit round-trip**.
+  The high-res HCT→OKLCH for analysis/readouts (HEX is only derived for *consumption*; never measure perceptual
+  coords back off an 8-bit hex). Gate: `hct-oklch` (`oklchToRgb(hctToOklch(...)) ≈ hctToRgb(...).rgb`, Δ≤2).
+- `oklchToCam16Hue(h, chromaFrac=1)` — the **accurate, chroma-AWARE Newton inverse** of the render path: find the
+  CAM16 hue `X` such that a color at `chromaFrac·peakC(X).c` (peak tone) renders at OKLCH hue `h`. The step
+  `X ← X − (hctToOklch(X,…)[2] − h)` is Newton with slope ≈1; ~few iters, cap 12, chroma floored at 8 so a near-grey
+  stays defined. **Chroma-aware because the OKLCH↔CAM16 hue map shifts with chroma (Abney)** — the OLD version
+  sampled a fixed mid OKLCH point (L 0.72/C 0.10) and drifted ~15° on vivid blues; a cusp-only anchor regresses
+  muted hues ~11°. Anchoring at the palette's OWN chroma lands the identity color on the stored hue to ~0°.
+  Memoized by `h.toFixed(2)+":"+chromaFrac.toFixed(3)`. Gate: `hct-oklch-inverse`.
 
 ### 5. The even-path chroma pipeline (`paletteStops`, even mode, `tonal.js` ~148–193)
 
 ```
-baseHue = effHue(palette.hue, hueSpace)           # CAM16 hue, computed ONCE
+baseHue = effHue(palette.hue, hueSpace, palette.chroma/100)  # CAM16 hue, computed ONCE
+                                                  #   hueSpace "oklch" (DEFAULT) → oklchToCam16Hue(hue, chromaFrac); "cam16" → passthrough
 target  = (palette.chroma/100) * peakC(baseHue).c # % of the BASE-hue peak (absolute)
 per stop:
   tone     = toneAt(stop, skew, lift, ctl)
