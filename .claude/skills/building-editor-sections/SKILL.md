@@ -53,6 +53,34 @@ triplet — never invent a parallel shape. Depth in `references/`; this body is 
    download/export helpers; move the controls into the inspector. Grep for the removed names — leave no dead
    code (e.g. an orphaned `_<x>Sample`).
 
+## The table view in the canvas (Mapping · Tokens matrix) — the data-grid variant
+
+A canvas **mode** can render a DATA TABLE instead of the pannable scene. Color's **Mapping** and the
+Type/Geom **Tokens** matrix both do this:
+
+- **Flip to `.is-table`.** When the mode is active, render the `<table>` in a `.canvas-area … is-table`
+  shell (scroll, NOT pan/zoom — no `wirePanZoom`), not the pannable `.canvas-scene` (see `renderCanvasArea`'s
+  `isTable` branch + `_tokensTableArea`). Reuse `.map-table` (sticky `thead`, grouped rows, monospace `code`
+  cells); pass the `--canvas-bg` for ground parity.
+- **The Tokens matrix is a responsive MATRIX:** grouped per-step/per-size rows × **(Base + one column per
+  breakpoint mode)** columns; sticky first column = the token name; each column carries the **real `modeKey`**
+  (`"base"` or the mode id), not a constant. Build columns from `doc.{type,geometry}.modes`, not a name-only
+  helper. `<th scope>` on a genuine 2-D matrix (col/row/colgroup).
+- **Editable overrides — the per-cell lever (mirrors color `roleOverrides`).** Cells are number inputs that
+  write `doc.{type,geometry}.tokenOverrides` (flat, keyed `<voice>|<step>|<modeKey>` / `<size>|<modeKey>`,
+  attached only when non-empty). The pure engines take an optional `overrides` param (size/height is the
+  lever; type keeps tracking+weight, geom re-derives via the laws). **Centralize resolution** in
+  `_typeScaleFor`/`_geomScaleFor` so the matrix, the specimen preview, AND every export (CSS `@media` ·
+  per-mode DTCG · Figma · MCP `brandKit`) read the SAME resolved scale — a missed export site is the classic
+  bug. Live setters **clamp to the persisted range** ([1,512]/[8,256]) like `setTypeModeMinWidth` (an
+  unclamped value diverges live-vs-persist and can yield negative geom padding); `deleteMode` strips stale
+  `|<id>` keys; identity holds (no override ⇒ byte-identical). Keep overrides **mode-local** (Base does not
+  cascade into breakpoint columns) + say so in a one-line UI hint.
+- **Known gap (tracked):** the sticky `thead`/first-column don't actually stick — `.map-table`'s
+  `overflow:hidden` (for its radius) makes the *table* the sticky scrollport, so headers scroll with the
+  table (both Mapping + the matrix). Fixing it (overflow:visible + the `.canvas-scene` top-padding gap +
+  a Safari pass) is a backlog item, not yet done.
+
 ## Validate (draft → check → fix → re-check)
 
 - `npm test` green — add a **lettered headless group** in `test/ui/headless-boot.mjs` (e.g. `(geo)`/`(cm)`)
