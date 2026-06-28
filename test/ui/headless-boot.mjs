@@ -1337,9 +1337,15 @@ const tysc = tScale(app.doc.type);
 ok(tysc.treatment === "luxury" && tysc.categories.Body.MD.size === 18, `(ty) treatment + base apply (treatment ${tysc.treatment}, body MD ${tysc.categories.Body.MD.size})`);
 ok(hydSet(serSet(app.doc)).type.treatment === "luxury" && hydSet(serSet(app.doc)).type.bodyBase === 18, "(ty) the type config round-trips through persist");
 ok(bkTy(app.doc).type && bkTy(app.doc).type.categories.Body && bkTy(app.doc).type.treatment === "luxury", "(ty) brandKit carries the type scale (the MCP serves it)");
-// the canvas Specimen·Tokens toggle drops the live faces to metrics-only
+// the canvas Specimen·Tokens toggle flips the canvas to the READ-ONLY token MATRIX (a real <table>) in the
+// scrolling .is-table shell — rows = the 41 steps, columns = Base (+ each breakpoint), sticky token names.
 app.setTypeSpecMode("tokens"); flushRaf();
-ok((app.querySelector(".type-spec") || { classList: { contains: () => false } }).classList.contains("is-tokens"), "(ty) the Specimen·Tokens toggle switches the canvas to metrics-only");
+ok(!!app.querySelector(".tok-table") && !app.querySelector(".type-spec"), "(ty-tok) the Specimen·Tokens toggle renders the token matrix table (no specimen scene)");
+ok(!!app.querySelector(".is-table") && !!app.querySelector(".is-table").querySelector(".tok-table"), "(ty-tok) the token table lives in the scrolling .is-table canvas shell (no pan/zoom)");
+ok(walk(app, (e) => e.classList && e.classList.contains("tok-col") && txtOf(e).includes("Base")).length === 1, "(ty-tok) there is exactly one Base column header");
+ok(app.querySelectorAll(".tok-row").length === 41, `(ty-tok) one row per type step (41) (got ${app.querySelectorAll(".tok-row").length})`);
+ok(app.querySelectorAll(".tok-group").length === 7, `(ty-tok) the rows are grouped by voice — 7 group headers (got ${app.querySelectorAll(".tok-group").length})`);
+ok(txtOf(app.querySelectorAll(".tok-name")[1] || {}).startsWith("--type-display-xl"), `(ty-tok) the first (sticky) token name is the --type-display-xl step (got ${txtOf(app.querySelectorAll(".tok-name")[1] || {})})`);
 app.setTypeSpecMode("specimen"); flushRaf();
 let typeZip = null; const realDBty = app.downloadBytes.bind(app);
 app.downloadBytes = (bytes, name) => { typeZip = { bytes, name }; };
@@ -1358,6 +1364,11 @@ ok(app._activeType().bodyBase === 20 && tScale(app._activeType()).categories.Bod
 app.setTypeModeMinWidth(_bpId, 768); flushRaf();
 ok(app.doc.type.modes[0].minWidth === 768 && app._typeModeScales()[0].minWidth === 768, "(ty-bp) setTypeModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
 ok(app._typeModeDTCGFiles().length === 1 && app._typeModeDTCGFiles()[0].name === "type.768.tokens.json" && JSON.parse(app._typeModeDTCGFiles()[0].data).typography, "(ty-bp) the breakpoint emits a per-mode DTCG file keyed by width");
+// the token MATRIX gains a column for the new breakpoint (Base + the ≥768px mode = 2 value columns)
+app.setTypeSpecMode("tokens"); flushRaf();
+ok(app._typeTokenColumns().length === 2 && app._typeTokenColumns()[0].id === "base" && app._typeTokenColumns()[1].minWidth === 768, "(ty-tok) the matrix has a column per breakpoint — Base + the ≥768px mode (sorted by minWidth)");
+ok(walk(app, (e) => e.classList && e.classList.contains("tok-col-bp") && txtOf(e).includes("768")).length === 1, "(ty-tok) the breakpoint column header shows its ≥768px min-width");
+app.setTypeSpecMode("specimen"); flushRaf();
 app.typeMode = "base"; flushRaf();
 ok(app._activeType().bodyBase === 16, "(ty-bp) switching back to Base resolves the base body size");
 app.deleteTypeMode(_bpId); flushRaf();
@@ -1393,9 +1404,14 @@ ok(bkGeo(app.doc).geometry && bkGeo(app.doc).geometry.sizes && bkGeo(app.doc).ge
   ok(bkGeo(app.doc).geometry.sizes.MD.font === ui.MD.size, "(geo) brandKit's geometry shares the type UI font (one source of truth)");
   app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore
 }
-// the canvas Controls·Tokens toggle drops the live mock controls to metrics-only
+// the canvas Controls·Tokens toggle flips the canvas to the READ-ONLY token MATRIX (a real <table>) in the
+// scrolling .is-table shell — rows = the 6 control sizes, columns = Base (+ each breakpoint), sticky names.
 app.setGeomSpecMode("tokens"); flushRaf();
-ok((app.querySelector(".geom-spec") || { classList: { contains: () => false } }).classList.contains("is-tokens"), "(geo) the Controls·Tokens toggle switches the canvas to metrics-only");
+ok(!!app.querySelector(".tok-table") && !app.querySelector(".geom-spec"), "(geo-tok) the Controls·Tokens toggle renders the token matrix table (no controls scene)");
+ok(!!app.querySelector(".is-table") && !!app.querySelector(".is-table").querySelector(".tok-table"), "(geo-tok) the token table lives in the scrolling .is-table canvas shell (no pan/zoom)");
+ok(walk(app, (e) => e.classList && e.classList.contains("tok-col") && txtOf(e).includes("Base")).length === 1, "(geo-tok) there is exactly one Base column header");
+ok(app.querySelectorAll(".tok-row").length === 6, `(geo-tok) one row per control size (6) (got ${app.querySelectorAll(".tok-row").length})`);
+ok(txtOf(app.querySelectorAll(".tok-name")[1] || {}) === "--size-2xl", `(geo-tok) the first (sticky) token name is --size-2xl (largest→smallest) (got ${txtOf(app.querySelectorAll(".tok-name")[1] || {})})`);
 app.setGeomSpecMode("controls"); flushRaf();
 let geomZip = null; const realDBgeo = app.downloadBytes.bind(app);
 app.downloadBytes = (bytes, name) => { geomZip = { bytes, name }; };
@@ -1414,6 +1430,11 @@ ok(app._activeGeometry().baseHeight === 40 && app._activeGeomScale().baseHeight 
 app.setGeomModeMinWidth(_gbpId, 600); flushRaf();
 ok(app.doc.geometry.modes[0].minWidth === 600 && app._geomModeScales()[0].minWidth === 600, "(geo-bp) setGeomModeMinWidth persists + flows to the responsive-export mode scales (→ @media min-width)");
 ok(app._geomModeDTCGFiles().length === 1 && app._geomModeDTCGFiles()[0].name === "geometry.600.tokens.json" && JSON.parse(app._geomModeDTCGFiles()[0].data).size, "(geo-bp) the breakpoint emits a per-mode DTCG file keyed by width");
+// the token MATRIX gains a column for the new breakpoint (Base + the ≥600px mode = 2 value columns)
+app.setGeomSpecMode("tokens"); flushRaf();
+ok(app._geomTokenColumns().length === 2 && app._geomTokenColumns()[0].id === "base" && app._geomTokenColumns()[1].minWidth === 600, "(geo-tok) the matrix has a column per breakpoint — Base + the ≥600px mode (sorted by minWidth)");
+ok(walk(app, (e) => e.classList && e.classList.contains("tok-col-bp") && txtOf(e).includes("600")).length === 1, "(geo-tok) the breakpoint column header shows its ≥600px min-width");
+app.setGeomSpecMode("controls"); flushRaf();
 app.geomMode = "base"; flushRaf();
 ok(app._activeGeomScale().baseHeight === 28, "(geo-bp) switching back to Base resolves the base height");
 app.deleteGeomMode(_gbpId); flushRaf();

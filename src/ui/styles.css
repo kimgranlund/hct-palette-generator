@@ -614,6 +614,41 @@ nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabb
 .map-drift-match { color: #2e9e5b; }
 .map-drift-drift { color: #d9534f; }
 .map-drift-absent, .map-drift-none { color: var(--ink-faint); font-weight: 400; }
+
+/* ── Tokens MATRIX (Type / Geom) — a READ-ONLY token table in the .is-table canvas slot.
+   Rows = steps grouped by voice/size; columns = Base + one per breakpoint mode. Extends .map-table
+   (sticky head, monospace code cells); the first column (token name) is sticky-left too. */
+.tok-wrap { max-width: min(100%, 1040px); margin: 0 auto; }
+.tok-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 10px; }
+.tok-head small { color: var(--ink-dim); }
+.tok-table { table-layout: auto; }
+.tok-table td, .tok-table th { vertical-align: top; }
+/* the sticky FIRST column — the token name */
+.tok-table th.tok-name {
+  text-align: left; position: sticky; left: 0; z-index: 1;
+  background: var(--panel); border-right: 1px solid var(--line); white-space: nowrap;
+}
+.tok-table th.tok-name-head { z-index: 2; background: var(--panel-2); }
+.tok-table th.tok-name code { color: var(--ink); font-weight: 600; }
+/* breakpoint column heads — name above, ≥{minWidth}px beneath */
+.tok-col { white-space: nowrap; }
+.tok-col-name { display: block; }
+.tok-col-bp { display: block; color: var(--ink-faint); font-weight: 400; font-size: 11px; }
+.tok-col-base .tok-col-name { color: var(--ink); }
+/* group header row — spans every column */
+.tok-grouphead {
+  text-align: left; background: var(--panel-2); border-top: 2px solid var(--line);
+  padding: 6px 10px; color: var(--ink-dim);
+}
+.tok-grouphead b { color: var(--ink); margin-right: 8px; }
+.tok-grouphead small { color: var(--ink-dim); }
+.tok-group-count { float: right; color: var(--ink-faint); font-weight: 400; }
+/* value cell — size/line (or height) over a compact sub-line */
+.tok-cell { white-space: nowrap; }
+.tok-val { display: block; color: var(--ink); }
+.tok-sub { display: block; color: var(--ink-dim); font-size: 11px; margin-top: 1px; }
+.tok-na { color: var(--ink-faint); }
+
 /* ── primitive: chip (one in-flow pill) ───────────────────────────────────────────
    Status badge (<span>, optional tone) or interactive toggle (<button>, .on). Replaces
    the old .map-drift-sum and .damp-presets .preset pill stylings. */

@@ -2777,10 +2777,12 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // renderTypeCanvas — the Typography center: the full specimen scene in the same pannable/zoomable
-  // .canvas-area + .canvas-scene shell the color ramps use (wirePanZoom + applyTransform), painted in
-  // the canvas preview scheme.
+  // renderTypeCanvas — the Typography center. Specimen mode renders the full live specimen in the same
+  // pannable/zoomable .canvas-area + .canvas-scene shell the color ramps use (wirePanZoom + applyTransform).
+  // Tokens mode renders a READ-ONLY token MATRIX (rows = steps, cols = Base + each breakpoint) in the
+  // scrolling .is-table shell instead — exactly how Color's Mapping view flips (see renderCanvasArea).
   renderTypeCanvas(view) {
+    if (this.typeSpecMode === "tokens") return this._tokensTableArea("Typography tokens — Base + breakpoints", this.renderTypeTokensTable());
     const area = h(
       "div",
       {
@@ -2793,6 +2795,149 @@ class HctApp extends HTMLElement {
     this.wirePanZoom(area);
     requestAnimationFrame(() => this.applyTransform());
     return area;
+  }
+
+  // _tokensTableArea — the scrolling .is-table canvas shell (no pan/zoom) that hosts a tokens MATRIX,
+  // mirroring how renderCanvasArea wraps the Mapping table. One place for both Type + Geom tables.
+  _tokensTableArea(label, table) {
+    return h(
+      "div",
+      {
+        class: "canvas-area canvas-scheme-" + this.resolvedCanvasScheme() + " is-table",
+        role: "group",
+        "aria-label": label,
+      },
+      h("div", { class: "canvas-scene" }, table),
+    );
+  }
+
+  // _typeTokenColumns — the ordered column set for the Typography token matrix: Base first, then one
+  // column per breakpoint MODE sorted ascending by minWidth (the responsive cascade). Each entry carries
+  // the resolved typeScale so a cell reads the value at that step × that mode. Mirrors _typeModeScales()
+  // (same scale resolution) but prepends Base = the active doc.type scale and sorts by width.
+  _typeTokenColumns() {
+    const base = this._activeType();
+    const cols = [{ id: "base", name: "Base", minWidth: null, scale: typeScale(base) }];
+    const modes = this._typeModeScales()
+      .map((m) => ({ id: "tm", name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: m.scale }))
+      .sort((a, b) => a.minWidth - b.minWidth);
+    return cols.concat(modes);
+  }
+
+  // renderTypeTokensTable — the READ-ONLY Typography token MATRIX (Phase 1). Rows = type steps GROUPED by
+  // voice (Display · the Headings · Body · UI · Code) with a group-header row; the first (sticky) column is
+  // the token NAME (--type-{voice}-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each cell
+  // shows size/line + a compact w{weight} · {tracking} so the responsive cascade is scannable. Extends the
+  // .map-table chrome — no editing, no reset, no width presets (those are later phases).
+  renderTypeTokensTable() {
+    const cols = this._typeTokenColumns();
+    const base = cols[0].scale;
+    const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const cats = Object.keys(base.categories); // the seven named groups, engine order
+    const total = cats.reduce((a, c) => a + Object.keys(base.categories[c]).length, 0);
+    // a single value cell: size/line on top, w{weight} · {tracking} beneath (or "—" if the mode lacks it).
+    const cell = (scale, cat, step) => {
+      const s = scale.categories[cat] && scale.categories[cat][step];
+      if (!s) return h("td", { class: "tok-cell" }, h("span", { class: "tok-na" }, "—"));
+      const tr = `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing}`;
+      return h(
+        "td",
+        { class: "tok-cell" },
+        h("code", { class: "tok-val" }, `${s.size}/${s.lineHeight}`),
+        h("span", { class: "tok-sub" }, `w${s.weight} · ${tr}`),
+      );
+    };
+    const headCells = cols.map((c) =>
+      h("th", { class: "tok-col" + (c.id === "base" ? " tok-col-base" : "") },
+        h("span", { class: "tok-col-name" }, c.name),
+        c.minWidth ? h("small", { class: "tok-col-bp" }, `≥${Math.round(c.minWidth)}px`) : false));
+    const rows = [];
+    for (const cat of cats) {
+      const role = base.roleOf[cat] || "body";
+      const steps = Object.keys(base.categories[cat]);
+      // largest → smallest within a group (mirror the specimen order)
+      const ordered = [...steps].sort((a, b) => (base.categories[cat][b]?.size || 0) - (base.categories[cat][a]?.size || 0));
+      rows.push(h("tr", { class: "tok-group" },
+        h("th", { class: "tok-grouphead", colspan: String(cols.length + 1) },
+          h("b", {}, cat), h("small", {}, base.fonts[role]), h("span", { class: "tok-group-count" }, `${steps.length} steps`))));
+      for (const step of ordered) {
+        rows.push(h("tr", { class: "tok-row" },
+          h("th", { class: "tok-name" }, h("code", {}, `--type-${kebab(cat)}-${kebab(step)}`)),
+          ...cols.map((c) => cell(c.scale, cat, step))));
+      }
+    }
+    return h(
+      "div",
+      { class: "tok-wrap" },
+      h("div", { class: "tok-head" },
+        h("b", {}, "Type tokens"),
+        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+      h(
+        "table",
+        { class: "map-table tok-table" },
+        h("thead", {}, h("tr", {}, h("th", { class: "tok-name tok-name-head" }, "Token"), ...headCells)),
+        h("tbody", {}, ...rows),
+      ),
+    );
+  }
+
+  // _geomTokenColumns — the ordered column set for the Geometry token matrix: Base first, then one column
+  // per breakpoint MODE sorted ascending by minWidth. Mirrors _geomTokenColumns / _geomModeScales but
+  // prepends Base = the active composed geometry scale.
+  _geomTokenColumns() {
+    const cols = [{ id: "base", name: "Base", minWidth: null, scale: this._activeGeomScale() }];
+    const modes = this._geomModeScales()
+      .map((m) => ({ id: "gm", name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: m.scale }))
+      .sort((a, b) => a.minWidth - b.minWidth);
+    return cols.concat(modes);
+  }
+
+  // renderGeomTokensTable — the READ-ONLY Geometry token MATRIX (Phase 1). Rows = the six control sizes
+  // (XS..2XL, largest→smallest) with a group-header row; the first (sticky) column is the token NAME
+  // (--size-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each cell shows the key dims —
+  // height, then icon/font/pad/radius compactly. Extends the .map-table chrome — read-only.
+  renderGeomTokensTable() {
+    const cols = this._geomTokenColumns();
+    const base = cols[0].scale;
+    const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const SIZE_NAMES = ["2XL", "XL", "LG", "MD", "SM", "XS"]; // largest → smallest
+    const present = SIZE_NAMES.filter((n) => base.sizes[n]);
+    const cell = (scale, name) => {
+      const s = scale.sizes[name];
+      if (!s) return h("td", { class: "tok-cell" }, h("span", { class: "tok-na" }, "—"));
+      return h(
+        "td",
+        { class: "tok-cell" },
+        h("code", { class: "tok-val" }, `${s.height}h`),
+        h("span", { class: "tok-sub" }, `i${s.icon} · f${s.font} · p${s.padding} · r${s.radiusPill}`),
+      );
+    };
+    const headCells = cols.map((c) =>
+      h("th", { class: "tok-col" + (c.id === "base" ? " tok-col-base" : "") },
+        h("span", { class: "tok-col-name" }, c.name),
+        c.minWidth ? h("small", { class: "tok-col-bp" }, `≥${Math.round(c.minWidth)}px`) : false));
+    const rows = [];
+    rows.push(h("tr", { class: "tok-group" },
+      h("th", { class: "tok-grouphead", colspan: String(cols.length + 1) },
+        h("b", {}, "Controls"), h("small", {}, "height · icon · font · pad · radius"), h("span", { class: "tok-group-count" }, `${present.length} sizes`))));
+    for (const name of present) {
+      rows.push(h("tr", { class: "tok-row" },
+        h("th", { class: "tok-name" }, h("code", {}, `--size-${kebab(name)}`)),
+        ...cols.map((c) => cell(c.scale, name))));
+    }
+    return h(
+      "div",
+      { class: "tok-wrap" },
+      h("div", { class: "tok-head" },
+        h("b", {}, "Geometry tokens"),
+        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+      h(
+        "table",
+        { class: "map-table tok-table" },
+        h("thead", {}, h("tr", {}, h("th", { class: "tok-name tok-name-head" }, "Token"), ...headCells)),
+        h("tbody", {}, ...rows),
+      ),
+    );
   }
 
 
@@ -5021,10 +5166,12 @@ class HctApp extends HTMLElement {
     );
   }
 
-  // renderGeomCanvas — the Geometry center: the full dimensional dataset (the 6-size control ramp + the
-  // radius ladder + the space scale) in the same pannable/zoomable .canvas-area + .canvas-scene shell the
-  // color ramps + type specimen use (wirePanZoom + applyTransform), painted in the canvas preview scheme.
+  // renderGeomCanvas — the Geometry center. Controls mode renders the full dimensional dataset (the 6-size
+  // control ramp + radius + space) in the pannable/zoomable .canvas-area + .canvas-scene shell. Tokens mode
+  // renders a READ-ONLY token MATRIX (rows = sizes, cols = Base + each breakpoint) in the scrolling
+  // .is-table shell instead — mirrors renderTypeCanvas / Color's Mapping flip.
   renderGeomCanvas(view) {
+    if (this.geomSpecMode === "tokens") return this._tokensTableArea("Geometry tokens — Base + breakpoints", this.renderGeomTokensTable());
     const area = h(
       "div",
       {
