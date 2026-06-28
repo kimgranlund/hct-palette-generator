@@ -2994,10 +2994,18 @@ const GEOMETRY_TREATMENTS = ["comfortable", "compact", "spacious", "touch", "pil
 function clampGeometry(g) {
   g = (g && typeof g === "object") ? g : {};
   const treatment = GEOMETRY_TREATMENTS.includes(g.treatment) ? g.treatment : "comfortable";
-  let baseHeight = Number(g.baseHeight);
-  if (!Number.isFinite(baseHeight)) baseHeight = 28;
-  baseHeight = Math.max(20, Math.min(48, Math.round(baseHeight)));
-  return { treatment, baseHeight };
+  const clampH = (v) => { const n = Number(v); return Math.max(20, Math.min(48, Number.isFinite(n) ? Math.round(n) : 28)); };
+  const baseHeight = clampH(g.baseHeight);
+  const out = { treatment, baseHeight };
+  // breakpoint MODES (Phase 5) — each a named baseHeight override. OPTIONAL, like type.modes (the identity
+  // gate holds when absent). Each mode = { id, name, baseHeight }.
+  if (Array.isArray(g.modes) && g.modes.length) {
+    const modes = g.modes
+      .filter((m) => m && typeof m === "object" && typeof m.id === "string")
+      .map((m) => ({ id: m.id, name: typeof m.name === "string" ? m.name : "Mode", baseHeight: clampH(m.baseHeight) }));
+    if (modes.length) out.modes = modes;
+  }
+  return out;
 }
 
 return { STORAGE_KEY, DOMAINS, serialize, hydrate };
@@ -5108,6 +5116,7 @@ class HctApp extends HTMLElement {
     this.settingsOpen = false; // the Settings page (token-mapping + app prefs)
     this.settingsSection = "mapping"; // which Settings nav item is active (left-nav page layout)
     this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (metrics only) — geom-section sub-state
+    this.geomMode = "base"; // active Geometry breakpoint mode: "base" | a doc.geometry.modes[].id (Phase 5) — ui-session
     this.geomSegment = "ramp"; // right-pane Geometry inspector tab: ramp | radius | space (ui-session)
     this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
     this.figmaFile = "light"; // which Figma mode file the Figma tab previews/downloads
@@ -9514,6 +9523,89 @@ class HctApp extends HTMLElement {
   // `font` per step is the brand's Typography UI size). Binds to doc.geometry = { treatment, baseHeight };
   // density / radius style / spacing come from the treatment (shown read-only). ──────────────────
   setGeomSpecMode(v) { this.geomSpecMode = v; this.render(); }
+
+  // ── Geometry breakpoint modes (Phase 5) — named baseHeight variants over doc.geometry. Mirrors the
+  // Typography mode helpers; the ACTIVE mode drives the canvas preview + the inspector. Export stays on Base.
+  _activeGeometry() {
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    if (this.geomMode === "base") return g;
+    const m = (g.modes || []).find((x) => x.id === this.geomMode);
+    return m ? { ...g, baseHeight: m.baseHeight } : g;
+  }
+  // the resolved scale at the active mode — geometryScale composes geometry with the (base) type scale, so
+  // pass a doc whose geometry is the active mode (no new import; reuses the model's join + composition).
+  _activeGeomScale() { return geometryScale({ ...this.doc, geometry: this._activeGeometry() }); }
+  geomModeControl() {
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    const modes = g.modes || [];
+    if (this.geomMode !== "base" && !modes.some((m) => m.id === this.geomMode)) this.geomMode = "base";
+    const items = [
+      { id: "base", label: "Base", title: `Base size ramp · ${g.baseHeight ?? 28}px` },
+      ...modes.map((m) => ({ id: m.id, label: m.name || "Mode", title: `${m.name || "Mode"} · ${m.baseHeight}px base height` })),
+    ];
+    return h(
+      "div",
+      { class: "mode-control" },
+      this.segmented(items, this.geomMode, (id) => { this.geomMode = id; this.render(); },
+        { cls: "canvas-seg", ariaLabel: "Geometry breakpoint mode", role: "group", idPrefix: "gmode" }),
+      btn(icon("plus"), { cls: "mode-add", ariaLabel: "Add a breakpoint mode", title: "Add a breakpoint — a named ramp with its own base control height", onclick: () => this.addGeomMode() }),
+    );
+  }
+  addGeomMode() {
+    const id = "gm-" + Date.now().toString(36);
+    this.geomMode = id;
+    this.commit((d) => {
+      d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
+      const modes = d.geometry.modes ? [...d.geometry.modes] : [];
+      modes.push({ id, name: "Mode " + (modes.length + 1), baseHeight: d.geometry.baseHeight ?? 28 });
+      d.geometry.modes = modes;
+    });
+  }
+  deleteGeomMode(id) {
+    if (this.geomMode === id) this.geomMode = "base";
+    this.commit((d) => {
+      if (!d.geometry || !Array.isArray(d.geometry.modes)) return;
+      d.geometry = { ...d.geometry, modes: d.geometry.modes.filter((m) => m.id !== id) };
+      if (d.geometry.modes.length === 0) delete d.geometry.modes;
+    });
+  }
+  renameGeomMode(id, name) {
+    this.commit((d) => {
+      if (!d.geometry || !Array.isArray(d.geometry.modes)) return;
+      d.geometry = { ...d.geometry, modes: d.geometry.modes.map((m) => (m.id === id ? { ...m, name: name || m.name } : m)) };
+    });
+  }
+  _setActiveGeomBaseHeight(v) {
+    const bh = Math.round(v);
+    this.editDrag((d) => {
+      d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
+      if (this.geomMode === "base") d.geometry.baseHeight = bh;
+      else d.geometry.modes = (d.geometry.modes || []).map((m) => (m.id === this.geomMode ? { ...m, baseHeight: bh } : m));
+    });
+  }
+  _geomModeEditor() {
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    if (this.geomMode === "base") {
+      const n = (g.modes || []).length;
+      return h("p", { class: "insp-sub tyi-future" }, n
+        ? `${n} breakpoint mode${n > 1 ? "s" : ""} — switch them from the canvas header; each carries its own base control height (per-mode export is coming).`
+        : "Add a breakpoint (the + in the canvas header) to give this ramp a second base height for another screen — e.g. taller touch targets on mobile.");
+    }
+    const m = (g.modes || []).find((x) => x.id === this.geomMode);
+    if (!m) return false;
+    return h(
+      "div",
+      { class: "mode-editor" },
+      h("label", { class: "mode-editor-label", for: "fld-gmode-name" }, "Breakpoint name"),
+      h(
+        "div",
+        { class: "mode-editor-row" },
+        h("input", { id: "fld-gmode-name", type: "text", value: m.name, "data-fk": "gmode-name", "aria-label": "Breakpoint mode name",
+          onchange: (e) => this.renameGeomMode(m.id, e.target.value.trim()) }),
+        btn(icon("trash"), { ariaLabel: "Delete this breakpoint", title: "Delete this breakpoint mode", onclick: () => this.deleteGeomMode(m.id) }),
+      ),
+    );
+  }
   // download the resolved geometry tokens — CSS custom props + utility classes, DTCG dimension tokens, and
   // a Figma NUMBER-variable file (the "Geometry" collection). The scale is composed with the type scale so
   // the per-step `font` is the brand's UI text size.
@@ -9543,6 +9635,7 @@ class HctApp extends HTMLElement {
         (id) => this.setGeomSpecMode(id),
         { cls: "canvas-seg", ariaLabel: "Geometry specimen mode", role: "group", idPrefix: "gspec" },
       ),
+      this.geomModeControl(),
       h("div", { class: "spacer" }),
       btn(icon("crosshair"), {
         title: "Fit — reset the canvas view to centre at 100%",
@@ -9583,7 +9676,7 @@ class HctApp extends HTMLElement {
   renderGeometryScene(view) {
     ensureTypeFonts();
     const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
-    const scale = geometryScale(this.doc); // composed with the type scale — per-step `font` is the brand UI size
+    const scale = this._activeGeomScale(); // composed with the type scale — per-step `font` is the brand UI size
     const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
     const tokensOnly = this.geomSpecMode === "tokens";
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -9657,7 +9750,7 @@ class HctApp extends HTMLElement {
   // of geometryScale(doc), no inputs. Reuses .an-card / .an-svg / legend(). `view` is accepted for dispatch
   // parity but unused (geometry is doc-driven, not palette-view-driven).
   geomAnalysisCards(view) {
-    const scale = geometryScale(this.doc);
+    const scale = this._activeGeomScale();
     const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
     return [
       card("Centering law — pad = ½(height − glyph)", this.graphGeomCentering(scale)),
@@ -9791,7 +9884,7 @@ class HctApp extends HTMLElement {
   geomRampTab() {
     const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
     const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
-    const scale = geometryScale(this.doc);
+    const scale = this._activeGeomScale();
     return h(
       "div",
       { class: "insp-body" },
@@ -9805,7 +9898,8 @@ class HctApp extends HTMLElement {
           ...GEOMETRY_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
         ),
       ),
-      this.slider("Base height", scale.baseHeight, 20, 48, 2, (v) => fmt(v) + "px", (v) => this.editDrag((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), baseHeight: Math.round(v) }; })),
+      this.slider(this.geomMode === "base" ? "Base height" : "Base height · this breakpoint", scale.baseHeight, 20, 48, 2, (v) => fmt(v) + "px", (v) => this._setActiveGeomBaseHeight(v)),
+      this._geomModeEditor(),
       h("p", { class: "insp-sub tyi-note" }, t.note),
       h(
         "div",
@@ -9844,7 +9938,7 @@ class HctApp extends HTMLElement {
   geomRadiusTab() {
     const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
     const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
-    const scale = geometryScale(this.doc);
+    const scale = this._activeGeomScale();
     return h(
       "div",
       { class: "insp-body" },
@@ -9873,7 +9967,7 @@ class HctApp extends HTMLElement {
   geomSpaceTab() {
     const cfg = this.doc.geometry || DEFAULT_GEOMETRY;
     const t = GEOMETRY_TREATMENTS.find((x) => x.id === cfg.treatment) || GEOMETRY_TREATMENTS[0];
-    const scale = geometryScale(this.doc);
+    const scale = this._activeGeomScale();
     const maxV = Math.max(1, ...Object.values(scale.space));
     return h(
       "div",
@@ -9900,7 +9994,7 @@ class HctApp extends HTMLElement {
   // geomExampleCard — the pinned live card: a real MD control built from the resolved geometry AND painted
   // in the SELECTED palette's roles (surface / onSurface + primary). Mirrors typeExampleCard's resolution.
   geomExampleCard(view) {
-    const scale = geometryScale(this.doc);
+    const scale = this._activeGeomScale();
     const s = scale.sizes.MD || Object.values(scale.sizes)[0];
     if (!s) return h("div", { class: "example-card" });
     const p = view.palettes[this.selectedIndex()];

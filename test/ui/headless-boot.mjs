@@ -1399,6 +1399,19 @@ app.downloadBytes = (bytes, name) => { geomZip = { bytes, name }; };
 app.downloadGeomTokens();
 ok(geomZip && /geometry-tokens\.zip$/.test(geomZip.name) && geomZip.bytes && geomZip.bytes.length > 200, `(geo) downloadGeomTokens emits a .zip (${geomZip && geomZip.name})`);
 app.downloadBytes = realDBgeo;
+// ── (geo-bp) Geometry breakpoint MODES (Phase 5) — mirror of (ty-bp): add/switch/edit/delete a baseHeight variant ──
+app.commit((d) => { d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); flushRaf();
+app.addGeomMode(); flushRaf();
+ok(Array.isArray(app.doc.geometry.modes) && app.doc.geometry.modes.length === 1 && app.geomMode === app.doc.geometry.modes[0].id, "(geo-bp) addGeomMode adds a mode + switches to it");
+ok(walk(app, (e) => e.tagName === "BUTTON" && e.getAttribute && /^gmode:/.test(e.getAttribute("data-fk") || "")).length >= 2, "(geo-bp) the canvas header Mode control shows Base + the new breakpoint");
+const _gbpId = app.doc.geometry.modes[0].id;
+app._setActiveGeomBaseHeight(40); app.commitDrag?.(); flushRaf();
+ok(app.doc.geometry.modes[0].baseHeight === 40 && app.doc.geometry.baseHeight === 28, "(geo-bp) the base-height slider edits the ACTIVE mode, not Base");
+ok(app._activeGeometry().baseHeight === 40 && app._activeGeomScale().baseHeight === 40, "(geo-bp) the active mode drives the resolved geometry scale (baseHeight = the mode's)");
+app.geomMode = "base"; flushRaf();
+ok(app._activeGeomScale().baseHeight === 28, "(geo-bp) switching back to Base resolves the base height");
+app.deleteGeomMode(_gbpId); flushRaf();
+ok(!app.doc.geometry.modes && app.geomMode === "base", "(geo-bp) deleting the active mode drops it + falls back to Base");
 app.commit((d) => { d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); // restore default
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".geom-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(geo) returning to Color restores the ramp canvas (color untouched)");

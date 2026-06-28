@@ -207,6 +207,12 @@ try {
   const geoShot = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(resolve(OUT, "geometry.png"), Buffer.from(geoShot.data, "base64"));
   console.log("  · screenshot → smoke-out/geometry.png");
+
+  // Geometry breakpoint MODES (Phase 5.2): the Mode control adds a named baseHeight variant; switching it
+  // re-resolves the size ramp at the mode's base control height.
+  await evalJS(`${el}.addGeomMode(); ${el}._setActiveGeomBaseHeight(40)`); await sleep(200);
+  ok(await evalJS(`(()=>{return ${el}.doc.geometry.modes && ${el}.doc.geometry.modes.length===1 && [...${el}.querySelectorAll('[data-fk^="gmode:"]')].length>=2 && ${el}._activeGeomScale().baseHeight===40})()`), "Geometry breakpoint mode: + adds a mode, the Mode control shows Base + it, and the ramp re-resolves at the mode's base height");
+  await evalJS(`${el}.commit((d)=>{ d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); ${el}.geomMode="base"`); await sleep(120);
   await evalJS(`${el}.setSection("color")`); await sleep(120);
 
   const shot = await send("Page.captureScreenshot", { format: "png" });

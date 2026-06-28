@@ -272,8 +272,16 @@ const GEOMETRY_TREATMENTS = ["comfortable", "compact", "spacious", "touch", "pil
 function clampGeometry(g) {
   g = (g && typeof g === "object") ? g : {};
   const treatment = GEOMETRY_TREATMENTS.includes(g.treatment) ? g.treatment : "comfortable";
-  let baseHeight = Number(g.baseHeight);
-  if (!Number.isFinite(baseHeight)) baseHeight = 28;
-  baseHeight = Math.max(20, Math.min(48, Math.round(baseHeight)));
-  return { treatment, baseHeight };
+  const clampH = (v) => { const n = Number(v); return Math.max(20, Math.min(48, Number.isFinite(n) ? Math.round(n) : 28)); };
+  const baseHeight = clampH(g.baseHeight);
+  const out = { treatment, baseHeight };
+  // breakpoint MODES (Phase 5) — each a named baseHeight override. OPTIONAL, like type.modes (the identity
+  // gate holds when absent). Each mode = { id, name, baseHeight }.
+  if (Array.isArray(g.modes) && g.modes.length) {
+    const modes = g.modes
+      .filter((m) => m && typeof m === "object" && typeof m.id === "string")
+      .map((m) => ({ id: m.id, name: typeof m.name === "string" ? m.name : "Mode", baseHeight: clampH(m.baseHeight) }));
+    if (modes.length) out.modes = modes;
+  }
+  return out;
 }
