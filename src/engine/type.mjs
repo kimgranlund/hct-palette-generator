@@ -84,31 +84,41 @@ export const TYPE_TREATMENTS = [
 
 export const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
 
-function buildCategory(p, factor) {
+// `overrides` (optional) — a flat per-cell SIZE override map keyed "<voiceName>|<stepName>", already
+// mode-selected by the caller. When a positive number exists for a step, it REPLACES the derived size and
+// the line-height RE-DERIVES from it (lineHeight = round(size · leading)); tracking + weight stay as the
+// scale computes them (the ratified "size lever; line re-derives; tracking/weight unchanged"). Absent /
+// non-positive ⇒ no effect, so the scale is byte-identical to the un-overridden one (the identity gate).
+function buildCategory(name, p, factor, overrides) {
   const out = {};
-  for (const [name, n] of p.steps) {
-    const size = Math.max(8, Math.round(p.base * factor * p.ratio ** n));
-    out[name] = {
+  for (const [step, n] of p.steps) {
+    const derived = Math.max(8, Math.round(p.base * factor * p.ratio ** n)); // the modular-scale size — the lever for tracking + weight (they STAY on the scale)
+    let size = derived;
+    const ov = overrides && overrides[name + "|" + step];
+    if (typeof ov === "number" && Number.isFinite(ov) && ov > 0) size = Math.round(ov); // the override moves SIZE (and line re-derives from it) — tracking/weight do NOT track it
+    out[step] = {
       size,
-      lineHeight: Math.round(size * p.leading),
-      letterSpacing: round(size * p.trackingEm, 2),
+      lineHeight: Math.round(size * p.leading), // line-height TRACKS the override (re-derives from the resolved size)
+      letterSpacing: round(derived * p.trackingEm, 2), // tracking STAYS on the modular-scale size (ratified "size lever; tracking/weight unchanged")
       weight: p.weight,
       textTransform: p.transform || "none",
-      paragraphSpacing: size,
+      paragraphSpacing: size, // paragraph rhythm intentionally tracks the resolved size (like lineHeight), not the derived scale
       paragraphIndent: 0,
     };
   }
   return out;
 }
 
-// typeScale — the resolved scale for a config { treatment, bodyBase }. `bodyBase` (the Body base size)
-// uniformly scales every category so the whole system grows/shrinks together while keeping its ratios.
+// typeScale — the resolved scale for a config { treatment, bodyBase, overrides? }. `bodyBase` (the Body base
+// size) uniformly scales every category so the whole system grows/shrinks together while keeping its ratios.
+// `overrides` (optional) is a flat per-cell size-override map (see buildCategory); ABSENT ⇒ identity.
 export function typeScale(config = {}) {
   const t = TYPE_TREATMENTS.find((x) => x.id === config.treatment) || TYPE_TREATMENTS[0];
   const bodyBase = Number(config.bodyBase) || t.categories.Body.base;
   const factor = bodyBase / t.categories.Body.base;
+  const overrides = config.overrides && typeof config.overrides === "object" ? config.overrides : null;
   const categories = {};
-  for (const [name, p] of Object.entries(t.categories)) categories[name] = buildCategory(p, factor);
+  for (const [name, p] of Object.entries(t.categories)) categories[name] = buildCategory(name, p, factor, overrides);
   return { treatment: t.id, label: t.label, fonts: { ...t.fonts }, roleOf: Object.fromEntries(Object.entries(t.categories).map(([k, v]) => [k, v.role])), categories };
 }
 

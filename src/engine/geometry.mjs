@@ -95,13 +95,22 @@ function buildSize(rawHeight, density, fontOverride) {
 // standalone power law — so the box (geometry) and the text in it (typography) share one source of truth.
 // `caret = font` and `gap = font/2` follow; the FRAME (height/icon/pad/radius) is untouched, so the
 // centering law still holds. `typed` reports whether the fonts came from the type scale.
+// `opts.overrides` (optional) — a flat per-size HEIGHT override map keyed "<sizeName>", already mode-selected
+// by the caller. When a positive number exists for a size, it REPLACES the scaled rawHeight fed to buildSize,
+// so icon/font/pad/radius/caret/gap ALL re-derive via the laws (and the type-composition `fontOverride` still
+// applies on top). Absent / non-positive ⇒ no effect, so the scale is byte-identical (the identity gate).
 export function geomScale(config = {}, opts = {}) {
   const t = GEOMETRY_TREATMENTS.find((x) => x.id === config.treatment) || GEOMETRY_TREATMENTS[0];
   const baseHeight = Number(config.baseHeight) || t.baseHeight;
   const factor = baseHeight / CANON_MD;
   const uiSteps = opts.typeScale && opts.typeScale.categories && opts.typeScale.categories.UI;
+  const overrides = opts.overrides && typeof opts.overrides === "object" ? opts.overrides : null;
   const sizes = {};
-  for (const [name, h] of SIZES) sizes[name] = buildSize(h * factor, t.density, uiSteps && uiSteps[name] ? uiSteps[name].size : null);
+  for (const [name, h] of SIZES) {
+    const ovH = overrides && overrides[name];
+    const rawHeight = (typeof ovH === "number" && Number.isFinite(ovH) && ovH > 0) ? ovH : h * factor;
+    sizes[name] = buildSize(rawHeight, t.density, uiSteps && uiSteps[name] ? uiSteps[name].size : null);
+  }
   const ladder = RADIUS_LADDERS[t.radiusStyle] || RADIUS_LADDERS.soft;
   const radii = { none: ladder[0], sm: ladder[1], md: ladder[2], lg: ladder[3], full: 9999 };
   const space = {};

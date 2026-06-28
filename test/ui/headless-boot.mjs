@@ -1382,11 +1382,46 @@ ok(walk(app, (e) => e.classList && e.classList.contains("tok-col-bp") && txtOf(e
 // CRITICAL: typeMode is STILL the breakpoint (bodyBase 20) here. The Base column must show the DOCUMENT
 // base (Body MD 16), NOT the active mode — and the breakpoint column carries the mode's 20.
 ok(app._typeTokenColumns()[0].scale.categories.Body.MD.size === 16 && app._typeTokenColumns()[1].scale.categories.Body.MD.size === 20, `(ty-tok) the Base column is pinned to the document base (Body MD 16), not the active mode (20) (got Base=${app._typeTokenColumns()[0].scale.categories.Body.MD.size}, bp=${app._typeTokenColumns()[1].scale.categories.Body.MD.size})`);
+// ── (ty-tok-ov) Phase 3 — the value cell is an EDITABLE SIZE input; editing writes a per-cell override that
+// re-derives the line, persists, reflects in the column + every export, and a ↺ resets it. ──
+const tCellInput = (fk) => walk(app, (e) => e.tagName === "INPUT" && e.getAttribute && e.getAttribute("data-fk") === fk)[0];
+ok(!!tCellInput("tytok:Body:MD:base"), "(ty-tok-ov) each value cell is an editable size input (data-fk = voice:step:modeKey)");
+// edit the Base Body·MD size → 40. (Body MD leading 1.55 ⇒ line re-derives to round(40·1.55)=62.)
+const tIn = tCellInput("tytok:Body:MD:base"); tIn.value = "40"; tIn.dispatch("change", {}); flushRaf();
+ok(app.doc.type.tokenOverrides && app.doc.type.tokenOverrides["Body|MD|base"] === 40, "(ty-tok-ov) editing a cell writes doc.type.tokenOverrides[<voice>|<step>|<modeKey>]");
+ok(app._typeScaleFor("base").categories.Body.MD.size === 40 && app._typeScaleFor("base").categories.Body.MD.lineHeight === Math.round(40 * 1.55), "(ty-tok-ov) the override re-derives the scale (size = the override, line = round(size·leading))");
+ok(app._typeTokenColumns()[0].scale.categories.Body.MD.size === 40, "(ty-tok-ov) the matrix Base column reflects the override");
+ok(hydSet(serSet(app.doc)).type.tokenOverrides["Body|MD|base"] === 40, "(ty-tok-ov) the override survives serialize → hydrate (persists)");
+// (ty-tok-clamp) MAJOR 4 — the live setter CLAMPS to [1,512] (the input min/max + persist range), so an
+// out-of-range edit stores the clamped value LIVE (not 9999 live → 512 on reload, which would be live≠persist).
+app.setTypeTokenOverride("Display", "XL", "base", 9999); flushRaf();
+ok(app.doc.type.tokenOverrides["Display|XL|base"] === 512, `(ty-tok-clamp) an over-max type edit (9999) is clamped to 512 LIVE (got ${app.doc.type.tokenOverrides["Display|XL|base"]})`);
+ok(hydSet(serSet(app.doc)).type.tokenOverrides["Display|XL|base"] === 512, "(ty-tok-clamp) the clamped live value equals the persisted value (live === persist)");
+app.clearTypeTokenOverride("Display", "XL", "base"); flushRaf();
+// the override flows to the export: the BASE @media CSS carries 40px for --type-body-md-size.
+{
+  const { typeTokensResponsiveCSS: tcss } = await import("../../src/engine/type.mjs");
+  const css = tcss(app._typeScaleFor("base"), app._typeModeScales());
+  ok(/--type-body-md-size: 40px/.test(css), "(ty-tok-ov) the responsive CSS export carries the overridden Base size (40px)");
+}
+// a per-MODE override reaches that mode's DTCG file too.
+app.setTypeTokenOverride("Body", "MD", _bpId, 33); flushRaf();
+ok(app.doc.type.tokenOverrides["Body|MD|" + _bpId] === 33 && JSON.parse(app._typeModeDTCGFiles()[0].data).typography.Body.MD.$value.fontSize === "33px", "(ty-tok-ov) a per-breakpoint override reaches that mode's DTCG export (33px)");
+app.clearTypeTokenOverride("Body", "MD", _bpId); flushRaf();
+// ↺ reset clears the Base override and drops the key entirely (no overrides left).
+app.clearTypeTokenOverride("Body", "MD", "base"); flushRaf();
+ok(!app.doc.type.tokenOverrides, "(ty-tok-ov) ↺ reset clears the override (and drops the now-empty tokenOverrides)");
+ok(app._typeScaleFor("base").categories.Body.MD.size === 16, "(ty-tok-ov) after reset the cell returns to the derived size (16)");
 app.setTypeSpecMode("specimen"); flushRaf();
 app.typeMode = "base"; flushRaf();
 ok(app._activeType().bodyBase === 16, "(ty-bp) switching back to Base resolves the base body size");
+// (ty-tok-orphan) MAJOR 5 — deleting a mode STRIPS that mode's per-cell overrides (no "...|<id>" orphans
+// survive serialize→hydrate forever). Set a per-mode override, delete the mode, assert the key is gone.
+app.setTypeTokenOverride("Body", "MD", _bpId, 21); flushRaf();
+ok(app.doc.type.tokenOverrides && app.doc.type.tokenOverrides["Body|MD|" + _bpId] === 21, "(ty-tok-orphan) a per-mode override is set before deletion");
 app.deleteTypeMode(_bpId); flushRaf();
 ok(!app.doc.type.modes && app.typeMode === "base", "(ty-bp) deleting the active mode drops it + falls back to Base");
+ok(!app.doc.type.tokenOverrides, "(ty-tok-orphan) deleting the mode strips its per-cell override AND drops the now-empty tokenOverrides map");
 app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore default
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".type-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(ty) returning to Color restores the ramp canvas (color untouched)");
@@ -1461,11 +1496,49 @@ ok(walk(app, (e) => e.classList && e.classList.contains("tok-col-bp") && txtOf(e
 // CRITICAL: geomMode is STILL the breakpoint (baseHeight 40) here. The Base column must show the DOCUMENT
 // base (28), NOT the active mode — and the breakpoint column carries the mode's 40.
 ok(app._geomTokenColumns()[0].scale.baseHeight === 28 && app._geomTokenColumns()[1].scale.baseHeight === 40, `(geo-tok) the Base column is pinned to the document base (28), not the active mode (40) (got Base=${app._geomTokenColumns()[0].scale.baseHeight}, bp=${app._geomTokenColumns()[1].scale.baseHeight})`);
+// ── (geo-tok-ov) Phase 3 — the value cell is an EDITABLE HEIGHT input; editing writes a per-cell override
+// that re-derives icon/font/pad/radius via the laws, persists, reflects in the column + exports, ↺ resets. ──
+const gCellInput = (fk) => walk(app, (e) => e.tagName === "INPUT" && e.getAttribute && e.getAttribute("data-fk") === fk)[0];
+ok(!!gCellInput("geotok:MD:base"), "(geo-tok-ov) each value cell is an editable height input (data-fk = size:modeKey)");
+const gIn = gCellInput("geotok:MD:base"); gIn.value = "50"; gIn.dispatch("change", {}); flushRaf();
+ok(app.doc.geometry.tokenOverrides && app.doc.geometry.tokenOverrides["MD|base"] === 50, "(geo-tok-ov) editing a cell writes doc.geometry.tokenOverrides[<size>|<modeKey>]");
+{
+  const md = app._geomScaleFor("base").sizes.MD;
+  ok(md.height === 50 && md.padding === (md.height - md.icon) / 2, "(geo-tok-ov) the override re-derives the frame via the laws (height = override, pad = (h−icon)/2)");
+}
+ok(app._geomTokenColumns()[0].scale.sizes.MD.height === 50, "(geo-tok-ov) the matrix Base column reflects the override");
+ok(hydSet(serSet(app.doc)).geometry.tokenOverrides["MD|base"] === 50, "(geo-tok-ov) the override survives serialize → hydrate (persists)");
+// (geo-tok-clamp) MAJOR 4 — the live setter CLAMPS to [8,256]. A sub-floor edit (3) would otherwise yield
+// NEGATIVE padding ((h−icon)/2 < 0); it stores the floor (8) live, matching the input min + persist range.
+app.setGeomTokenOverride("XS", "base", 3); flushRaf();
+ok(app.doc.geometry.tokenOverrides["XS|base"] === 8, `(geo-tok-clamp) a sub-floor geom edit (3) is clamped to 8 LIVE (got ${app.doc.geometry.tokenOverrides["XS|base"]})`);
+ok(app._geomScaleFor("base").sizes.XS.padding >= 0, "(geo-tok-clamp) the clamped height keeps padding non-negative (no negative ½(h−icon))");
+ok(hydSet(serSet(app.doc)).geometry.tokenOverrides["XS|base"] === 8, "(geo-tok-clamp) the clamped live value equals the persisted value (live === persist)");
+app.setGeomTokenOverride("XS", "base", 9999); flushRaf();
+ok(app.doc.geometry.tokenOverrides["XS|base"] === 256, `(geo-tok-clamp) an over-max geom edit (9999) is clamped to 256 LIVE (got ${app.doc.geometry.tokenOverrides["XS|base"]})`);
+app.clearGeomTokenOverride("XS", "base"); flushRaf();
+{
+  const { geomTokensResponsiveCSS: gcss } = await import("../../src/engine/geometry.mjs");
+  const css = gcss(app._geomScaleFor("base"), app._geomModeScales());
+  ok(/--size-md-height: 50px/.test(css), "(geo-tok-ov) the responsive CSS export carries the overridden Base height (50px)");
+}
+// a per-MODE override reaches that mode's DTCG file too.
+app.setGeomTokenOverride("MD", _gbpId, 44); flushRaf();
+ok(app.doc.geometry.tokenOverrides["MD|" + _gbpId] === 44 && JSON.parse(app._geomModeDTCGFiles()[0].data).size.MD.height.$value === "44px", "(geo-tok-ov) a per-breakpoint override reaches that mode's DTCG export (44px)");
+app.clearGeomTokenOverride("MD", _gbpId); flushRaf();
+app.clearGeomTokenOverride("MD", "base"); flushRaf();
+ok(!app.doc.geometry.tokenOverrides, "(geo-tok-ov) ↺ reset clears the override (and drops the now-empty tokenOverrides)");
+ok(app._geomScaleFor("base").sizes.MD.height === 28, "(geo-tok-ov) after reset the cell returns to the derived height (28)");
 app.setGeomSpecMode("controls"); flushRaf();
 app.geomMode = "base"; flushRaf();
 ok(app._activeGeomScale().baseHeight === 28, "(geo-bp) switching back to Base resolves the base height");
+// (geo-tok-orphan) MAJOR 5 — deleting a mode STRIPS that mode's per-cell overrides (no orphaned "...|<id>"
+// keys survive serialize→hydrate forever). Set a per-mode override, delete the mode, assert the key is gone.
+app.setGeomTokenOverride("MD", _gbpId, 40); flushRaf();
+ok(app.doc.geometry.tokenOverrides && app.doc.geometry.tokenOverrides["MD|" + _gbpId] === 40, "(geo-tok-orphan) a per-mode override is set before deletion");
 app.deleteGeomMode(_gbpId); flushRaf();
 ok(!app.doc.geometry.modes && app.geomMode === "base", "(geo-bp) deleting the active mode drops it + falls back to Base");
+ok(!app.doc.geometry.tokenOverrides, "(geo-tok-orphan) deleting the mode strips its per-cell override AND drops the now-empty tokenOverrides map");
 app.commit((d) => { d.geometry = { treatment: "comfortable", baseHeight: 28 }; }); // restore default
 app.setSection("color"); flushRaf();
 ok(app.section === "color" && !app.querySelector(".geom-spec") && !!app.querySelector(".canvas-scene") && app.canvasView === "palettes", "(geo) returning to Color restores the ramp canvas (color untouched)");

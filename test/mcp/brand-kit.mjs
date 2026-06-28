@@ -27,6 +27,29 @@ const typeOnly = brandKit(defaultDocument(), { type: true });
 ok(!typeOnly.palettes && !typeOnly.roles && typeOnly.type && !typeOnly.geometry, "brandKit({type}) omits colour + geometry");
 const geomOnly = brandKit(defaultDocument(), { geometry: true });
 ok(!geomOnly.palettes && !geomOnly.type && geomOnly.geometry, "brandKit({geometry}) omits colour + type");
+
+// BASE per-cell overrides reach the kit (Phase 3 — the MCP zip + get_type/get_geometry are override-aware,
+// like every other export). A "<...>|base"-keyed tokenOverride must surface on kit.type / kit.geometry.
+{
+  const baseDoc = defaultDocument();
+  const ovDoc = {
+    ...baseDoc,
+    type: { ...baseDoc.type, tokenOverrides: { "Body|MD|base": 99, "UI|MD|base": 33 } },
+    geometry: { ...baseDoc.geometry, tokenOverrides: { "MD|base": 50 } },
+  };
+  const ovKit = brandKit(ovDoc);
+  const plainKit = brandKit(baseDoc);
+  ok(ovKit.type.categories.Body.MD.size === 99, `a BASE type override reaches kit.type (got ${ovKit.type.categories.Body.MD.size}, want 99)`);
+  ok(ovKit.type.categories.Body.MD.size !== plainKit.type.categories.Body.MD.size, "the type override actually moves kit.type off the un-overridden kit");
+  ok(ovKit.geometry.sizes.MD.height === 50, `a BASE geom override reaches kit.geometry (got ${ovKit.geometry.sizes.MD.height}, want 50)`);
+  ok(ovKit.geometry.sizes.MD.height !== plainKit.geometry.sizes.MD.height, "the geom override actually moves kit.geometry off the un-overridden kit");
+  // the COMPOSED per-step `font` carries the type override too (the geom MD font = the overridden UI MD size)
+  ok(ovKit.geometry.sizes.MD.font === 33, `the composed geom font carries the BASE type UI override (got ${ovKit.geometry.sizes.MD.font}, want 33)`);
+  // a NON-base ("|md")-keyed override must NOT touch the BASE kit (the base slice is mode-local)
+  const nonBaseDoc = { ...baseDoc, type: { ...baseDoc.type, tokenOverrides: { "Body|MD|md": 99 } } };
+  ok(brandKit(nonBaseDoc).type.categories.Body.MD.size === plainKit.type.categories.Body.MD.size, "a non-base (|md) override does NOT leak into the BASE kit");
+}
+
 const dir = mkdtempSync(join(tmpdir(), "nonoun-mcp-"));
 const kitPath = join(dir, "brand-kit.json");
 writeFileSync(kitPath, JSON.stringify(kit));

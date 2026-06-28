@@ -116,6 +116,30 @@ ok(G.geomScale({ treatment: "nope" }).treatment === G.GEOMETRY_TREATMENTS[0].id,
   ok(big.sizes.MD.font > composed.sizes.MD.font, "a larger type bodyBase scales the geometry font (shared source of truth)");
 }
 
+// ── per-cell HEIGHT overrides (Tokens-matrix Phase 3): the height lever; icon/font/pad/radius all re-derive ──
+{
+  const baseline = G.geomScale({ treatment: "comfortable", baseHeight: 28 });
+  // IDENTITY: no overrides (and an empty map) is byte-identical to the un-overridden scale.
+  ok(JSON.stringify(G.geomScale({ treatment: "comfortable", baseHeight: 28 }, {})) === JSON.stringify(baseline), "no overrides ⇒ scale is byte-identical (identity gate)");
+  ok(JSON.stringify(G.geomScale({ treatment: "comfortable", baseHeight: 28 }, { overrides: {} })) === JSON.stringify(baseline), "empty overrides ⇒ scale is byte-identical (identity gate)");
+  // an override feeds buildSize as the rawHeight, so EVERY derived dim re-computes via the laws.
+  const ovH = 50;
+  const ref = G.geomScale({ treatment: "comfortable", baseHeight: 50 }).sizes.MD; // what a 50px raw height yields through buildSize
+  const ov = G.geomScale({ treatment: "comfortable", baseHeight: 28 }, { overrides: { MD: ovH } }).sizes.MD;
+  ok(ov.height === ref.height, `override height drives buildSize (got ${ov.height}, want ${ref.height})`);
+  ok(ov.icon === ref.icon && ov.font === ref.font && ov.padding === ref.padding && ov.radiusPill === ref.radiusPill && ov.caret === ref.caret && ov.gap === ref.gap, "icon/font/pad/radius/caret/gap ALL re-derive from the override via the laws");
+  ok(ov.padding === (ov.height - ov.icon) / 2, "the centering law still holds on the overridden cell");
+  // only the targeted size changes — every other size stays at the baseline.
+  const ovScale = G.geomScale({ treatment: "comfortable", baseHeight: 28 }, { overrides: { MD: ovH } });
+  ok(ovScale.sizes.LG.height === baseline.sizes.LG.height && ovScale.sizes.XS.height === baseline.sizes.XS.height, "an override touches only its size, no others");
+  // composition still applies on top: the type UI font wins for the overridden cell's `font` (frame re-derives from height).
+  const ts = typeScale({ treatment: "product", bodyBase: 16 });
+  const comp = G.geomScale({ treatment: "comfortable", baseHeight: 28 }, { typeScale: ts, overrides: { MD: ovH } }).sizes.MD;
+  ok(comp.font === ts.categories.UI.MD.size && comp.height === ref.height, "composition + override coexist: font from the type UI scale, frame from the override height");
+  // a non-positive / non-numeric override is ignored (no effect).
+  ok(JSON.stringify(G.geomScale({ treatment: "comfortable", baseHeight: 28 }, { overrides: { MD: 0, LG: -3, XS: NaN } })) === JSON.stringify(baseline), "non-positive / NaN overrides are ignored (no effect)");
+}
+
 // ── Figma number-variable emit: a "Geometry" collection of unitless FLOAT tokens ──
 {
   const f = G.geomTokensFigma(G.geomScale({ treatment: "comfortable" }));

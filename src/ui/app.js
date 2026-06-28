@@ -20,7 +20,6 @@ import {
   seedFromKeyColor,
   hexToOklch,
   brandKit,
-  geometryScale,
   SCRIM_BASES,
   SCRIM_STEPS,
 } from "./model.mjs";
@@ -31,7 +30,7 @@ import { TYPE_FONTS_CSS } from "./type-fonts.js";
 import { CATEGORY_INDEX, loadCategory } from "./categories/index.js";
 import { deriveNeutral, deriveRelative, RELATIONSHIPS } from "../engine/derive.mjs";
 import { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, TYPE_TREATMENTS, DEFAULT_TYPE } from "../engine/type.mjs";
-import { geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } from "../engine/geometry.mjs";
+import { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } from "../engine/geometry.mjs";
 import { zipStore } from "./zip.mjs";
 import { icon, brandMark } from "./icons.js";
 
@@ -406,7 +405,7 @@ class HctApp extends HTMLElement {
     this.colorMode = "light"; // Color section value-mode control: light | dark | both (both = the side-by-side Compare view) — ui-session
     this.canvasView = "palettes"; // canvas content: palettes (the ramps) | scrims | mapping (the role→raw table)
     this.section = "color"; // editor section: color | typography | geometry — ui-session, routes the whole editor (never persisted)
-    this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (read-only token matrix: Base + breakpoints) — type-section sub-state
+    this.typeSpecMode = "specimen"; // typography canvas: specimen (live faces) | tokens (editable token matrix: Base + breakpoints) — type-section sub-state
     this.typeMode = "base"; // active Typography breakpoint mode: "base" | a doc.type.modes[].id (Phase 5) — ui-session
     this.stopsMode = "core"; // palette ramp density: core (19 display stops) | extended (25 EXPORT_STOPS)
     this.mapTextMode = false; // Mapping table raw-token editor: false = select menu, true = free text input
@@ -432,7 +431,7 @@ class HctApp extends HTMLElement {
     this.applyGateDontShow = false; // the "don't show again" checkbox (transient, reset on open)
     this.settingsOpen = false; // the Settings page (token-mapping + app prefs)
     this.settingsSection = "mapping"; // which Settings nav item is active (left-nav page layout)
-    this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (read-only token matrix: Base + breakpoints) — geom-section sub-state
+    this.geomSpecMode = "controls"; // geometry canvas: controls (live mock controls on the ramp) | tokens (editable token matrix: Base + breakpoints) — geom-section sub-state
     this.geomMode = "base"; // active Geometry breakpoint mode: "base" | a doc.geometry.modes[].id (Phase 5) — ui-session
     this.geomSegment = "ramp"; // right-pane Geometry inspector tab: ramp | radius | space (ui-session)
     this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
@@ -1523,7 +1522,7 @@ class HctApp extends HTMLElement {
   // diagnostics of the resolved scale. `view` is accepted for dispatch parity but unused (typography
   // is doc-driven, not palette-view-driven). Reuses .an-card / .an-svg / legend().
   typeAnalysisCards(view) {
-    const scale = typeScale(this._activeType());
+    const scale = this._activeTypeScale();
     const card = (label, body) => h("div", { class: "an-card" }, h("div", { class: "an-label" }, label), body);
     const SHORT = { "Display": "Disp", "Heading Editorial": "H·Ed", "Heading Context": "H·Cx", "Heading Eyebrow": "H·Eye", "Body": "Body", "UI": "UI", "Code": "Code" };
     const series = Object.keys(scale.categories)
@@ -2662,6 +2661,13 @@ class HctApp extends HTMLElement {
     const m = (t.modes || []).find((x) => x.id === this.typeMode);
     return m ? { ...t, bodyBase: m.bodyBase } : t; // a deleted/unknown mode falls back to base
   }
+  // the resolved type scale at the ACTIVE mode, WITH that mode's per-cell overrides (so the specimen +
+  // inspector reflect the matrix edits). A deleted/unknown mode resolves through "base" in _typeScaleFor.
+  _activeTypeScale() {
+    const t = this.doc.type || DEFAULT_TYPE;
+    const key = this.typeMode === "base" || !(t.modes || []).some((m) => m.id === this.typeMode) ? "base" : this.typeMode;
+    return this._typeScaleFor(key);
+  }
   // the Mode control in the Typography canvas header: Base + each breakpoint, plus "+" to add one.
   typeModeControl() {
     const t = this.doc.type || DEFAULT_TYPE;
@@ -2695,6 +2701,13 @@ class HctApp extends HTMLElement {
       if (!d.type || !Array.isArray(d.type.modes)) return;
       d.type = { ...d.type, modes: d.type.modes.filter((m) => m.id !== id) };
       if (d.type.modes.length === 0) delete d.type.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.type.tokenOverrides) {
+        d.type = { ...d.type, tokenOverrides: { ...d.type.tokenOverrides } };
+        for (const k of Object.keys(d.type.tokenOverrides)) if (k.endsWith("|" + id)) delete d.type.tokenOverrides[k];
+        if (!Object.keys(d.type.tokenOverrides).length) delete d.type.tokenOverrides;
+      }
     });
   }
   renameTypeMode(id, name) {
@@ -2807,7 +2820,7 @@ class HctApp extends HTMLElement {
 
   // renderTypeCanvas — the Typography center. Specimen mode renders the full live specimen in the same
   // pannable/zoomable .canvas-area + .canvas-scene shell the color ramps use (wirePanZoom + applyTransform).
-  // Tokens mode renders a READ-ONLY token MATRIX (rows = steps, cols = Base + each breakpoint) in the
+  // Tokens mode renders an EDITABLE token MATRIX (Phase 3 — per-cell size/height overrides + ↺) (rows = steps, cols = Base + each breakpoint) in the
   // scrolling .is-table shell instead — exactly how Color's Mapping view flips (see renderCanvasArea).
   renderTypeCanvas(view) {
     if (this.typeSpecMode === "tokens") return this._tokensTableArea("Typography tokens — Base + breakpoints", this.renderTypeTokensTable());
@@ -2840,40 +2853,142 @@ class HctApp extends HTMLElement {
     );
   }
 
+  // ── Tokens-matrix per-cell overrides (Phase 3) — the size (type) / height (geom) lever. CENTRALIZED here
+  // so every scale materialization (matrix · specimen/controls · exports) reads the SAME overrides. Storage:
+  //   doc.type.tokenOverrides     = { "<voice>|<step>|<modeKey>": <sizePx> }
+  //   doc.geometry.tokenOverrides = { "<size>|<modeKey>": <heightPx> }
+  // modeKey = "base" or a breakpoint mode's id; "|" never appears in a voice/step/size name. ──
+
+  // _typeOverridesFor(modeKey) — the flat { "<voice>|<step>": size } slice for one mode (the suffix stripped).
+  _typeOverridesFor(modeKey) {
+    const all = (this.doc.type && this.doc.type.tokenOverrides) || null;
+    if (!all) return undefined;
+    const out = {};
+    const suffix = "|" + modeKey;
+    for (const k of Object.keys(all)) {
+      if (!k.endsWith(suffix)) continue;
+      out[k.slice(0, k.length - suffix.length)] = all[k]; // "<voice>|<step>"
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  // _typeScaleFor(modeKey) — the resolved typeScale for a mode WITH that mode's per-cell overrides applied.
+  // "base" → doc.type; a mode id → {...doc.type, bodyBase: mode.bodyBase}. The single place a type scale is
+  // built so overrides reach the matrix, the specimen, and every export consistently.
+  _typeScaleFor(modeKey) {
+    const t = this.doc.type || DEFAULT_TYPE;
+    const base = modeKey === "base" ? t : (() => { const m = (t.modes || []).find((x) => x.id === modeKey); return m ? { ...t, bodyBase: m.bodyBase } : t; })();
+    return typeScale({ ...base, overrides: this._typeOverridesFor(modeKey) });
+  }
+  // _geomOverridesFor(modeKey) — the flat { "<size>": height } slice for one mode (the suffix stripped).
+  _geomOverridesFor(modeKey) {
+    const all = (this.doc.geometry && this.doc.geometry.tokenOverrides) || null;
+    if (!all) return undefined;
+    const out = {};
+    const suffix = "|" + modeKey;
+    for (const k of Object.keys(all)) {
+      if (!k.endsWith(suffix)) continue;
+      out[k.slice(0, k.length - suffix.length)] = all[k]; // "<size>"
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  // _geomScaleFor(modeKey) — the resolved geometry scale for a mode WITH that mode's per-cell HEIGHT
+  // overrides applied, COMPOSED with the type scale at the SAME mode (so the shared `font` tracks too).
+  _geomScaleFor(modeKey) {
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    const cfg = modeKey === "base" ? g : (() => { const m = (g.modes || []).find((x) => x.id === modeKey); return m ? { ...g, baseHeight: m.baseHeight } : g; })();
+    return geomScale(cfg, { typeScale: this._typeScaleFor(modeKey), overrides: this._geomOverridesFor(modeKey) });
+  }
+
+  // setTypeTokenOverride / clearTypeTokenOverride — write/reset one per-cell SIZE override (one undo step;
+  // persisted). Mirrors setRoleOverride/clearRoleOverride. A non-positive/NaN size is ignored (use ↺ to reset).
+  setTypeTokenOverride(voice, step, modeKey, size) {
+    let n = Math.round(Number(size));
+    if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(1, Math.min(512, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist
+    const key = voice + "|" + step + "|" + modeKey;
+    this.commit((d) => {
+      d.type = { ...(d.type || DEFAULT_TYPE) };
+      d.type.tokenOverrides = { ...(d.type.tokenOverrides || {}), [key]: n };
+    });
+  }
+  clearTypeTokenOverride(voice, step, modeKey) {
+    const key = voice + "|" + step + "|" + modeKey;
+    this.commit((d) => {
+      if (!d.type || !d.type.tokenOverrides || !(key in d.type.tokenOverrides)) return;
+      d.type = { ...d.type, tokenOverrides: { ...d.type.tokenOverrides } };
+      delete d.type.tokenOverrides[key];
+      if (Object.keys(d.type.tokenOverrides).length === 0) delete d.type.tokenOverrides;
+    });
+  }
+  setGeomTokenOverride(size, modeKey, height) {
+    let n = Math.round(Number(height));
+    if (!Number.isFinite(n) || n <= 0) return;
+    n = Math.max(8, Math.min(256, n)); // clamp to the input min/max + persist's clampTokenOverrides range, so live === persist (and a sub-floor height can't yield negative padding)
+    const key = size + "|" + modeKey;
+    this.commit((d) => {
+      d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
+      d.geometry.tokenOverrides = { ...(d.geometry.tokenOverrides || {}), [key]: n };
+    });
+  }
+  clearGeomTokenOverride(size, modeKey) {
+    const key = size + "|" + modeKey;
+    this.commit((d) => {
+      if (!d.geometry || !d.geometry.tokenOverrides || !(key in d.geometry.tokenOverrides)) return;
+      d.geometry = { ...d.geometry, tokenOverrides: { ...d.geometry.tokenOverrides } };
+      delete d.geometry.tokenOverrides[key];
+      if (Object.keys(d.geometry.tokenOverrides).length === 0) delete d.geometry.tokenOverrides;
+    });
+  }
+
   // _typeTokenColumns — the ordered column set for the Typography token matrix: Base first, then one
   // column per breakpoint MODE sorted ascending by minWidth (the responsive cascade). Each entry carries
-  // the resolved typeScale so a cell reads the value at that step × that mode. Mirrors _typeModeScales()
-  // (same scale resolution) but prepends Base = the active doc.type scale and sorts by width.
+  // the resolved (override-aware) typeScale + its real modeKey so a cell can build its override key and read
+  // the value at that step × that mode. Built via _typeScaleFor so overrides match the specimen + exports.
   _typeTokenColumns() {
-    const base = this.doc.type || DEFAULT_TYPE; // the DOCUMENT base — mode-independent (NOT _activeType, which tracks the header Mode selector)
-    const cols = [{ id: "base", name: "Base", minWidth: null, scale: typeScale(base) }];
-    const modes = this._typeModeScales()
-      .map((m) => ({ id: "tm", name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: m.scale }))
+    const t = this.doc.type || DEFAULT_TYPE; // the DOCUMENT base — mode-independent (NOT _activeType, which tracks the header Mode selector)
+    const cols = [{ id: "base", modeKey: "base", name: "Base", minWidth: null, scale: this._typeScaleFor("base") }];
+    const modes = (t.modes || [])
+      .map((m) => ({ id: m.id, modeKey: m.id, name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: this._typeScaleFor(m.id) }))
       .sort((a, b) => a.minWidth - b.minWidth);
     return cols.concat(modes);
   }
 
-  // renderTypeTokensTable — the READ-ONLY Typography token MATRIX (Phase 1). Rows = type steps GROUPED by
+  // renderTypeTokensTable — the EDITABLE Typography token MATRIX (Phase 3). Rows = type steps GROUPED by
   // voice (Display · the Headings · Body · UI · Code) with a group-header row; the first (sticky) column is
-  // the token NAME (--type-{voice}-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each cell
-  // shows size/line + a compact w{weight} · {tracking} so the responsive cascade is scannable. Extends the
-  // .map-table chrome — no editing, no reset, no width presets (those are later phases).
+  // the token NAME (--type-{voice}-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each value
+  // cell is a SIZE number input (the lever): editing it writes doc.type.tokenOverrides[<voice>|<step>|<mode>]
+  // and the line/weight/tracking re-derive beneath; an overridden cell gets `.ov` + a ↺ reset. The override
+  // flows to the specimen + every export automatically (the CSS @media + per-mode DTCG build from this scale).
   renderTypeTokensTable() {
     const cols = this._typeTokenColumns();
     const base = cols[0].scale;
+    const ov = (this.doc.type && this.doc.type.tokenOverrides) || {};
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const cats = Object.keys(base.categories); // the seven named groups, engine order
     const total = cats.reduce((a, c) => a + Object.keys(base.categories[c]).length, 0);
-    // a single value cell: size/line on top, w{weight} · {tracking} beneath (or "—" if the mode lacks it).
-    const cell = (scale, cat, step) => {
-      const s = scale.categories[cat] && scale.categories[cat][step];
+    // a single value cell: an editable SIZE input (px), w{weight} · {tracking} · line beneath, ↺ when overridden.
+    const cell = (col, cat, step) => {
+      const s = col.scale.categories[cat] && col.scale.categories[cat][step];
       if (!s) return h("td", { class: "tok-cell" }, h("span", { class: "tok-na" }, "—"));
       const tr = `${s.letterSpacing >= 0 ? "+" : ""}${s.letterSpacing}`;
+      const overridden = (cat + "|" + step + "|" + col.modeKey) in ov;
       return h(
         "td",
-        { class: "tok-cell" },
-        h("code", { class: "tok-val" }, `${s.size}/${s.lineHeight}`),
-        h("span", { class: "tok-sub" }, `w${s.weight} · ${tr}`),
+        { class: "tok-cell" + (overridden ? " tok-cell-ov" : "") },
+        h(
+          "div",
+          { class: "tok-edit" },
+          h("input", {
+            class: "tok-input" + (overridden ? " ov" : ""),
+            type: "number", min: "1", max: "512", step: "1",
+            value: String(s.size),
+            "data-fk": "tytok:" + cat + ":" + step + ":" + col.modeKey,
+            "aria-label": `${cat} ${step} size · ${col.name} (px)`,
+            onchange: (e) => this.setTypeTokenOverride(cat, step, col.modeKey, e.target.value),
+          }),
+          overridden ? btn(icon("arrow-counter-clockwise", { size: 12 }), { variant: "bare", cls: "tok-reset", title: "Reset to derived size", ariaLabel: `Reset ${cat} ${step} · ${col.name} to the derived size`, onclick: () => this.clearTypeTokenOverride(cat, step, col.modeKey) }) : false,
+        ),
+        h("span", { class: "tok-sub" }, `${s.lineHeight} · w${s.weight} · ${tr}`),
       );
     };
     const headCells = cols.map((c) =>
@@ -2892,7 +3007,7 @@ class HctApp extends HTMLElement {
       for (const step of ordered) {
         rows.push(h("tr", { class: "tok-row" },
           h("th", { class: "tok-name", scope: "row" }, h("code", {}, `--type-${kebab(cat)}-${kebab(step)}`)),
-          ...cols.map((c) => cell(c.scale, cat, step))));
+          ...cols.map((c) => cell(c, cat, step))));
       }
     }
     return h(
@@ -2900,7 +3015,8 @@ class HctApp extends HTMLElement {
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Type tokens"),
-        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${cats.length} groups · ${total} steps · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; line-height re-derives, tracking + weight stay.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -2914,30 +3030,46 @@ class HctApp extends HTMLElement {
   // per breakpoint MODE sorted ascending by minWidth. Mirrors _typeTokenColumns / _geomModeScales but
   // prepends Base = the DOCUMENT base composed geometry scale (mode-independent — NOT _activeGeomScale).
   _geomTokenColumns() {
-    const cols = [{ id: "base", name: "Base", minWidth: null, scale: geometryScale({ ...this.doc, geometry: this.doc.geometry || DEFAULT_GEOMETRY }) }];
-    const modes = this._geomModeScales()
-      .map((m) => ({ id: "gm", name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: m.scale }))
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    const cols = [{ id: "base", modeKey: "base", name: "Base", minWidth: null, scale: this._geomScaleFor("base") }];
+    const modes = (g.modes || [])
+      .map((m) => ({ id: m.id, modeKey: m.id, name: m.name || "Mode", minWidth: Number(m.minWidth) || 0, scale: this._geomScaleFor(m.id) }))
       .sort((a, b) => a.minWidth - b.minWidth);
     return cols.concat(modes);
   }
 
-  // renderGeomTokensTable — the READ-ONLY Geometry token MATRIX (Phase 1). Rows = the six control sizes
+  // renderGeomTokensTable — the EDITABLE Geometry token MATRIX (Phase 3). Rows = the six control sizes
   // (XS..2XL, largest→smallest) with a group-header row; the first (sticky) column is the token NAME
-  // (--size-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each cell shows the key dims —
-  // height, then icon/font/pad/radius compactly. Extends the .map-table chrome — read-only.
+  // (--size-{step}). Columns = Base + each breakpoint mode (≥{minWidth}px). Each value cell is a HEIGHT
+  // number input (the lever): editing it writes doc.geometry.tokenOverrides[<size>|<mode>] and
+  // icon/font/pad/radius ALL re-derive via the laws beneath; an overridden cell gets `.ov` + a ↺ reset.
   renderGeomTokensTable() {
     const cols = this._geomTokenColumns();
     const base = cols[0].scale;
+    const ov = (this.doc.geometry && this.doc.geometry.tokenOverrides) || {};
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const SIZE_NAMES = ["2XL", "XL", "LG", "MD", "SM", "XS"]; // largest → smallest
     const present = SIZE_NAMES.filter((n) => base.sizes[n]);
-    const cell = (scale, name) => {
-      const s = scale.sizes[name];
+    const cell = (col, name) => {
+      const s = col.scale.sizes[name];
       if (!s) return h("td", { class: "tok-cell" }, h("span", { class: "tok-na" }, "—"));
+      const overridden = (name + "|" + col.modeKey) in ov;
       return h(
         "td",
-        { class: "tok-cell" },
-        h("code", { class: "tok-val" }, `${s.height}h`),
+        { class: "tok-cell" + (overridden ? " tok-cell-ov" : "") },
+        h(
+          "div",
+          { class: "tok-edit" },
+          h("input", {
+            class: "tok-input" + (overridden ? " ov" : ""),
+            type: "number", min: "8", max: "256", step: "1",
+            value: String(s.height),
+            "data-fk": "geotok:" + name + ":" + col.modeKey,
+            "aria-label": `${name} control height · ${col.name} (px)`,
+            onchange: (e) => this.setGeomTokenOverride(name, col.modeKey, e.target.value),
+          }),
+          overridden ? btn(icon("arrow-counter-clockwise", { size: 12 }), { variant: "bare", cls: "tok-reset", title: "Reset to derived height", ariaLabel: `Reset ${name} · ${col.name} to the derived height`, onclick: () => this.clearGeomTokenOverride(name, col.modeKey) }) : false,
+        ),
         h("span", { class: "tok-sub" }, `i${s.icon} · f${s.font} · p${s.padding} · r${s.radiusPill}`),
       );
     };
@@ -2952,14 +3084,15 @@ class HctApp extends HTMLElement {
     for (const name of present) {
       rows.push(h("tr", { class: "tok-row" },
         h("th", { class: "tok-name", scope: "row" }, h("code", {}, `--size-${kebab(name)}`)),
-        ...cols.map((c) => cell(c.scale, name))));
+        ...cols.map((c) => cell(c, name))));
     }
     return h(
       "div",
       { class: "tok-wrap" },
       h("div", { class: "tok-head" },
         h("b", {}, "Geometry tokens"),
-        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`)),
+        h("small", {}, `${base.baseHeight}px base · ${present.length} sizes · ${cols.length} column${cols.length === 1 ? "" : "s"} (Base${cols.length > 1 ? " + " + (cols.length - 1) + " breakpoint" + (cols.length === 2 ? "" : "s") : ""})`),
+        h("small", { class: "tok-hint" }, "Each edit is per-cell and mode-local — Base does not cascade into breakpoint columns; icon, font, padding + radius re-derive from the height.")),
       h(
         "table",
         { class: "map-table tok-table" },
@@ -3201,7 +3334,7 @@ class HctApp extends HTMLElement {
   renderTypographyScene(view) {
     ensureTypeFonts();
     const cfg = this._activeType();
-    const scale = typeScale(cfg);
+    const scale = this._activeTypeScale();
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
     const PARA = TYPE_PARA(scale.treatment);
     const kebab = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -3769,7 +3902,7 @@ class HctApp extends HTMLElement {
   typeScaleTab() {
     const cfg = this._activeType();
     const t = TYPE_TREATMENTS.find((x) => x.id === cfg.treatment) || TYPE_TREATMENTS[0];
-    const scale = typeScale(cfg);
+    const scale = this._activeTypeScale();
     return h(
       "div",
       { class: "insp-body" },
@@ -3821,7 +3954,7 @@ class HctApp extends HTMLElement {
   // typeFontsTab — the 5 role→family bindings the treatment resolves to (read-only; custom fonts later).
   typeFontsTab() {
     const cfg = this._activeType();
-    const scale = typeScale(cfg);
+    const scale = this._activeTypeScale();
     const ROLE_LABEL = { display: "Display", heading: "Heading", body: "Body", ui: "UI", mono: "Mono" };
     return h(
       "div",
@@ -3853,7 +3986,7 @@ class HctApp extends HTMLElement {
   // typeSpecimenTab — a compact in-pane specimen: each of the seven voices at its MD step. The full
   // scale (all 41 steps across the 7 groups) lives on the canvas.
   typeSpecimenTab(view) {
-    const scale = typeScale(this._activeType());
+    const scale = this._activeTypeScale();
     const cats = Object.keys(scale.categories);
     const repStep = (cat) => { const ks = Object.keys(scale.categories[cat]); return ks.includes("MD") ? "MD" : ks[Math.floor(ks.length / 2)]; };
     return h(
@@ -3879,7 +4012,7 @@ class HctApp extends HTMLElement {
   // typeExampleCard — the pinned live card: a heading + paragraph in the brand fonts AND the selected
   // palette's canvas colors (surface / onSurface / primary). Mirrors exampleCard's color resolution.
   typeExampleCard(view) {
-    const scale = typeScale(this._activeType());
+    const scale = this._activeTypeScale();
     const p = view.palettes[this.selectedIndex()];
     const roles = (p && p.roles) || [];
     const dark = this.resolvedCanvasScheme() === "dark";
@@ -4437,8 +4570,8 @@ class HctApp extends HTMLElement {
     ];
     // the per-system token output for the Typography / Geometry format tabs (the colour formats live on
     // view.exports). Computed from the same engines the modals + the Brand-Kit MCP use.
-    const typeSc = typeScale(this.doc.type || DEFAULT_TYPE);
-    const geomSc = geometryScale(this.doc);
+    const typeSc = this._typeScaleFor("base"); // override-aware base scale (Phase 3) — same as the matrix Base column
+    const geomSc = this._geomScaleFor("base");
     const SYSTEM_CODE = {
       "type-css": () => typeTokensResponsiveCSS(typeSc, this._typeModeScales()),
       "type-dtcg": () => JSON.stringify(typeTokensDTCG(typeSc), null, 2),
@@ -4664,7 +4797,7 @@ class HctApp extends HTMLElement {
       );
     }
     if (sys.type) {
-      const tsc = typeScale(this.doc.type || DEFAULT_TYPE);
+      const tsc = this._typeScaleFor("base"); // override-aware base scale (Phase 3)
       const tDtcg = JSON.stringify(typeTokensDTCG(tsc), null, 2);
       files.push(
         { name: "typography/type.css", data: typeTokensResponsiveCSS(tsc, this._typeModeScales()) },
@@ -4674,7 +4807,7 @@ class HctApp extends HTMLElement {
       );
     }
     if (sys.geometry) {
-      const gsc = geometryScale(this.doc); // composed with the type scale (the per-step `font` is shared)
+      const gsc = this._geomScaleFor("base"); // composed with the type scale (the per-step `font` is shared); override-aware (Phase 3)
       const gDtcg = JSON.stringify(geomTokensDTCG(gsc), null, 2);
       files.push(
         { name: "geometry/geometry.css", data: geomTokensResponsiveCSS(gsc, this._geomModeScales()) },
@@ -4995,7 +5128,7 @@ class HctApp extends HTMLElement {
   // ── Typography token helpers (the section lives in renderTypeInspector / renderTypographyScene) ──
   // download the resolved type tokens (CSS utility classes + DTCG typography tokens) as one .zip.
   downloadTypeTokens() {
-    const scale = typeScale(this.doc.type || DEFAULT_TYPE);
+    const scale = this._typeScaleFor("base"); // override-aware base scale (Phase 3)
     const files = [
       { name: "type.css", data: typeTokensResponsiveCSS(scale, this._typeModeScales()) },
       { name: "type.tokens.json", data: JSON.stringify(typeTokensDTCG(scale), null, 2) },
@@ -5034,17 +5167,23 @@ class HctApp extends HTMLElement {
     const m = (g.modes || []).find((x) => x.id === this.geomMode);
     return m ? { ...g, baseHeight: m.baseHeight } : g;
   }
-  // the resolved scale at the active mode — geometryScale composes geometry with the (base) type scale, so
-  // pass a doc whose geometry is the active mode (no new import; reuses the model's join + composition).
-  _activeGeomScale() { return geometryScale({ ...this.doc, geometry: this._activeGeometry() }); }
+  // the resolved scale at the active mode — composes geometry with the type scale at the SAME mode AND
+  // applies that mode's per-cell height overrides (so the canvas/inspector reflect the matrix). Routed
+  // through _geomScaleFor so overrides are consistent with the matrix + every export.
+  _activeGeomScale() {
+    const g = this.doc.geometry || DEFAULT_GEOMETRY;
+    const key = this.geomMode === "base" || !(g.modes || []).some((m) => m.id === this.geomMode) ? "base" : this.geomMode;
+    return this._geomScaleFor(key);
+  }
   // the breakpoint-mode scales for the responsive CSS export — [{ name, minWidth, scale }], one per mode.
+  // Each carries the override-aware scale at that mode (via _typeScaleFor) so per-cell edits reach @media.
   _typeModeScales() {
     const t = this.doc.type || DEFAULT_TYPE;
-    return (t.modes || []).map((m) => ({ name: m.name, minWidth: m.minWidth, scale: typeScale({ ...t, bodyBase: m.bodyBase }) }));
+    return (t.modes || []).map((m) => ({ name: m.name, minWidth: m.minWidth, scale: this._typeScaleFor(m.id) }));
   }
   _geomModeScales() {
     const g = this.doc.geometry || DEFAULT_GEOMETRY;
-    return (g.modes || []).map((m) => ({ name: m.name, minWidth: m.minWidth, scale: geometryScale({ ...this.doc, geometry: { ...g, baseHeight: m.baseHeight } }) }));
+    return (g.modes || []).map((m) => ({ name: m.name, minWidth: m.minWidth, scale: this._geomScaleFor(m.id) }));
   }
   // per-breakpoint DTCG files — one valid standalone DTCG per mode that has a minWidth, keyed by the width
   // (self-documenting + collision-free). No-width modes are preview-only, so they don't export (mirrors CSS).
@@ -5088,6 +5227,13 @@ class HctApp extends HTMLElement {
       if (!d.geometry || !Array.isArray(d.geometry.modes)) return;
       d.geometry = { ...d.geometry, modes: d.geometry.modes.filter((m) => m.id !== id) };
       if (d.geometry.modes.length === 0) delete d.geometry.modes;
+      // strip this mode's per-cell overrides too — orphaned "...|<id>" keys would otherwise survive
+      // serialize→hydrate forever (a stale-override leak with no UI to reach them).
+      if (d.geometry.tokenOverrides) {
+        d.geometry = { ...d.geometry, tokenOverrides: { ...d.geometry.tokenOverrides } };
+        for (const k of Object.keys(d.geometry.tokenOverrides)) if (k.endsWith("|" + id)) delete d.geometry.tokenOverrides[k];
+        if (!Object.keys(d.geometry.tokenOverrides).length) delete d.geometry.tokenOverrides;
+      }
     });
   }
   renameGeomMode(id, name) {
@@ -5155,7 +5301,7 @@ class HctApp extends HTMLElement {
   // a Figma NUMBER-variable file (the "Geometry" collection). The scale is composed with the type scale so
   // the per-step `font` is the brand's UI text size.
   downloadGeomTokens() {
-    const scale = geometryScale(this.doc);
+    const scale = this._geomScaleFor("base"); // override-aware base scale (Phase 3)
     const files = [
       { name: "geometry.css", data: geomTokensResponsiveCSS(scale, this._geomModeScales()) },
       { name: "geometry.tokens.json", data: JSON.stringify(geomTokensDTCG(scale), null, 2) },
@@ -5198,7 +5344,7 @@ class HctApp extends HTMLElement {
 
   // renderGeomCanvas — the Geometry center. Controls mode renders the full dimensional dataset (the 6-size
   // control ramp + radius + space) in the pannable/zoomable .canvas-area + .canvas-scene shell. Tokens mode
-  // renders a READ-ONLY token MATRIX (rows = sizes, cols = Base + each breakpoint) in the scrolling
+  // renders an EDITABLE token MATRIX (Phase 3 — per-cell size/height overrides + ↺) (rows = sizes, cols = Base + each breakpoint) in the scrolling
   // .is-table shell instead — mirrors renderTypeCanvas / Color's Mapping flip.
   renderGeomCanvas(view) {
     if (this.geomSpecMode === "tokens") return this._tokensTableArea("Geometry tokens — Base + breakpoints", this.renderGeomTokensTable());

@@ -33,8 +33,30 @@ import { geomScale, DEFAULT_GEOMETRY } from "../engine/geometry.mjs";
 // geometryScale — the resolved geometry for a doc, COMPOSED with its type scale so a control's text size
 // (the per-step `font`) comes from the brand's Typography UI voice (one source of truth). The single place
 // the two systems are joined; brandKit + the app's Geometry modal/exports all go through it.
-export function geometryScale(doc) {
-  return geomScale(doc.geometry || DEFAULT_GEOMETRY, { typeScale: typeScale(doc.type || DEFAULT_TYPE) });
+// `opts.overrides` (optional) — the flat `<size>→height` BASE override slice; threaded into geomScale.
+// `opts.typeOverrides` (optional) — the flat `<voice>|<step>→size` BASE slice for the COMPOSED type scale,
+// so the shared per-step `font` carries the type overrides too.
+export function geometryScale(doc, opts = {}) {
+  const tcfg = { ...(doc.type || DEFAULT_TYPE) };
+  if (opts.typeOverrides) tcfg.overrides = opts.typeOverrides;
+  return geomScale(doc.geometry || DEFAULT_GEOMETRY, { typeScale: typeScale(tcfg), overrides: opts.overrides });
+}
+
+// baseOverrideSlice — the flat per-cell override map for the BASE mode, sliced from a `tokenOverrides`
+// store keyed "<...>|<modeKey>". Mirrors app.js _typeOverridesFor/_geomOverridesFor for modeKey "base":
+// keep only the "...|base"-suffixed entries, strip the suffix, drop non-positive/non-finite values. Returns
+// undefined when there is nothing applicable, so the resolved scale stays byte-identical (the identity gate).
+function baseOverrideSlice(store) {
+  if (!store || typeof store !== "object") return undefined;
+  const out = {};
+  const suffix = "|base";
+  for (const k of Object.keys(store)) {
+    if (!k.endsWith(suffix)) continue;
+    const v = store[k];
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+    out[k.slice(0, k.length - suffix.length)] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 import {
   exportCSS,
@@ -230,8 +252,12 @@ export function brandKit(doc, systems) {
       kit.roles[slug(p.name)] = r;
     }
   }
-  if (sys.type) kit.type = typeScale(doc.type || DEFAULT_TYPE);
-  if (sys.geometry) kit.geometry = geometryScale(doc); // composed with the type scale (shared `font`)
+  // BASE-mode per-cell overrides reach the kit too (every other export carries them — the matrix Base
+  // column, CSS, DTCG). Slice the "|base"-suffixed entries of each tokenOverrides store and thread them in.
+  const typeOv = baseOverrideSlice(doc.type && doc.type.tokenOverrides);
+  const geomOv = baseOverrideSlice(doc.geometry && doc.geometry.tokenOverrides);
+  if (sys.type) kit.type = typeScale({ ...(doc.type || DEFAULT_TYPE), overrides: typeOv });
+  if (sys.geometry) kit.geometry = geometryScale(doc, { overrides: geomOv, typeOverrides: typeOv }); // composed with the (override-aware) type scale — shared `font` tracks too
   return kit;
 }
 
