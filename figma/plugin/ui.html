@@ -1347,6 +1347,7 @@ __M.hct = (function(){
 //
 // Public contract (the grading harness imports exactly these):
 //   hctToRgb(hue, chroma, tone) -> { rgb:[r,g,b] (0-255 ints), inGamut:boolean, lstar }
+//   hctToOklch(hue, chroma, tone) -> [L, C, H°] (FLOAT — high-res, no 8-bit round-trip)
 //   cam16FromRgb([r,g,b])       -> { hue, chroma, J }
 //   lstarFromRgb([r,g,b])       -> CIELAB L* (0-100)
 //   maxChromaInGamut(hue, tone) -> number
@@ -1511,15 +1512,15 @@ function xyzFromCam16(J, C, hue) {
 }
 
 // ── hctToRgb — branches in order (endpoints, neutral gray, then J tone-search) ─
-function hctToRgb(hue, chroma, tone) {
+// _hctToLinRGB — the shared CAM16 solve: HCT -> converged linear sRGB (0..100 scale) + lstar + inGamut.
+// hctToRgb delins this to 0..255 ints; hctToOklch converts the SAME float pixel to OKLab — so a
+// perceptual readout reflects the high-res model, never an 8-bit round-trip.
+function _hctToLinRGB(hue, chroma, tone) {
   // 1) tone clamps to pure black / white.
-  if (tone <= 0) return { rgb: [0, 0, 0], inGamut: true, lstar: 0 };
-  if (tone >= 100) return { rgb: [255, 255, 255], inGamut: true, lstar: 100 };
+  if (tone <= 0) return { linRGB: [0, 0, 0], inGamut: true, lstar: 0 };
+  if (tone >= 100) return { linRGB: [100, 100, 100], inGamut: true, lstar: 100 };
   // 3) near-neutral: CAM16 inversion is noisy below 0.4 chroma — emit gray at the tone.
-  if (chroma < 0.4) {
-    const v = delin(yFromL(tone));
-    return { rgb: [v, v, v], inGamut: true, lstar: tone };
-  }
+  if (chroma < 0.4) { const y = yFromL(tone); return { linRGB: [y, y, y], inGamut: true, lstar: tone }; }
   // 4) binary-search CAM16 lightness J so the resulting Y reproduces the target tone (L*).
   let lo = 0;
   let hi = 100;
@@ -1532,11 +1533,35 @@ function hctToRgb(hue, chroma, tone) {
     if (lMid < tone) lo = mid;
     else hi = mid;
   }
-  // final XYZ at the converged J -> linear sRGB -> gamut test -> delin to 0..255.
+  // final XYZ at the converged J -> linear sRGB -> gamut test.
   const linRGB = matMul(XYZ_TO_SRGB, xyz);
   const inGamut = linRGB.every((ch) => ch >= -0.0001 && ch <= 100.0001);
-  const rgb = linRGB.map((ch) => delin(ch));
-  return { rgb, inGamut, lstar: lFromY(xyz[1]) };
+  return { linRGB, inGamut, lstar: lFromY(xyz[1]) };
+}
+
+function hctToRgb(hue, chroma, tone) {
+  const { linRGB, inGamut, lstar } = _hctToLinRGB(hue, chroma, tone);
+  return { rgb: linRGB.map((ch) => delin(ch)), inGamut, lstar };
+}
+
+// hctToOklch(hue, chroma, tone) -> [L, C, H°] in FLOAT. Reuses the CAM16 solve, then sends the
+// converged linear sRGB straight through OKLab (Björn Ottosson's matrices — the same constants as
+// okhsl.js linearSrgbToOklab; inlined to keep hct.js dependency-free). NO 8-bit step, so analysis /
+// readouts read the perceptual coords from the high-res model, not the rendered pixel.
+function hctToOklch(hue, chroma, tone) {
+  const { linRGB } = _hctToLinRGB(hue, chroma, tone);
+  const r = Math.min(Math.max(linRGB[0] / 100, 0), 1);
+  const g = Math.min(Math.max(linRGB[1] / 100, 0), 1);
+  const b = Math.min(Math.max(linRGB[2] / 100, 0), 1);
+  const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+  const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+  const bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+  let H = (Math.atan2(bb, a) * 180) / Math.PI;
+  H = ((H % 360) + 360) % 360;
+  return [L, Math.hypot(a, bb), H];
 }
 
 // ── Forward helpers from sRGB ────────────────────────────────────────────────
@@ -1616,7 +1641,7 @@ function oklchToCam16Hue(h) {
   return hue;
 }
 
-return { hctToRgb, cam16FromRgb, lstarFromRgb, maxChromaInGamut, peakC, oklchToCam16Hue };
+return { hctToRgb, hctToOklch, cam16FromRgb, lstarFromRgb, maxChromaInGamut, peakC, oklchToCam16Hue };
 })();
 __M.okhsl = (function(){
 // okhsl.js — OKHSL ⇄ sRGB (Björn Ottosson's perceptual HSL over OKLab).
@@ -4339,7 +4364,7 @@ __M.model = (function(){
 // The document is the single source of truth. Every value on the right of the
 // app is projectView(document) — recomputed, never persisted.
 
-const { hctToRgb, lstarFromRgb, cam16FromRgb, peakC } = __M.hct;
+const { hctToRgb, hctToOklch, lstarFromRgb, cam16FromRgb, peakC } = __M.hct;
 const { oklchToRgb } = __M.okhsl;
 const { paletteStops, effHue, STOPS, EXPORT_STOPS, DEFAULT_CONTROLS } = __M.tonal;
 const { semanticRoles, refKey, applyRoleOverrides, applyOnColorContrast, applyAccentRef } = __M.semantic;
@@ -4690,7 +4715,11 @@ function projectView(doc) {
     // ramp damps mid-stop chroma, so a ramp stop reads muted; this is what the gallery tile should show).
     const baseHue = effHue(p.hue, controls.hueSpace);
     const pk = peakC(baseHue);
-    const keyHex = "#" + hctToRgb(baseHue, ((p.chroma ?? 0) / 100) * pk.c, pk.tone).rgb
+    const keyChroma = ((p.chroma ?? 0) / 100) * pk.c;
+    // keyOklch = the key color's HIGH-RES OKLCH (float, no 8-bit round-trip) — the model's source of
+    // truth for perceptual readouts/analysis; keyHex is DERIVED from the same HCT for consumption.
+    const keyOklch = hctToOklch(baseHue, keyChroma, pk.tone);
+    const keyHex = "#" + hctToRgb(baseHue, keyChroma, pk.tone).rgb
       .map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 
     // keyColors = retained brand colors placed on the ramp through the perceptual lens.
@@ -4698,7 +4727,7 @@ function projectView(doc) {
 
     // ramp = 19 core display stops; fullRamp = all 25 EXPORT_STOPS (the extended view).
     palettes.push({
-      name: p.name, on: p.on !== false, key: keyHex, ramp, fullRamp: fullStops, roles, keyColors,
+      name: p.name, on: p.on !== false, key: keyHex, keyOklch, ramp, fullRamp: fullStops, roles, keyColors,
       // curated story (present for preset palettes): the color's evocative name, role, description.
       ...(p.colorName ? { colorName: p.colorName } : {}),
       ...(p.colorRole ? { colorRole: p.colorRole } : {}),
@@ -6836,7 +6865,7 @@ class HctApp extends HTMLElement {
   // or its identity is near-grey — so a derived/leading neutral never becomes the Relative primary.
   _isNeutralPalette(p, vp) {
     if (/\b(neutral|grey|gray)\b/i.test(String((p && p.name) || ""))) return true;
-    return !!(vp && vp.key && hexToOklch(vp.key)[1] < 0.02);
+    return !!(vp && vp.keyOklch && vp.keyOklch[1] < 0.02);
   }
 
   // the included context palette indices in PRIORITY ORDER: non-neutral palettes first (in palette
@@ -6855,7 +6884,7 @@ class HctApp extends HTMLElement {
   // samples for A/B = each included palette's vivid identity color as OKLCH [L,C,H], PRIORITY-ORDERED
   // (samples[0] = the primary, so deriveRelative pivots on it — see derive.mjs).
   newPalSamples(view) {
-    return this._orderedContext(view).map((i) => hexToOklch(view.palettes[i].key));
+    return this._orderedContext(view).map((i) => view.palettes[i].keyOklch);
   }
 
   // the primary context color (the highest-priority, first non-neutral included palette) — the hex
@@ -6993,7 +7022,7 @@ class HctApp extends HTMLElement {
     try { pv = projectView({ ...this.doc, palettes: [pal] }); } catch { return null; }
     const vp = pv.palettes[0];
     // the proposed dot's polar position: target hue/chroma for A/B; the rendered identity for Custom.
-    const oklch = target || hexToOklch(vp.key);
+    const oklch = target || vp.keyOklch;
     return { pal, view: pv, vp, hex: vp.key, target, pos: { H: oklch[2], C: oklch[1] } };
   }
 
@@ -7024,8 +7053,8 @@ class HctApp extends HTMLElement {
     const dots = [];
     for (const i of ctx) {
       const vp = view.palettes[i];
-      if (!vp || !vp.key) continue;
-      const [, C, H] = hexToOklch(vp.key);
+      if (!vp || !vp.keyOklch) continue;
+      const [, C, H] = vp.keyOklch;
       dots.push({ H, C, fill: vp.key, on: false });
     }
     if (proposed) dots.push({ H: proposed.pos.H, C: proposed.pos.C, fill: proposed.hex, on: true });
@@ -8963,7 +8992,7 @@ class HctApp extends HTMLElement {
   addKeyColor(i, role) {
     const vp = (this._view || projectView(this.doc)).palettes[i];
     if (!vp) return;
-    const oklch = hexToOklch(vp.key);
+    const oklch = vp.keyOklch; // store the HIGH-RES key OKLCH, not a re-measured 8-bit hex
     this.commit((d) => { (d.palettes[i].keyColors = (d.palettes[i].keyColors || []).filter((k) => k.role !== role)).push({ role, oklch }); });
   }
 
