@@ -7,25 +7,22 @@ the in-app tie-ins.
 precise/craft voice (matches the app).
 
 - **Pro** — **$39 / year**, per user. Includes every update and customer support. Cancel anytime.
-- **Studio** — multiple seats for one team at a **reduced per-seat rate**, managed in one place.
+- **Studio** — **$149 / year for 5 seats**, then **$19 / seat / year** for extras, managed in one place.
 
 **Placeholders** — replace before publishing:
 
 | Token | Meaning |
 |---|---|
-| `{{STUDIO_PRICE}}` | Studio price / per-seat rate (e.g. `$29/seat/year`) |
 | `{{APP_URL}}` | The web app URL (e.g. `app.nonoun.io`) |
 | `{{SUPPORT_EMAIL}}` | Support address (default `support@nonoun.io`) |
 | `{{CUSTOMER_PORTAL}}` | Lemon Squeezy customer portal (manage / cancel) |
 | `{{LICENSE_KEY}}` · `{{RENEWAL_DATE}}` · `{{PERIOD_END}}` · `{{SEATS}}` | Injected by Lemon Squeezy per order |
 | `{{CODE}}` / `{{N}}` / `{{DATE}}` | Discount-code template fields |
 
-> **⚠ Two things to confirm / follow up.**
-> 1. **Studio pricing** — set `{{STUDIO_PRICE}}` and the seat model (per-seat vs flat tiers).
-> 2. **Studio seat enforcement is a code follow-up.** The Free/Pro/Studio capability split comes from
->    `src/engine/flags.js`; the current license check is *validate-only*, so it does **not** yet enforce a
->    Studio seat count. A one-key-N-seats model needs the Lemon Squeezy `/activate` (instance) flow before
->    seat limits are real. The customer copy below describes the intended behaviour.
+> **⚠ Follow-up.** Studio **seat enforcement** is a code change (in progress): the license check was
+> validate-only, so it didn't cap seats. The 5-seat (+$19 extra) model uses the Lemon Squeezy `/activate`
+> (instance) flow — each device consumes one seat, freed on removal. The customer copy below describes that
+> behaviour. (Free/Pro/Studio capability split confirmed; it comes from `src/engine/flags.js`.)
 
 ---
 
@@ -135,11 +132,12 @@ Ultimate Tokens — Studio
 > suite, advanced treatments, and the hosted Brand-Kit MCP — at a **reduced per-seat rate**, billed once and
 > managed from a single account.
 >
-> - **Seats for your team** — add the people who build, at a volume rate
+> - **5 seats included** — add more anytime at $19 / seat / year
 > - **One place to manage** — assign and reassign seats as the team changes
 > - **Every update and priority support**, included for all seats
 >
-> {{STUDIO_PRICE}}. Need a specific seat count or an invoice? Email {{SUPPORT_EMAIL}}.
+> **$149/year** includes **5 seats**; add more at **$19/seat/year**. Need a bigger team or an invoice?
+> Email {{SUPPORT_EMAIL}}.
 
 **Feature / benefit bullets (shared spec block)**
 
@@ -166,8 +164,8 @@ Ultimate Tokens — Studio
 | Advanced type & geometry treatments | — | ✓ | ✓ |
 | Brand-Kit MCP | Download | **Hosted** | **Hosted** |
 | Updates + customer support | — | ✓ | ✓ |
-| Seats | 1 | 1 | **Your team (volume rate)** |
-| Price | Free | **$39/year** | **{{STUDIO_PRICE}}** |
+| Seats | 1 | 1 | **5 included (+$19 each)** |
+| Price | Free | **$39/year** | **$149/year (5 seats)** |
 
 **"What's included" (post-purchase summary)**
 
@@ -181,8 +179,9 @@ Ultimate Tokens — Studio
 > you keep Pro through the period you've paid for.
 >
 > **What's the Studio license?**
-> Studio is Pro for a whole team: multiple seats at a reduced per-seat rate, billed once and managed from
-> one account. Pick Studio at checkout, or email {{SUPPORT_EMAIL}} for a specific seat count or an invoice.
+> Studio is Pro for a whole team: **$149/year for 5 seats**, plus **$19/seat/year** for extras, managed
+> from one account. Each person activates on their own device and that device takes a seat; remove it to
+> free the seat back up. Pick Studio at checkout, or email {{SUPPORT_EMAIL}} for a bigger team or an invoice.
 >
 > **How do I activate my license?**
 > Open the web app, go to **Settings → Account**, paste your key, and click **Validate**. Pro unlocks on
@@ -215,8 +214,8 @@ Ultimate Tokens — Studio
 Pro      $39 / year · per user
          Every update and support included. Cancel anytime.
 
-Studio   {{STUDIO_PRICE}}
-         Seats for your team at a reduced rate. Billed yearly.
+Studio   $149 / year · 5 seats   (+$19 / seat / year)
+         Pro for your whole team. Billed yearly.
 ```
 
 ---
@@ -227,7 +226,7 @@ Studio   {{STUDIO_PRICE}}
 
 > **Pro** — Ultimate Tokens · Unlimited brand kits + the complete export suite. $39/year, per user.
 >
-> **Studio** — Ultimate Tokens · Pro for your whole team, at a reduced per-seat rate.
+> **Studio** — Ultimate Tokens · Pro for your whole team. $149/year for 5 seats, +$19 each.
 
 **Buy buttons**
 
