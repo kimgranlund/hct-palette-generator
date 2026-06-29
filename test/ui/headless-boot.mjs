@@ -1618,13 +1618,20 @@ ok(!!app.querySelector(".account-license-input") && !!app.querySelector(".accoun
 ok(!!app.querySelector(".account-manage"), "(acct) a Manage-subscription link is present");
 ok(!!app.querySelector(".account-upgrade") && !!app.querySelector(".account-buy-note"), "(acct) the web app (Free) shows the Get-Pro checkout CTA + buy-a-license link");
 
-// the pluggable license SEAM (no network): a MANUAL active entitlement flips the effective tier to pro
-app._licenseValidator = (key) => ({ ok: !!key, entitlement: { status: "active", expiresAt: Date.now() + 3600000 } });
+// the pluggable license SEAM (no network): a MANUAL service — activate CONSUMES a seat (returns an instance
+// id), deactivate frees it. We spy on deactivate to prove clearLicense releases the Studio seat.
+let acctDeactivated = null;
+app._licenseService = {
+  activate: (key) => ({ ok: !!key, entitlement: { status: "active", expiresAt: Date.now() + 3600000 }, instanceId: "inst-acct" }),
+  validate: (key) => ({ ok: !!key, entitlement: { status: "active" } }),
+  deactivate: (key, instanceId) => { acctDeactivated = { key, instanceId }; return { ok: true }; },
+};
 await app.enterLicense("PRO-TEST-1234"); flushRaf();
 ok(app.tier() === "pro" && app.profile.entitlement && app.profile.entitlement.status === "active", `(acct) enterLicense with an active entitlement flips the effective tier to pro (got ${app.tier()})`);
+ok(app.profile.instanceId === "inst-acct", "(acct) enterLicense records the activation instance id (this device's seat)");
 ok(app.flagOf("proExport") === true, "(acct) flagOf returns unlocked pre-launch (TIERS_ENFORCED off — the entitlement gate itself is unit-tested in flags.mjs; app.tier() above proves the effective-tier resolution)");
 const acctStored = JSON.parse(localStorage.getItem("nonoun-color-tokens-profile") || "null");
-ok(acctStored && acctStored.tier === "pro" && acctStored.licenseKey === "PRO-TEST-1234" && acctStored.entitlement.status === "active", "(acct) the license + entitlement persist to the profile store");
+ok(acctStored && acctStored.tier === "pro" && acctStored.licenseKey === "PRO-TEST-1234" && acctStored.instanceId === "inst-acct" && acctStored.entitlement.status === "active", "(acct) the license + instance + entitlement persist to the profile store");
 app.render(); flushRaf();
 ok(acctTier() === "Pro" && !app.querySelector(".account-license-input") && !!app.querySelector(".account-remove"), "(acct) once Pro the badge reads Pro and the entry becomes Remove");
 
@@ -1632,9 +1639,22 @@ ok(acctTier() === "Pro" && !app.querySelector(".account-license-input") && !!app
 app.profile = { ...app.profile, entitlement: { status: "active", expiresAt: Date.now() - 1000 } };
 ok(app.tier() === "free", "(acct) an expired entitlement downgrades the effective tier to free (even with tier:pro stored)");
 
-// clearLicense → back to Free, license dropped
-app.clearLicense(); flushRaf(); app.render(); flushRaf();
-ok(app.tier() === "free" && !app.profile.licenseKey && acctTier() === "Free", "(acct) clearLicense returns to Free and drops the license");
+// clearLicense → deactivate the seat (best-effort), then back to Free with license + instance dropped
+await app.clearLicense(); flushRaf(); app.render(); flushRaf();
+ok(acctDeactivated && acctDeactivated.instanceId === "inst-acct", "(acct) clearLicense deactivates the instance (frees the Studio seat)");
+ok(app.tier() === "free" && !app.profile.licenseKey && !app.profile.instanceId && acctTier() === "Free", "(acct) clearLicense returns to Free and drops the license + instance");
+
+// NO SEAT LEAK: if activate consumes a seat (returns an instance) but the entitlement is already EXPIRED,
+// enterLicense rejects AND releases that just-taken seat — the consumed-never-freed case must not happen.
+let acctLeakReleased = null;
+app._licenseService = {
+  activate: (key) => ({ ok: true, entitlement: { status: "active", expiresAt: Date.now() - 1000 }, instanceId: "inst-leak" }),
+  validate: (key) => ({ ok: true, entitlement: { status: "active" } }),
+  deactivate: (key, instanceId) => { acctLeakReleased = { key, instanceId }; return { ok: true }; },
+};
+const acctLeakOk = await app.enterLicense("PRO-LEAK-9999"); flushRaf();
+ok(acctLeakOk === false && app.tier() === "free" && !app.profile.instanceId, "(acct) an already-expired activation is rejected and not stored");
+ok(acctLeakReleased && acctLeakReleased.instanceId === "inst-leak", "(acct) the seat consumed by that rejected activation is released (no seat leak)");
 
 // the license entry is ABSENT inside the offline Figma plugin (the plugin stays free)
 app.inFigma = true; app.render(); flushRaf();

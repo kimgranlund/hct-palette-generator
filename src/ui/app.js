@@ -125,17 +125,35 @@ function saveProfile(profile) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(clampProfile(profile))); } catch { /* in-memory */ }
 }
 
-// defaultLicenseValidator — the default for the pluggable license SEAM (this._licenseValidator), item 7
-// Layer 2. PURE + OFFLINE (no network): a dev/QA "manual entitlement" path so the tier flip + caching are
-// real and testable without a server. A key shaped "PRO-XXXX" grants an active entitlement; anything else
-// is a friendly rejection. The WEB build assigns the REAL validator that talks to Lemon-Squeezy's license
-// API (see enterLicense's doc-comment) — that network call is intentionally NOT written in this file, so
-// app.js (and the offline Figma plugin bundle it becomes, manifest networkAccess:"none") stays network-free.
-// Returns { ok, entitlement?, error? }; may be async (the web validator is) — enterLicense awaits it.
-function defaultLicenseValidator(key) {
-  const k = String(key || "").trim();
-  if (/^PRO-[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]+)*$/.test(k)) return { ok: true, entitlement: { status: "active" } };
-  return { ok: false, error: "We couldn't validate that license key. Check it and try again." };
+// defaultLicenseService — the OFFLINE default for the pluggable license SEAM (this._licenseService), item 7.
+// PURE + OFFLINE (no network): a dev/QA "manual entitlement" path so activate/validate/deactivate + the tier
+// flip + seat handling are real and testable without a server. A key shaped "PRO-XXXX" activates (a fake
+// instance id + an active entitlement); anything else is a friendly rejection. The WEB build (src/main.ts)
+// REPLACES this with a Lemon-Squeezy-backed service that talks to the public License API — those fetches are
+// WEB-ONLY and deliberately NOT written in this file, so app.js (and the offline Figma plugin bundle it
+// becomes, manifest networkAccess:"none") stays network-free. Methods may be async (the web ones are);
+// enterLicense/clearLicense await them. activate→{ ok, entitlement?, instanceId?, error? }; deactivate→{ ok }.
+const PRO_KEY_RE = /^PRO-[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]+)*$/;
+const defaultLicenseService = {
+  activate(key) {
+    const k = String(key || "").trim();
+    if (PRO_KEY_RE.test(k)) return { ok: true, entitlement: { status: "active" }, instanceId: "dev-" + k.slice(-4) };
+    return { ok: false, error: "We couldn't validate that license key. Check it and try again." };
+  },
+  validate(key) {
+    const k = String(key || "").trim();
+    if (PRO_KEY_RE.test(k)) return { ok: true, entitlement: { status: "active" } };
+    return { ok: false, error: "We couldn't validate that license key. Check it and try again." };
+  },
+  deactivate() { return { ok: true }; },
+};
+
+// A human-readable label for this device's activation INSTANCE (shown in the Lemon-Squeezy dashboard; the
+// returned instance id is what actually holds the seat). Best-effort — platform if the UA exposes it.
+function licenseInstanceName() {
+  let plat = "web";
+  try { plat = (typeof navigator !== "undefined" && navigator.platform) || "web"; } catch { /* no navigator */ }
+  return "Ultimate Tokens · " + plat;
 }
 
 // The boolean capability flags exposed as dev/QA override toggles in Settings › Account (maxSets is VALUED,
@@ -425,11 +443,11 @@ class HctApp extends HTMLElement {
     ensureAppTheme(); // inject the generated --c-* design tokens once, globally
     migrateStorageKeys(); // copy any pre-rename saved sets/config into the new key namespace
     this.sets = loadSets();
-    this.profile = loadProfile(); // per-machine { tier, flagOverrides, licenseKey?, entitlement?, checkedAt? } — drives this.flagOf()/this.tier() (item 7)
-    // The pluggable license-validation SEAM (item 7, Layer 2). Default = an offline dev/QA validator (no
-    // network). The WEB build reassigns this to a Lemon-Squeezy-backed validator AFTER construction; the
-    // offline Figma plugin keeps the default (the Account license UI is hidden there anyway).
-    this._licenseValidator = defaultLicenseValidator;
+    this.profile = loadProfile(); // per-machine { tier, flagOverrides, licenseKey?, instanceId?, entitlement?, checkedAt? } — drives this.flagOf()/this.tier() (item 7)
+    // The pluggable license SEAM (item 7, Layer 2) — { activate, validate, deactivate }. Default = an offline
+    // dev/QA service (no network). The WEB build reassigns this to a Lemon-Squeezy-backed service AFTER
+    // construction; the offline Figma plugin keeps the default (the Account license UI is hidden there anyway).
+    this._licenseService = defaultLicenseService;
     this._licenseDraft = ""; // the in-progress license-key text (Account section, web only)
     this._licenseError = null; // last inline license-entry error (a friendly string — never a raw stack)
     // session (UI-only, not persisted with the doc)
@@ -1250,13 +1268,14 @@ class HctApp extends HTMLElement {
     this.render();
   }
 
-  // enterLicense(key) — validate a license key through the pluggable SEAM (this._licenseValidator) and, on a
-  // currently-active entitlement, flip the profile to Pro (cached on this machine). The DEFAULT validator is
-  // offline (a dev/QA manual path). The WEB build assigns a Lemon-Squeezy-backed validator that POSTs the key
-  // to LS's license endpoint with the store's product id and maps the JSON to { ok, entitlement:{ status,
-  // expiresAt } }. That fetch is WEB-ONLY (guard it with !this.inFigma) and is deliberately NOT written into
-  // this file — so app.js stays network-free inside the offline Figma plugin bundle (networkAccess:"none").
-  // Any failure becomes a friendly inline message (this._licenseError); the raw detail goes to console only.
+  // enterLicense(key) — ACTIVATE a license key through the pluggable SEAM (this._licenseService.activate) and,
+  // on a currently-active entitlement, flip the profile to Pro (cached on this machine) AND record the
+  // activation instance id — the handle to this device's SEAT, released by clearLicense. The DEFAULT service
+  // is offline (a dev/QA manual path); the WEB build assigns a Lemon-Squeezy-backed service that POSTs to the
+  // public License API. activate CONSUMES a seat, so a Studio key with N seats rejects the (N+1)th device with
+  // a friendly seat-limit message. That fetch is WEB-ONLY and deliberately NOT written into this file — so
+  // app.js stays network-free inside the offline Figma plugin bundle (networkAccess:"none"). Any failure
+  // becomes a friendly inline message (this._licenseError); the raw detail goes to console only.
   async enterLicense(key) {
     const k = String(key || "").trim();
     this._licenseDraft = k;
@@ -1265,35 +1284,55 @@ class HctApp extends HTMLElement {
     this._licenseError = null;
     let res;
     try {
-      res = await this._licenseValidator(k);
+      res = await this._licenseService.activate(k, licenseInstanceName());
     } catch (e) {
-      if (typeof console !== "undefined" && console.error) console.error("license validation failed:", e);
+      if (typeof console !== "undefined" && console.error) console.error("license activation failed:", e);
       this._licenseError = "Couldn't reach the license service — check your connection and try again.";
       this.render();
       return false;
     }
+    // activate may already have CONSUMED a seat (res.instanceId is its handle). On any post-activation bail,
+    // release that seat — else it's stranded (consumed, never stored, never freeable → leaks on retry).
+    const seatId = res && res.instanceId;
     if (!res || !res.ok || !res.entitlement) {
+      if (seatId) this._releaseSeat(k, seatId);
       this._licenseError = (res && typeof res.error === "string" && res.error) || "That license key wasn't recognized.";
       this.render();
       return false;
     }
     if (!entitlementActive(res.entitlement, Date.now())) {
+      if (seatId) this._releaseSeat(k, seatId);
       this._licenseError = "That license isn't active right now (it may have expired). Manage it from your account.";
       this.render();
       return false;
     }
     this._licenseError = null;
     this._licenseDraft = "";
-    this.setProfile({ tier: "pro", licenseKey: k, entitlement: res.entitlement, checkedAt: Date.now() }); // re-renders
+    this.setProfile({ tier: "pro", licenseKey: k, instanceId: res.instanceId, entitlement: res.entitlement, checkedAt: Date.now() }); // re-renders
     this.toast("Pro unlocked");
     return true;
   }
 
-  // clearLicense() — drop the license + entitlement and return to Free (keeps any dev flagOverrides).
+  // _releaseSeat(licenseKey, instanceId) — best-effort, web-only, FIRE-AND-FORGET deactivation that frees the
+  // activation seat for a teammate. Never throws, never blocks the UI; a failure (offline / hang) just leaves
+  // the seat to lapse server-side. Used by clearLicense AND by enterLicense's bail (don't strand a seat).
+  _releaseSeat(licenseKey, instanceId) {
+    if (this.inFigma || !licenseKey || !instanceId || !this._licenseService || !this._licenseService.deactivate) return;
+    const onErr = (e) => { if (typeof console !== "undefined" && console.error) console.error("license deactivation failed:", e); };
+    try { Promise.resolve(this._licenseService.deactivate(licenseKey, instanceId)).catch(onErr); }
+    catch (e) { onErr(e); }
+  }
+
+  // clearLicense() — drop the license + entitlement and return to Free (keeps any dev flagOverrides). Clears
+  // LOCALLY FIRST (instant, never traps the user), THEN fires a best-effort deactivation to free this device's
+  // seat for a teammate — fire-and-forget, so an offline/slow server can't block the Remove.
   clearLicense() {
     this._licenseError = null;
     this._licenseDraft = "";
-    this.setProfile({ tier: "free", licenseKey: undefined, entitlement: undefined, checkedAt: undefined });
+    const licenseKey = this.profile && this.profile.licenseKey;
+    const instanceId = this.profile && this.profile.instanceId;
+    this.setProfile({ tier: "free", licenseKey: undefined, instanceId: undefined, entitlement: undefined, checkedAt: undefined });
+    this._releaseSeat(licenseKey, instanceId); // best-effort, after the local state is already Free
     this.toast("Switched to Free");
   }
 

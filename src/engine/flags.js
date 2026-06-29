@@ -78,11 +78,12 @@ function clampEntitlement(raw) {
   return ent;
 }
 
-// clampProfile(raw) → a sanitized profile { tier, flagOverrides?, licenseKey?, entitlement?, checkedAt? }.
-// Unknown/invalid drops; default free. flagOverrides keeps only known keys with the right TYPE (maxSets =
-// a finite int ≥ 0; the rest boolean). The Layer-2 payment fields are OPTIONAL and individually clamped:
-// licenseKey = a non-empty string · entitlement = a sane {status, expiresAt?} · checkedAt = a finite ms ≥ 0.
-// Emit order is stable (tier → flagOverrides → licenseKey → entitlement → checkedAt) so JSON round-trips.
+// clampProfile(raw) → a sanitized profile { tier, flagOverrides?, licenseKey?, instanceId?, entitlement?,
+// checkedAt? }. Unknown/invalid drops; default free. flagOverrides keeps only known keys with the right TYPE
+// (maxSets = a finite int ≥ 0; the rest boolean). The Layer-2 payment fields are OPTIONAL and individually
+// clamped: licenseKey = a non-empty string · instanceId = a non-empty string (the Lemon-Squeezy activation
+// instance that holds this device's SEAT) · entitlement = a sane {status, expiresAt?} · checkedAt = a finite
+// ms ≥ 0. Emit order is stable (tier → flagOverrides → licenseKey → instanceId → entitlement → checkedAt).
 export function clampProfile(raw) {
   const p = raw && typeof raw === "object" ? raw : {};
   const out = { tier: p.tier === "pro" ? "pro" : "free" };
@@ -99,6 +100,7 @@ export function clampProfile(raw) {
   }
   if (Object.keys(fo).length) out.flagOverrides = fo;
   if (typeof p.licenseKey === "string" && p.licenseKey) out.licenseKey = p.licenseKey;
+  if (typeof p.instanceId === "string" && p.instanceId) out.instanceId = p.instanceId;
   const ent = clampEntitlement(p.entitlement);
   if (ent) out.entitlement = ent;
   if (p.checkedAt != null) {
@@ -108,37 +110,82 @@ export function clampProfile(raw) {
   return out;
 }
 
-// ── Layer 2 (web wiring): Lemon-Squeezy response → entitlement ─────────────────────────────────────────
-// lemonEntitlement(json, opts?) → the license SEAM's { ok, entitlement?, error? } from a Lemon-Squeezy
-// POST /v1/licenses/validate response. PURE — no fetch, no clock: the WEB entry (src/main.ts) does the
-// network call and hands the parsed JSON here, so this stays in the engine (testable) while app.js + the
-// offline Figma bundle stay network-free. A key is good ONLY when LS reports valid:true AND
-// license_key.status === "active"; an ISO `expires_at` maps to entitlement.expiresAt (ms, re-checked by
-// entitlementActive at gate time). Optional `storeId` PINS activation to one store, so a valid key from a
+// ── Layer 2 (web wiring): Lemon-Squeezy responses → entitlement / seat ─────────────────────────────────
+// These map the parsed JSON from Lemon-Squeezy's public License API to the seam's result shapes. ALL PURE —
+// no fetch, no clock: the WEB entry (src/main.ts) does the network calls and hands the JSON here, so this
+// stays in the engine (testable) while app.js + the offline Figma bundle stay network-free. A license is
+// good only when LS reports the key `active`; an ISO `expires_at` maps to entitlement.expiresAt (ms,
+// re-checked by entitlementActive at gate time). `storeId` PINS to one store (FAIL-CLOSED), so a key from a
 // DIFFERENT Lemon-Squeezy store is rejected. Every failure is a friendly, user-safe message (no raw detail).
-export function lemonEntitlement(json, { storeId = null } = {}) {
-  const GENERIC = "We couldn't validate that license key. Check it and try again.";
-  if (!json || typeof json !== "object") return { ok: false, error: GENERIC };
-  const lk = json.license_key && typeof json.license_key === "object" ? json.license_key : {};
-  // Store pinning is FAIL-CLOSED: once a storeId is configured, the key must carry a matching meta.store_id.
-  // A missing store_id (or a mismatch) is rejected — a pinned gate never opens on an unverifiable response.
-  if (storeId != null) {
-    const respStore = json.meta && json.meta.store_id;
-    if (respStore == null || String(respStore) !== String(storeId)) {
-      return { ok: false, error: "That license key is for a different product." };
-    }
-  }
-  if (json.valid !== true || lk.status !== "active") {
+const LICENSE_GENERIC_ERROR = "We couldn't validate that license key. Check it and try again.";
+
+// storePinFails(json, storeId) → an error string when the response's store doesn't match the pinned one
+// (FAIL-CLOSED: a missing meta.store_id also fails), else null. Shared by validate + activate.
+function storePinFails(json, storeId) {
+  if (storeId == null) return null;
+  const respStore = json && json.meta && json.meta.store_id;
+  if (respStore == null || String(respStore) !== String(storeId)) return "That license key is for a different product.";
+  return null;
+}
+
+// licenseKeyResult(lk) → { entitlement } when the key object is `active`, else { error } (friendly per status).
+function licenseKeyResult(lk) {
+  const key = lk && typeof lk === "object" ? lk : {};
+  if (key.status !== "active") {
     const error =
-      lk.status === "expired" ? "That license has expired — renew it from your account to continue." :
-      lk.status === "disabled" ? "That license has been disabled. Contact support if that's unexpected." :
-      GENERIC;
-    return { ok: false, error };
+      key.status === "expired" ? "That license has expired — renew it from your account to continue." :
+      key.status === "disabled" ? "That license has been disabled. Contact support if that's unexpected." :
+      LICENSE_GENERIC_ERROR;
+    return { error };
   }
   const entitlement = { status: "active" };
-  if (lk.expires_at) {
-    const t = Date.parse(lk.expires_at);
+  if (key.expires_at) {
+    const t = Date.parse(key.expires_at);
     if (Number.isFinite(t)) entitlement.expiresAt = t;
   }
-  return { ok: true, entitlement };
+  return { entitlement };
+}
+
+// lemonEntitlement(json, opts?) → { ok, entitlement?, error? } from a POST /v1/licenses/validate response —
+// the (re)check path. Requires valid:true AND an active key.
+export function lemonEntitlement(json, { storeId = null } = {}) {
+  if (!json || typeof json !== "object") return { ok: false, error: LICENSE_GENERIC_ERROR };
+  const pin = storePinFails(json, storeId);
+  if (pin) return { ok: false, error: pin };
+  if (json.valid !== true) {
+    const r = licenseKeyResult(json.license_key);
+    return { ok: false, error: r.error || LICENSE_GENERIC_ERROR };
+  }
+  const r = licenseKeyResult(json.license_key);
+  return r.entitlement ? { ok: true, entitlement: r.entitlement } : { ok: false, error: r.error };
+}
+
+// lemonActivation(json, opts?) → { ok, entitlement?, instanceId?, error? } from a POST /v1/licenses/activate
+// response — the SEAT-CONSUMING path. activated:true means a seat was taken AND instance.id is the handle to
+// release it later (deactivate). activated:false is the rejection: a seat-limit hit becomes a friendly
+// message that names the seat count; otherwise the key's own status (expired/disabled) or LS's error message.
+export function lemonActivation(json, { storeId = null } = {}) {
+  if (!json || typeof json !== "object") return { ok: false, error: LICENSE_GENERIC_ERROR };
+  const pin = storePinFails(json, storeId);
+  if (pin) return { ok: false, error: pin };
+  if (json.activated !== true) {
+    const lk = json.license_key || {};
+    const limit = Number(lk.activation_limit);
+    if (Number.isFinite(limit) && Number(lk.activation_usage) >= limit) {
+      return { ok: false, error: `All ${limit} seat${limit === 1 ? "" : "s"} on this license are in use. Free one up by removing the license on another device, or add a seat.` };
+    }
+    const r = licenseKeyResult(lk); // a status-based message if the key itself is expired/disabled
+    return { ok: false, error: r.error || (typeof json.error === "string" && json.error) || LICENSE_GENERIC_ERROR };
+  }
+  const r = licenseKeyResult(json.license_key);
+  if (!r.entitlement) return { ok: false, error: r.error };
+  const inst = json.instance;
+  const instanceId = inst && typeof inst === "object" && inst.id != null ? String(inst.id) : undefined;
+  return { ok: true, entitlement: r.entitlement, instanceId };
+}
+
+// lemonDeactivation(json) → { ok } from a POST /v1/licenses/deactivate response. Best-effort (freeing a
+// seat); a falsy/garbage response is just { ok:false } and the caller still clears the local license.
+export function lemonDeactivation(json) {
+  return { ok: !!(json && typeof json === "object" && json.deactivated === true) };
 }

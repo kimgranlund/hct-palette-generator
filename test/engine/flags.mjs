@@ -111,6 +111,34 @@ ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" }, meta: { 
 ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }, { storeId: 7 }).ok === false, "lemonEntitlement: storeId set but response carries no meta.store_id → rejected (fail-closed)");
 ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }).ok === true, "lemonEntitlement: storeId UNset (null) → store check skipped, any active key passes (soft-launch default)");
 
+// ── Layer 2 (seats): lemonActivation — the seat-consuming POST /v1/licenses/activate path ──
+{
+  const r = F.lemonActivation({ activated: true, license_key: { status: "active" }, instance: { id: "inst-123" } });
+  ok(r.ok === true && r.entitlement.status === "active" && r.instanceId === "inst-123", "lemonActivation: activated + active key → ok with the instance id (the seat handle)");
+}
+ok(F.lemonActivation({ activated: true, license_key: { status: "active" }, instance: { id: 99 } }).instanceId === "99", "lemonActivation: a numeric instance id is stringified");
+ok(F.lemonActivation({ activated: true, license_key: { status: "active" } }).instanceId === undefined, "lemonActivation: activated but no instance object → ok, instanceId undefined");
+{
+  const r = F.lemonActivation({ activated: false, license_key: { status: "active", activation_limit: 5, activation_usage: 5 } });
+  ok(r.ok === false && /\b5 seats\b/.test(r.error), "lemonActivation: at the activation limit → a friendly seat-limit message naming the count");
+}
+ok(/\b1 seat\b/.test(F.lemonActivation({ activated: false, license_key: { status: "active", activation_limit: 1, activation_usage: 1 } }).error), "lemonActivation: singular 'seat' at a 1-seat limit");
+ok(/expired/i.test(F.lemonActivation({ activated: false, license_key: { status: "expired", activation_limit: 5, activation_usage: 1 } }).error), "lemonActivation: NOT at limit + an expired key → the key-status message (not a seat message)");
+ok(F.lemonActivation({ activated: true, license_key: { status: "active" }, meta: { store_id: 42 } }, { storeId: 7 }).ok === false, "lemonActivation: store mismatch → rejected (fail-closed, shared with validate)");
+ok(F.lemonActivation(null).ok === false && typeof F.lemonActivation(null).error === "string", "lemonActivation: null/garbage JSON → friendly error (no throw)");
+
+// ── Layer 2 (seats): lemonDeactivation — frees a seat ──
+ok(F.lemonDeactivation({ deactivated: true }).ok === true, "lemonDeactivation: deactivated:true → ok");
+ok(F.lemonDeactivation({ deactivated: false }).ok === false && F.lemonDeactivation(null).ok === false && F.lemonDeactivation({}).ok === false, "lemonDeactivation: false/garbage/missing → not ok");
+
+// clampProfile keeps a valid instanceId (the seat handle) and drops a non-string one
+ok(F.clampProfile({ tier: "pro", instanceId: "inst-1" }).instanceId === "inst-1", "clampProfile keeps a string instanceId");
+ok(!("instanceId" in F.clampProfile({ tier: "pro", instanceId: 42 })), "clampProfile drops a non-string instanceId");
+{
+  const c = F.clampProfile({ tier: "pro", licenseKey: "PRO-A-1", instanceId: "inst-1", entitlement: { status: "active" }, checkedAt: 5 });
+  ok(JSON.stringify(F.clampProfile(JSON.parse(JSON.stringify(c)))) === JSON.stringify(c), "a profile with an instanceId round-trips through JSON unchanged (stable emit order)");
+}
+
 if (fails.length) { console.error(`flags FAIL (${fails.length}):\n  ` + fails.join("\n  ")); process.exit(1); }
-console.log("flags PASS — tier tables · resolveFlags · flagOf · clampProfile · entitlementActive · resolveTier · lemonEntitlement (Layer 2)");
+console.log("flags PASS — tier tables · resolveFlags · flagOf · clampProfile · entitlementActive · resolveTier · lemonEntitlement · lemonActivation · lemonDeactivation (Layer 2 + seats)");
 process.exit(0);
