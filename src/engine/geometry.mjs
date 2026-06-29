@@ -207,9 +207,22 @@ export function geomTokensFigma(scale) {
 // shape `_geomModeScales()` returns: [{ name, scale }] (minWidth, if present, is ignored — Figma modes are
 // named, not media-queried). IDENTITY: `modes = []` ⇒ a single "Base" mode whose values equal the base.
 const GEOM_SIZE_FIELDS = [["height", "height"], ["icon", "icon"], ["caret", "caret"], ["font", "font"], ["gap", "gap"], ["padding", "padding"], ["edgePadding", "edgePadding"], ["radius", "radiusPill"], ["minWidth", "minWidth"]];
+// Figma requires DISTINCT mode names per collection; "Base" is the synthetic base layer. Reserve it +
+// de-dup (case-insensitively) so a breakpoint renamed "Base" / two same-named modes can't collide on import.
+function disambiguateModeNames(names) {
+  const used = new Set(["base"]);
+  return (names || []).map((raw) => {
+    const stem = String(raw);
+    let n = stem, i = 1;
+    while (used.has(n.toLowerCase())) { i += 1; n = `${stem} ${i}`; }
+    used.add(n.toLowerCase());
+    return n;
+  });
+}
 export function geomTokensFigmaModes(baseScale, modes = []) {
   const list = (Array.isArray(modes) ? modes : []).filter((m) => m && m.name && m.scale && m.scale.sizes);
-  const modeNames = ["Base", ...list.map((m) => m.name)];
+  const names = disambiguateModeNames(list.map((m) => m.name));
+  const modeNames = ["Base", ...names];
   const variables = {};
   const set = (key, mode, value) => {
     if (!variables[key]) variables[key] = { type: "FLOAT", values: {} };
@@ -224,7 +237,7 @@ export function geomTokensFigmaModes(baseScale, modes = []) {
     for (const [k, v] of Object.entries(scale.space)) set(`space/${k}`, mode, v);
   };
   layer(baseScale, "Base");
-  for (const m of list) layer(m.scale, m.name);
+  list.forEach((m, i) => layer(m.scale, names[i]));
   return {
     $schema: "figma-ui3-variables.float.schema.v1",
     collections: { "Geometry": { modes: modeNames, variables } },
