@@ -21,9 +21,9 @@ import { lemonEntitlement } from "./engine/flags.js";
 type LicenseResult = { ok: boolean; entitlement?: { status: string; expiresAt?: number }; error?: string };
 type LicensedElement = HTMLElement & { _licenseValidator?: (key: string) => Promise<LicenseResult> };
 
-// Optionally PIN activation to this Lemon Squeezy store (rejects a valid key issued by a DIFFERENT store).
-// null = accept any active key the storefront issues; set the numeric store id to lock activation down.
-const LEMON_STORE_ID: number | null = null;
+// PIN activation to the NONOUN Lemon Squeezy store (id 420293) — lemonEntitlement is FAIL-CLOSED on this,
+// so a valid key issued by any OTHER store is rejected. null would accept any active key from any store.
+const LEMON_STORE_ID: number | null = 420293;
 
 async function lemonSqueezyLicenseValidator(key: string): Promise<LicenseResult> {
   const resp = await fetch("https://api.lemonsqueezy.com/v1/licenses/validate", {
