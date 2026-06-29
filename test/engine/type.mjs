@@ -127,6 +127,35 @@ ok(T.typeScale({ treatment: "nope" }).treatment === T.TYPE_TREATMENTS[0].id, "un
   ok(tok.$type === "typography" && /px$/.test(tok.$value.fontSize) && typeof tok.$value.fontWeight === "number", "DTCG composite typography token (px sizes + numeric weight)");
 }
 
+// ── Figma breakpoint-MODED variables: a single "Typography" collection, one MODE per breakpoint (5.4b) ──
+{
+  const base = T.typeScale({ treatment: "product", bodyBase: 16 });
+  const mobile = T.typeScale({ treatment: "product", bodyBase: 13 });
+  const out = T.typeTokensFigmaModes(base, [{ name: "Mobile", minWidth: 768, scale: mobile }]);
+  const col = out.collections.Typography;
+  ok(col && JSON.stringify(col.modes) === JSON.stringify(["Base", "Mobile"]), `modes = [Base, Mobile] (got ${JSON.stringify(col && col.modes)})`);
+  // four FLOAT variables per voice×step: size/lineHeight/letterSpacing/weight (weight too — Figma numbers).
+  const v = col.variables["Body/MD/size"];
+  ok(v && v.type === "FLOAT" && typeof v.values.Base === "number" && typeof v.values.Mobile === "number", "Body/MD/size is a FLOAT variable with Base + Mobile values");
+  ok(col.variables["Body/MD/weight"] && col.variables["Body/MD/weight"].type === "FLOAT" && typeof col.variables["Body/MD/weight"].values.Base === "number", "weight is emitted as a FLOAT variable too (Figma numbers)");
+  ok(["size", "lineHeight", "letterSpacing", "weight"].every((p) => col.variables[`Body/MD/${p}`]), "every voice×step emits size/lineHeight/letterSpacing/weight");
+  // per-mode values DIFFER for a breakpoint with a different bodyBase (13 vs 16) — the Mobile size is smaller.
+  ok(v.values.Base === base.categories.Body.MD.size && v.values.Mobile === mobile.categories.Body.MD.size, "Base value = base scale; Mobile value = that mode's scale (per-mode values DIFFER)");
+  ok(v.values.Mobile !== v.values.Base, `the breakpoint's value differs from Base (Base ${v.values.Base}, Mobile ${v.values.Mobile})`);
+  // IDENTITY: with no modes, a single "Base" mode whose values equal the base export.
+  const idn = T.typeTokensFigmaModes(base, []);
+  const idCol = idn.collections.Typography;
+  ok(JSON.stringify(idCol.modes) === JSON.stringify(["Base"]), "no modes ⇒ a single \"Base\" mode");
+  ok(Object.values(idCol.variables).every((x) => x.type === "FLOAT" && Object.keys(x.values).join() === "Base"), "no modes ⇒ every variable has exactly one Base value");
+  ok(idCol.variables["Body/MD/size"].values.Base === base.categories.Body.MD.size && idCol.variables["Display/XL/letterSpacing"].values.Base === base.categories.Display.XL.letterSpacing, "no-modes Base values equal the base scale");
+  // DISTINCT mode names: a breakpoint named "Base" (reserved) and duplicate names are disambiguated, so
+  // Figma never sees modes:["Base","Base"] (which it rejects on import) or a silently-shadowed mode.
+  const dup = T.typeTokensFigmaModes(base, [{ name: "Base", scale: mobile }, { name: "Wide", scale: base }, { name: "Wide", scale: mobile }]).collections.Typography;
+  ok(JSON.stringify(dup.modes) === JSON.stringify(["Base", "Base 2", "Wide", "Wide 2"]), `clashing/duplicate mode names are disambiguated (got ${JSON.stringify(dup.modes)})`);
+  ok(new Set(dup.modes.map((s) => s.toLowerCase())).size === dup.modes.length, "every mode name is distinct (case-insensitively)");
+  ok(dup.variables["Body/MD/size"].values["Base 2"] === mobile.categories.Body.MD.size, "the breakpoint renamed off \"Base\" keeps its own value (didn't overwrite the synthetic Base)");
+}
+
 if (fails.length) { console.error(`type FAIL (${fails.length}):\n  ` + fails.join("\n  ")); process.exit(1); }
-console.log("type PASS — modular scale, optical tracking, treatments, CSS + DTCG emit");
+console.log("type PASS — modular scale, optical tracking, treatments, CSS + DTCG + Figma-modes emit");
 process.exit(0);

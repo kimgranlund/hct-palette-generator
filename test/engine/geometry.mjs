@@ -148,6 +148,28 @@ ok(G.geomScale({ treatment: "nope" }).treatment === G.GEOMETRY_TREATMENTS[0].id,
   ok(f.Geometry.radius.full.$type === "number" && f.Geometry.space["4"].$type === "number", "radius + space are number variables too");
 }
 
+// ── Figma breakpoint-MODED variables: a single "Geometry" collection, one MODE per breakpoint (5.4b) ──
+{
+  const base = G.geomScale({ treatment: "comfortable", baseHeight: 28 });
+  const wide = G.geomScale({ treatment: "comfortable", baseHeight: 40 }); // a taller mode → bigger size heights
+  const out = G.geomTokensFigmaModes(base, [{ name: "Desktop", minWidth: 1024, scale: wide }]);
+  const col = out.collections.Geometry;
+  ok(col && JSON.stringify(col.modes) === JSON.stringify(["Base", "Desktop"]), `modes = [Base, Desktop] (got ${JSON.stringify(col && col.modes)})`);
+  const v = col.variables["size/MD/height"];
+  ok(v && v.type === "FLOAT" && typeof v.values.Base === "number" && typeof v.values.Desktop === "number", "size/MD/height is a FLOAT variable with Base + Desktop values");
+  ok(["height", "icon", "font", "padding", "radius", "gap"].every((f) => col.variables[`size/MD/${f}`]), "size emits height/icon/font/padding/radius/gap (the geomTokensFigma fields)");
+  ok(col.variables["radius/full"] && col.variables["radius/full"].type === "FLOAT" && col.variables["space/4"], "radius + space land as FLOAT variables too");
+  // per-mode values DIFFER for a breakpoint with a different baseHeight (40 vs 28) — the Desktop height is taller.
+  ok(v.values.Base === base.sizes.MD.height && v.values.Desktop === wide.sizes.MD.height, "Base value = base scale; Desktop value = that mode's scale");
+  ok(v.values.Desktop !== v.values.Base, `the breakpoint's height differs from Base (Base ${v.values.Base}, Desktop ${v.values.Desktop})`);
+  // IDENTITY: with no modes, a single "Base" mode whose values equal the base export.
+  const idn = G.geomTokensFigmaModes(base, []);
+  const idCol = idn.collections.Geometry;
+  ok(JSON.stringify(idCol.modes) === JSON.stringify(["Base"]), "no modes ⇒ a single \"Base\" mode");
+  ok(Object.values(idCol.variables).every((x) => x.type === "FLOAT" && Object.keys(x.values).join() === "Base"), "no modes ⇒ every variable has exactly one Base value");
+  ok(idCol.variables["size/MD/height"].values.Base === base.sizes.MD.height && idCol.variables["radius/full"].values.Base === base.radii.full, "no-modes Base values equal the base scale");
+}
+
 if (fails.length) { console.error(`geometry FAIL (${fails.length}):\n  ` + fails.join("\n  ")); process.exit(1); }
-console.log("geometry PASS — the ramp, the centering law, the two families, treatments, CSS + DTCG emit");
+console.log("geometry PASS — the ramp, the centering law, the two families, treatments, CSS + DTCG + Figma-modes emit");
 process.exit(0);

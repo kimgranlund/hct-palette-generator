@@ -30,8 +30,8 @@ import { MCP_BRAND_KIT } from "./mcp-assets.js";
 import { TYPE_FONTS_CSS } from "./type-fonts.js";
 import { CATEGORY_INDEX, loadCategory } from "./categories/index.js";
 import { deriveNeutral, deriveRelative, RELATIONSHIPS } from "../engine/derive.mjs";
-import { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, TYPE_TREATMENTS, DEFAULT_TYPE } from "../engine/type.mjs";
-import { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } from "../engine/geometry.mjs";
+import { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, typeTokensFigmaModes, TYPE_TREATMENTS, DEFAULT_TYPE } from "../engine/type.mjs";
+import { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, geomTokensFigmaModes, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } from "../engine/geometry.mjs";
 import { zipStore } from "./zip.mjs";
 import { icon, brandMark } from "./icons.js";
 
@@ -4883,6 +4883,9 @@ class HctApp extends HTMLElement {
         { name: "typography/type.tokens.json", data: tDtcg },
         ...this._typeModeDTCGFiles("typography/type"),
         { name: "figma/type.tokens.json", data: tDtcg }, // importable as Figma text styles (via a tokens plugin)
+        // a single "Typography" collection with a MODE per breakpoint (Base + each) — one moded Figma-variable
+        // file instead of N per-width DTCG files. Always emitted (Base-only when there are no breakpoints).
+        { name: "figma/typography.modes.variables.json", data: JSON.stringify(typeTokensFigmaModes(tsc, this._typeModeScales()), null, 2) },
       );
     }
     if (sys.geometry) {
@@ -4893,6 +4896,9 @@ class HctApp extends HTMLElement {
         { name: "geometry/geometry.tokens.json", data: gDtcg },
         ...this._geomModeDTCGFiles("geometry/geometry"),
         { name: "figma/dimension.variables.json", data: JSON.stringify(geomTokensFigma(gsc), null, 2) }, // a "Geometry" collection of Figma NUMBER (FLOAT) variables
+        // a single "Geometry" collection with a MODE per breakpoint (Base + each) — one moded Figma-variable
+        // file instead of N per-width DTCG files. Always emitted (Base-only when there are no breakpoints).
+        { name: "figma/dimension.modes.variables.json", data: JSON.stringify(geomTokensFigmaModes(gsc, this._geomModeScales()), null, 2) },
       );
     }
     // the re-importable parametric config — ALWAYS (it carries the colour + type + geometry params).

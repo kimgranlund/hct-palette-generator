@@ -2661,7 +2661,54 @@ function typeTokensDTCG(scale) {
   return { fontFamily, typography };
 }
 
-return { TYPE_RATIOS, TYPE_TREATMENTS, DEFAULT_TYPE, typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG };
+// typeTokensFigmaModes — the type scale as a single Figma-variable COLLECTION ("Typography") with one MODE
+// per breakpoint (a "Base" mode + one per supplied breakpoint mode), mirroring the UI3 color shape
+// (`exportUI3`): `{ collections: { "Typography": { modes:[…], variables: { "<voice>/<step>/<prop>": {
+// type:"FLOAT", values:{ Base:…, <modeName>:… } } } } }`. So a Figma user imports ONE breakpoint-moded
+// collection instead of N separate per-width files. Every voice×step emits four FLOAT variables — size,
+// lineHeight, letterSpacing, weight (weight too, since Figma variables are numbers). `modes` = the SAME
+// shape `_typeModeScales()` returns: [{ name, scale }] (minWidth, if present, is ignored — Figma modes are
+// named, not media-queried). IDENTITY: `modes = []` ⇒ a single "Base" mode whose values equal the base.
+const TYPE_FIGMA_PROPS = ["size", "lineHeight", "letterSpacing", "weight"];
+// disambiguateModeNames — Figma requires DISTINCT mode names per collection. "Base" is the synthetic base
+// layer, so a breakpoint named "Base" (or any duplicate of another breakpoint) is renamed ("Mobile 2", …)
+// before it would silently shadow another mode / emit modes:["Base","Base"] (which Figma rejects on import).
+function disambiguateModeNames(names) {
+  const used = new Set(["base"]); // reserve the synthetic Base mode (compared case-insensitively)
+  return (names || []).map((raw) => {
+    const stem = String(raw);
+    let n = stem, i = 1;
+    while (used.has(n.toLowerCase())) { i += 1; n = `${stem} ${i}`; }
+    used.add(n.toLowerCase());
+    return n;
+  });
+}
+function typeTokensFigmaModes(baseScale, modes = []) {
+  const list = (Array.isArray(modes) ? modes : []).filter((m) => m && m.name && m.scale && m.scale.categories);
+  const names = disambiguateModeNames(list.map((m) => m.name));
+  const modeNames = ["Base", ...names];
+  const variables = {};
+  // for each mode (Base first, then each breakpoint), write every voice×step×prop value under that mode key.
+  const layer = (scale, mode) => {
+    for (const [cName, steps] of Object.entries(scale.categories)) {
+      for (const [sName, s] of Object.entries(steps)) {
+        for (const prop of TYPE_FIGMA_PROPS) {
+          const key = `${cName}/${sName}/${prop}`;
+          if (!variables[key]) variables[key] = { type: "FLOAT", values: {} };
+          variables[key].values[mode] = s[prop];
+        }
+      }
+    }
+  };
+  layer(baseScale, "Base");
+  list.forEach((m, i) => layer(m.scale, names[i]));
+  return {
+    $schema: "figma-ui3-variables.float.schema.v1",
+    collections: { "Typography": { modes: modeNames, variables } },
+  };
+}
+
+return { TYPE_RATIOS, TYPE_TREATMENTS, DEFAULT_TYPE, typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, disambiguateModeNames, typeTokensFigmaModes };
 })();
 __M.geometry = (function(){
 // geometry.mjs — the GEOMETRY / dimensional engine: the spatial analog of the color & type engines.
@@ -2864,7 +2911,53 @@ function geomTokensFigma(scale) {
   return { Geometry: { size, radius, space } };
 }
 
-return { GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY, geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma };
+// geomTokensFigmaModes — the geometry as a single Figma-variable COLLECTION ("Geometry") with one MODE per
+// breakpoint (a "Base" mode + one per supplied breakpoint mode), mirroring the UI3 color shape
+// (`exportUI3`): `{ collections: { "Geometry": { modes:[…], variables: { "size/<NAME>/<field>": {
+// type:"FLOAT", values:{ Base:…, <modeName>:… } }, "radius/<k>", "space/<k>" } } } }`. So a Figma user
+// imports ONE breakpoint-moded collection instead of N separate per-width files. The size fields mirror
+// `geomTokensFigma` (height/icon/caret/font/gap/padding/edgePadding/radius/minWidth). `modes` = the SAME
+// shape `_geomModeScales()` returns: [{ name, scale }] (minWidth, if present, is ignored — Figma modes are
+// named, not media-queried). IDENTITY: `modes = []` ⇒ a single "Base" mode whose values equal the base.
+const GEOM_SIZE_FIELDS = [["height", "height"], ["icon", "icon"], ["caret", "caret"], ["font", "font"], ["gap", "gap"], ["padding", "padding"], ["edgePadding", "edgePadding"], ["radius", "radiusPill"], ["minWidth", "minWidth"]];
+// Figma requires DISTINCT mode names per collection; "Base" is the synthetic base layer. Reserve it +
+// de-dup (case-insensitively) so a breakpoint renamed "Base" / two same-named modes can't collide on import.
+function disambiguateModeNames(names) {
+  const used = new Set(["base"]);
+  return (names || []).map((raw) => {
+    const stem = String(raw);
+    let n = stem, i = 1;
+    while (used.has(n.toLowerCase())) { i += 1; n = `${stem} ${i}`; }
+    used.add(n.toLowerCase());
+    return n;
+  });
+}
+function geomTokensFigmaModes(baseScale, modes = []) {
+  const list = (Array.isArray(modes) ? modes : []).filter((m) => m && m.name && m.scale && m.scale.sizes);
+  const names = disambiguateModeNames(list.map((m) => m.name));
+  const modeNames = ["Base", ...names];
+  const variables = {};
+  const set = (key, mode, value) => {
+    if (!variables[key]) variables[key] = { type: "FLOAT", values: {} };
+    variables[key].values[mode] = value;
+  };
+  // for each mode (Base first), write size/<NAME>/<field>, radius/<k>, space/<k>. Only `sizes` scale with
+  // baseHeight; radii/space are treatment-derived (mode-independent), but we emit per-mode for completeness.
+  const layer = (scale, mode) => {
+    for (const [name, s] of Object.entries(scale.sizes))
+      for (const [field, src] of GEOM_SIZE_FIELDS) set(`size/${name}/${field}`, mode, s[src]);
+    for (const [k, v] of Object.entries(scale.radii)) set(`radius/${k}`, mode, v);
+    for (const [k, v] of Object.entries(scale.space)) set(`space/${k}`, mode, v);
+  };
+  layer(baseScale, "Base");
+  list.forEach((m, i) => layer(m.scale, names[i]));
+  return {
+    $schema: "figma-ui3-variables.float.schema.v1",
+    collections: { "Geometry": { modes: modeNames, variables } },
+  };
+}
+
+return { GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY, geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, geomTokensFigmaModes };
 })();
 __M.flags = (function(){
 // flags.js — the feature-flag + entitlement SUBSTRATE (item 7, Layer 1). Pure, no DOM, no storage, no
@@ -5029,8 +5122,8 @@ const { MCP_BRAND_KIT } = __M.mcpAssets;
 const { TYPE_FONTS_CSS } = __M.typeFonts;
 const { CATEGORY_INDEX, loadCategory } = __M.categoryIndex;
 const { deriveNeutral, deriveRelative, RELATIONSHIPS } = __M.derive;
-const { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, TYPE_TREATMENTS, DEFAULT_TYPE } = __M.type;
-const { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } = __M.geometry;
+const { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, typeTokensFigmaModes, TYPE_TREATMENTS, DEFAULT_TYPE } = __M.type;
+const { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, geomTokensFigmaModes, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } = __M.geometry;
 const { zipStore } = __M.zip;
 const { icon, brandMark } = __M.icons;
 
@@ -9882,6 +9975,9 @@ class HctApp extends HTMLElement {
         { name: "typography/type.tokens.json", data: tDtcg },
         ...this._typeModeDTCGFiles("typography/type"),
         { name: "figma/type.tokens.json", data: tDtcg }, // importable as Figma text styles (via a tokens plugin)
+        // a single "Typography" collection with a MODE per breakpoint (Base + each) — one moded Figma-variable
+        // file instead of N per-width DTCG files. Always emitted (Base-only when there are no breakpoints).
+        { name: "figma/typography.modes.variables.json", data: JSON.stringify(typeTokensFigmaModes(tsc, this._typeModeScales()), null, 2) },
       );
     }
     if (sys.geometry) {
@@ -9892,6 +9988,9 @@ class HctApp extends HTMLElement {
         { name: "geometry/geometry.tokens.json", data: gDtcg },
         ...this._geomModeDTCGFiles("geometry/geometry"),
         { name: "figma/dimension.variables.json", data: JSON.stringify(geomTokensFigma(gsc), null, 2) }, // a "Geometry" collection of Figma NUMBER (FLOAT) variables
+        // a single "Geometry" collection with a MODE per breakpoint (Base + each) — one moded Figma-variable
+        // file instead of N per-width DTCG files. Always emitted (Base-only when there are no breakpoints).
+        { name: "figma/dimension.modes.variables.json", data: JSON.stringify(geomTokensFigmaModes(gsc, this._geomModeScales()), null, 2) },
       );
     }
     // the re-importable parametric config — ALWAYS (it carries the colour + type + geometry params).

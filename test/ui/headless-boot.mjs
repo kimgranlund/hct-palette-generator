@@ -1006,16 +1006,18 @@ ok(zb[0] === 0x50 && zb[1] === 0x4b && zb[2] === 0x03 && zb[3] === 0x04, "(ee) t
 const eocd = zb.length - 22; // EOCD has no trailing comment → it's the final 22 bytes
 const eocdSig = zb[eocd] === 0x50 && zb[eocd + 1] === 0x4b && zb[eocd + 2] === 0x05 && zb[eocd + 3] === 0x06;
 const entries = zb[eocd + 10] | (zb[eocd + 11] << 8);
-// default opt-in = all three systems on: 10 colour files + 4 figma-aliased + 3 typography (incl. figma/) +
-// 3 geometry (incl. figma/) + the config = 21 entries.
-ok(eocdSig && entries === 21, `(ee) the EOCD reports 21 entries — colour (10) + figma-aliased (4) + typography (3) + geometry (3) + config (got ${entries})`);
+// default opt-in = all three systems on: 10 colour files + 4 figma-aliased + 4 typography (incl. figma/ +
+// figma/ moded) + 4 geometry (incl. figma/ + figma/ moded) + the config = 23 entries.
+ok(eocdSig && entries === 23, `(ee) the EOCD reports 23 entries — colour (10) + figma-aliased (4) + typography (4) + geometry (4) + config (got ${entries})`);
 const zipText = Buffer.from(zb).toString("latin1");
 const wantPaths = ["css-hex/", "css-oklch/", "json/", "dtcg/", "figma/Light_tokens.json", "figma/Dark_tokens.json", "figma/palette.tokens.json", "ui3/", "tailwind/", "shadcn/", "nonoun-color-tokens-my-set-config.json",
   "figma-aliased/Light_tokens.json", "figma-aliased/Dark_tokens.json", "figma-aliased/palette.tokens.json", "figma-aliased/README.txt",
-  "typography/type.css", "typography/type.tokens.json", "figma/type.tokens.json", "geometry/geometry.css", "geometry/geometry.tokens.json", "figma/dimension.variables.json"];
-ok(wantPaths.every((p) => zipText.includes(p)), "(ee) every colour format + typography/ + geometry/ + the config + the figma-aliased/ cascade variant is present in the archive");
+  "typography/type.css", "typography/type.tokens.json", "figma/type.tokens.json", "figma/typography.modes.variables.json", "geometry/geometry.css", "geometry/geometry.tokens.json", "figma/dimension.variables.json", "figma/dimension.modes.variables.json"];
+ok(wantPaths.every((p) => zipText.includes(p)), "(ee) every colour format + typography/ + geometry/ + the moded Figma-variable files + the config + the figma-aliased/ cascade variant is present in the archive");
 // the Figma dimension file is NUMBER-typed (FLOAT variables), not the px dimension strings — so Figma imports it as number variables
 ok(zipText.includes("dimension.variables.json") && /"\$type":\s*"number"/.test(zipText) && zipText.includes('"Geometry"'), "(ee) figma/dimension.variables.json is a Geometry collection of number ($type number) variables");
+// the moded Figma-variable files are single-collection, breakpoint-MODED (a "Base" mode + each mode), FLOAT-typed
+ok(zipText.includes('"Typography"') && zipText.includes('"FLOAT"') && /"modes":\s*\[\s*"Base"/.test(zipText), "(ee) figma/*.modes.variables.json are single moded collections (modes lead with \"Base\", FLOAT-typed variables)");
 // the aliased variant carries com.figma.aliasData (the cascade); the default figma/ does not (ADR-002 resolved).
 ok(zipText.includes("com.figma.aliasData") && zipText.includes("Color Primitives"), "(ee) figma-aliased/ carries com.figma.aliasData targeting Color Primitives (the OD-004 cascade variant)");
 
