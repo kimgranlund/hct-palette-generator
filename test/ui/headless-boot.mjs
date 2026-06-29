@@ -1616,6 +1616,7 @@ const acctTier = () => txtOf(app.querySelector(".account-tier") || {});
 ok(app.tier() === "free" && acctTier() === "Free", `(acct) the Account section renders the effective plan as a Free badge (got "${acctTier()}")`);
 ok(!!app.querySelector(".account-license-input") && !!app.querySelector(".account-validate"), "(acct) the web app shows the license-key entry + Validate");
 ok(!!app.querySelector(".account-manage"), "(acct) a Manage-subscription link is present");
+ok(!!app.querySelector(".account-upgrade") && !!app.querySelector(".account-buy-note"), "(acct) the web app (Free) shows the Get-Pro checkout CTA + buy-a-license link");
 
 // the pluggable license SEAM (no network): a MANUAL active entitlement flips the effective tier to pro
 app._licenseValidator = (key) => ({ ok: !!key, entitlement: { status: "active", expiresAt: Date.now() + 3600000 } });
@@ -1637,7 +1638,7 @@ ok(app.tier() === "free" && !app.profile.licenseKey && acctTier() === "Free", "(
 
 // the license entry is ABSENT inside the offline Figma plugin (the plugin stays free)
 app.inFigma = true; app.render(); flushRaf();
-ok(!app.querySelector(".account-license-input") && !app.querySelector(".account-validate"), "(acct) the license entry is hidden when running inside Figma (offline plugin)");
+ok(!app.querySelector(".account-license-input") && !app.querySelector(".account-validate") && !app.querySelector(".account-upgrade") && !app.querySelector(".account-buy-note"), "(acct) the license entry + checkout CTA/buy-link are all hidden when running inside Figma (offline plugin)");
 app.inFigma = false; app.render(); flushRaf();
 app.closeSettings(); flushRaf();
 

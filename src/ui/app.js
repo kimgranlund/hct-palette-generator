@@ -47,6 +47,11 @@ const PROJECT_KEY = STORAGE_KEY + "-project";
 // isn't a property of a brand kit), so it lives in its own storage slot alongside sets, never in the doc.
 const PROFILE_KEY = STORAGE_KEY + "-profile";
 
+// The Lemon Squeezy storefront — where a Free user buys a Pro license; the key then activates through the
+// web license SEAM (src/main.ts → Lemon Squeezy validate API). An outward LINK only (no network from this
+// file, so the offline Figma bundle stays network-free); the Account panel surfaces it in the WEB build only.
+const CHECKOUT_URL = "https://ultimate-tokens.lemonsqueezy.com";
+
 // README shipped inside the Download-All zip's experimental figma-aliased/ folder (OD-004).
 const ALIASED_README = `figma-aliased/ — EXPERIMENTAL plugin-free cascade (OD-004)
 ==========================================================
@@ -5268,14 +5273,22 @@ class HctApp extends HTMLElement {
     const expText = ent && ent.expiresAt ? (() => { try { return new Date(ent.expiresAt).toLocaleDateString(); } catch (e) { return null; } })() : null;
     const body = [];
 
-    // Plan: the effective tier as a badge.
-    body.push(this._settingsGroup("Plan", [
+    // Plan: the effective tier as a badge, plus a buy-Pro CTA for a Free web user (the Figma plugin is free).
+    const planRows = [
       h("div", { class: "settings-row" },
         h("div", { class: "settings-row-text" },
           h("b", {}, "Current plan"),
           h("small", {}, isPro ? "Pro — every feature unlocked." : "Free — the core generator. A Pro license unlocks the rest.")),
         h("span", { class: "account-tier acct-badge " + (isPro ? "is-pro" : "is-free") }, isPro ? "Pro" : "Free")),
-    ]));
+    ];
+    if (web && !isPro) {
+      planRows.push(h("div", { class: "settings-row" },
+        h("div", { class: "settings-row-text" },
+          h("b", {}, "Upgrade to Pro"),
+          h("small", {}, "Unlimited brand kits, the Pro export formats, advanced treatments, and hosted MCP.")),
+        btn("Get Pro →", { variant: "primary", cls: "account-upgrade", title: "Buy a Pro license", onclick: () => { try { window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer"); } catch {} } })));
+    }
+    body.push(this._settingsGroup("Plan", planRows));
 
     // License: the key entry / status. WEB only — the offline Figma plugin stays free, so it shows a note
     // instead of the entry (no localStorage/network there to validate against).
@@ -5294,12 +5307,14 @@ class HctApp extends HTMLElement {
             h("small", {}, "Paste the key from your purchase email to unlock Pro.")),
           h("div", { class: "account-license-entry" },
             h("input", {
-              type: "text", class: "account-license-input", placeholder: "PRO-XXXX-XXXX", "aria-label": "License key",
+              type: "text", class: "account-license-input", placeholder: "Your license key", "aria-label": "License key",
               value: this._licenseDraft || "",
               oninput: (e) => { this._licenseDraft = e.target.value; },
               onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); this.enterLicense(e.target.value); } },
             }),
             btn("Validate", { variant: "primary", cls: "account-validate", onclick: () => this.enterLicense((this.querySelector(".account-license-input") || {}).value ?? this._licenseDraft) }))));
+        rows.push(h("p", { class: "settings-note account-buy-note" }, "Don't have a key? ",
+          h("button", { type: "button", class: "linklike", onclick: () => { try { window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer"); } catch {} } }, "Get a Pro license →")));
       }
       if (this._licenseError) rows.push(h("p", { class: "account-error settings-note" }, this._licenseError));
       body.push(this._settingsGroup("License", rows));

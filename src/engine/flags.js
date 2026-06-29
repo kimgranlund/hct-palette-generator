@@ -107,3 +107,38 @@ export function clampProfile(raw) {
   }
   return out;
 }
+
+// ── Layer 2 (web wiring): Lemon-Squeezy response → entitlement ─────────────────────────────────────────
+// lemonEntitlement(json, opts?) → the license SEAM's { ok, entitlement?, error? } from a Lemon-Squeezy
+// POST /v1/licenses/validate response. PURE — no fetch, no clock: the WEB entry (src/main.ts) does the
+// network call and hands the parsed JSON here, so this stays in the engine (testable) while app.js + the
+// offline Figma bundle stay network-free. A key is good ONLY when LS reports valid:true AND
+// license_key.status === "active"; an ISO `expires_at` maps to entitlement.expiresAt (ms, re-checked by
+// entitlementActive at gate time). Optional `storeId` PINS activation to one store, so a valid key from a
+// DIFFERENT Lemon-Squeezy store is rejected. Every failure is a friendly, user-safe message (no raw detail).
+export function lemonEntitlement(json, { storeId = null } = {}) {
+  const GENERIC = "We couldn't validate that license key. Check it and try again.";
+  if (!json || typeof json !== "object") return { ok: false, error: GENERIC };
+  const lk = json.license_key && typeof json.license_key === "object" ? json.license_key : {};
+  // Store pinning is FAIL-CLOSED: once a storeId is configured, the key must carry a matching meta.store_id.
+  // A missing store_id (or a mismatch) is rejected — a pinned gate never opens on an unverifiable response.
+  if (storeId != null) {
+    const respStore = json.meta && json.meta.store_id;
+    if (respStore == null || String(respStore) !== String(storeId)) {
+      return { ok: false, error: "That license key is for a different product." };
+    }
+  }
+  if (json.valid !== true || lk.status !== "active") {
+    const error =
+      lk.status === "expired" ? "That license has expired — renew it from your account to continue." :
+      lk.status === "disabled" ? "That license has been disabled. Contact support if that's unexpected." :
+      GENERIC;
+    return { ok: false, error };
+  }
+  const entitlement = { status: "active" };
+  if (lk.expires_at) {
+    const t = Date.parse(lk.expires_at);
+    if (Number.isFinite(t)) entitlement.expiresAt = t;
+  }
+  return { ok: true, entitlement };
+}

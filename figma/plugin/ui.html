@@ -3082,7 +3082,42 @@ function clampProfile(raw) {
   return out;
 }
 
-return { FLAG_KEYS, TIER_FLAGS, TIERS_ENFORCED, resolveFlags, flagOf, entitlementActive, resolveTier, clampProfile };
+// ── Layer 2 (web wiring): Lemon-Squeezy response → entitlement ─────────────────────────────────────────
+// lemonEntitlement(json, opts?) → the license SEAM's { ok, entitlement?, error? } from a Lemon-Squeezy
+// POST /v1/licenses/validate response. PURE — no fetch, no clock: the WEB entry (src/main.ts) does the
+// network call and hands the parsed JSON here, so this stays in the engine (testable) while app.js + the
+// offline Figma bundle stay network-free. A key is good ONLY when LS reports valid:true AND
+// license_key.status === "active"; an ISO `expires_at` maps to entitlement.expiresAt (ms, re-checked by
+// entitlementActive at gate time). Optional `storeId` PINS activation to one store, so a valid key from a
+// DIFFERENT Lemon-Squeezy store is rejected. Every failure is a friendly, user-safe message (no raw detail).
+function lemonEntitlement(json, { storeId = null } = {}) {
+  const GENERIC = "We couldn't validate that license key. Check it and try again.";
+  if (!json || typeof json !== "object") return { ok: false, error: GENERIC };
+  const lk = json.license_key && typeof json.license_key === "object" ? json.license_key : {};
+  // Store pinning is FAIL-CLOSED: once a storeId is configured, the key must carry a matching meta.store_id.
+  // A missing store_id (or a mismatch) is rejected — a pinned gate never opens on an unverifiable response.
+  if (storeId != null) {
+    const respStore = json.meta && json.meta.store_id;
+    if (respStore == null || String(respStore) !== String(storeId)) {
+      return { ok: false, error: "That license key is for a different product." };
+    }
+  }
+  if (json.valid !== true || lk.status !== "active") {
+    const error =
+      lk.status === "expired" ? "That license has expired — renew it from your account to continue." :
+      lk.status === "disabled" ? "That license has been disabled. Contact support if that's unexpected." :
+      GENERIC;
+    return { ok: false, error };
+  }
+  const entitlement = { status: "active" };
+  if (lk.expires_at) {
+    const t = Date.parse(lk.expires_at);
+    if (Number.isFinite(t)) entitlement.expiresAt = t;
+  }
+  return { ok: true, entitlement };
+}
+
+return { FLAG_KEYS, TIER_FLAGS, TIERS_ENFORCED, resolveFlags, flagOf, entitlementActive, resolveTier, clampProfile, lemonEntitlement };
 })();
 __M.persist = (function(){
 // persist.js — UI state persistence for the HCT Palette Generator.
@@ -5199,6 +5234,11 @@ const PROJECT_KEY = STORAGE_KEY + "-project";
 // The per-MACHINE user profile (item 7, Layer 1) — tier + dev flag overrides. NOT per-doc (a license/tier
 // isn't a property of a brand kit), so it lives in its own storage slot alongside sets, never in the doc.
 const PROFILE_KEY = STORAGE_KEY + "-profile";
+
+// The Lemon Squeezy storefront — where a Free user buys a Pro license; the key then activates through the
+// web license SEAM (src/main.ts → Lemon Squeezy validate API). An outward LINK only (no network from this
+// file, so the offline Figma bundle stays network-free); the Account panel surfaces it in the WEB build only.
+const CHECKOUT_URL = "https://ultimate-tokens.lemonsqueezy.com";
 
 // README shipped inside the Download-All zip's experimental figma-aliased/ folder (OD-004).
 const ALIASED_README = `figma-aliased/ — EXPERIMENTAL plugin-free cascade (OD-004)
@@ -10421,14 +10461,22 @@ class HctApp extends HTMLElement {
     const expText = ent && ent.expiresAt ? (() => { try { return new Date(ent.expiresAt).toLocaleDateString(); } catch (e) { return null; } })() : null;
     const body = [];
 
-    // Plan: the effective tier as a badge.
-    body.push(this._settingsGroup("Plan", [
+    // Plan: the effective tier as a badge, plus a buy-Pro CTA for a Free web user (the Figma plugin is free).
+    const planRows = [
       h("div", { class: "settings-row" },
         h("div", { class: "settings-row-text" },
           h("b", {}, "Current plan"),
           h("small", {}, isPro ? "Pro — every feature unlocked." : "Free — the core generator. A Pro license unlocks the rest.")),
         h("span", { class: "account-tier acct-badge " + (isPro ? "is-pro" : "is-free") }, isPro ? "Pro" : "Free")),
-    ]));
+    ];
+    if (web && !isPro) {
+      planRows.push(h("div", { class: "settings-row" },
+        h("div", { class: "settings-row-text" },
+          h("b", {}, "Upgrade to Pro"),
+          h("small", {}, "Unlimited brand kits, the Pro export formats, advanced treatments, and hosted MCP.")),
+        btn("Get Pro →", { variant: "primary", cls: "account-upgrade", title: "Buy a Pro license", onclick: () => { try { window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer"); } catch {} } })));
+    }
+    body.push(this._settingsGroup("Plan", planRows));
 
     // License: the key entry / status. WEB only — the offline Figma plugin stays free, so it shows a note
     // instead of the entry (no localStorage/network there to validate against).
@@ -10447,12 +10495,14 @@ class HctApp extends HTMLElement {
             h("small", {}, "Paste the key from your purchase email to unlock Pro.")),
           h("div", { class: "account-license-entry" },
             h("input", {
-              type: "text", class: "account-license-input", placeholder: "PRO-XXXX-XXXX", "aria-label": "License key",
+              type: "text", class: "account-license-input", placeholder: "Your license key", "aria-label": "License key",
               value: this._licenseDraft || "",
               oninput: (e) => { this._licenseDraft = e.target.value; },
               onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); this.enterLicense(e.target.value); } },
             }),
             btn("Validate", { variant: "primary", cls: "account-validate", onclick: () => this.enterLicense((this.querySelector(".account-license-input") || {}).value ?? this._licenseDraft) }))));
+        rows.push(h("p", { class: "settings-note account-buy-note" }, "Don't have a key? ",
+          h("button", { type: "button", class: "linklike", onclick: () => { try { window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer"); } catch {} } }, "Get a Pro license →")));
       }
       if (this._licenseError) rows.push(h("p", { class: "account-error settings-note" }, this._licenseError));
       body.push(this._settingsGroup("License", rows));

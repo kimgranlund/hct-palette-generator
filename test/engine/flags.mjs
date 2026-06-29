@@ -89,6 +89,28 @@ ok(F.resolveTier(null, T0) === "free", "resolveTier: garbage profile → free");
 }
 ok(!("expiresAt" in F.clampProfile({ entitlement: { status: "active", expiresAt: "whenever" } }).entitlement), "clampProfile drops a non-finite entitlement.expiresAt but keeps the entitlement");
 
+// ── Layer 2 (web wiring): lemonEntitlement — map a Lemon-Squeezy /licenses/validate response → the seam ──
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }).ok === true, "lemonEntitlement: valid:true + active → ok");
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }).entitlement.expiresAt === undefined, "lemonEntitlement: no expires_at → perpetual (no expiresAt)");
+{
+  const iso = "2030-01-01T00:00:00.000Z";
+  const r = F.lemonEntitlement({ valid: true, license_key: { status: "active", expires_at: iso } });
+  ok(r.ok === true && r.entitlement.status === "active" && r.entitlement.expiresAt === Date.parse(iso), "lemonEntitlement: maps expires_at (ISO) → entitlement.expiresAt (ms)");
+  // the mapped entitlement must satisfy the SAME gate enterLicense re-checks
+  ok(F.entitlementActive(r.entitlement, Date.parse(iso) - 1) === true, "lemonEntitlement: its entitlement reads active before expiry through entitlementActive");
+}
+ok(F.lemonEntitlement({ valid: false, license_key: { status: "inactive" } }).ok === false, "lemonEntitlement: valid:false → not ok");
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "expired" } }).ok === false, "lemonEntitlement: status not active (even if valid flag) → not ok");
+ok(/expired/i.test(F.lemonEntitlement({ valid: false, license_key: { status: "expired" } }).error), "lemonEntitlement: expired status → a friendly 'expired' message");
+ok(/disabled/i.test(F.lemonEntitlement({ valid: false, license_key: { status: "disabled" } }).error), "lemonEntitlement: disabled status → a friendly 'disabled' message");
+ok(F.lemonEntitlement(null).ok === false && typeof F.lemonEntitlement(null).error === "string", "lemonEntitlement: null/garbage JSON → friendly error (no throw)");
+ok(F.lemonEntitlement({}).ok === false, "lemonEntitlement: empty object → not ok");
+// store pinning: a valid, active key issued by a DIFFERENT Lemon-Squeezy store is rejected; a match passes.
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" }, meta: { store_id: 42 } }, { storeId: 7 }).ok === false, "lemonEntitlement: storeId mismatch → rejected");
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" }, meta: { store_id: 7 } }, { storeId: 7 }).ok === true, "lemonEntitlement: storeId match → ok");
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }, { storeId: 7 }).ok === false, "lemonEntitlement: storeId set but response carries no meta.store_id → rejected (fail-closed)");
+ok(F.lemonEntitlement({ valid: true, license_key: { status: "active" } }).ok === true, "lemonEntitlement: storeId UNset (null) → store check skipped, any active key passes (soft-launch default)");
+
 if (fails.length) { console.error(`flags FAIL (${fails.length}):\n  ` + fails.join("\n  ")); process.exit(1); }
-console.log("flags PASS — tier tables · resolveFlags · flagOf · clampProfile · entitlementActive · resolveTier (Layer 2)");
+console.log("flags PASS — tier tables · resolveFlags · flagOf · clampProfile · entitlementActive · resolveTier · lemonEntitlement (Layer 2)");
 process.exit(0);
