@@ -1609,6 +1609,38 @@ ok(app.flagOf("proExport") === false && app.flagOf("maxSets") === 1, "(fl) setPr
 ok(app.flagOf("nope") === false, "(fl) an unknown flag resolves false (restrictive default)");
 app.setProfile({ flagOverrides: {} }); flushRaf(); // restore unlocked
 
+// ── (acct) Settings « Account » (item 7, Layer 3) — plan badge · license seam · offline-hidden entry ──
+app.openSet(app.sets[0].id); flushRaf(); // guarantee editor view (where renderSettings lives)
+app.openSettings(); app.settingsSection = "account"; app.render(); flushRaf();
+const acctTier = () => txtOf(app.querySelector(".account-tier") || {});
+ok(app.tier() === "free" && acctTier() === "Free", `(acct) the Account section renders the effective plan as a Free badge (got "${acctTier()}")`);
+ok(!!app.querySelector(".account-license-input") && !!app.querySelector(".account-validate"), "(acct) the web app shows the license-key entry + Validate");
+ok(!!app.querySelector(".account-manage"), "(acct) a Manage-subscription link is present");
+
+// the pluggable license SEAM (no network): a MANUAL active entitlement flips the effective tier to pro
+app._licenseValidator = (key) => ({ ok: !!key, entitlement: { status: "active", expiresAt: Date.now() + 3600000 } });
+await app.enterLicense("PRO-TEST-1234"); flushRaf();
+ok(app.tier() === "pro" && app.profile.entitlement && app.profile.entitlement.status === "active", `(acct) enterLicense with an active entitlement flips the effective tier to pro (got ${app.tier()})`);
+ok(app.flagOf("proExport") === true, "(acct) flagOf returns unlocked pre-launch (TIERS_ENFORCED off — the entitlement gate itself is unit-tested in flags.mjs; app.tier() above proves the effective-tier resolution)");
+const acctStored = JSON.parse(localStorage.getItem("nonoun-color-tokens-profile") || "null");
+ok(acctStored && acctStored.tier === "pro" && acctStored.licenseKey === "PRO-TEST-1234" && acctStored.entitlement.status === "active", "(acct) the license + entitlement persist to the profile store");
+app.render(); flushRaf();
+ok(acctTier() === "Pro" && !app.querySelector(".account-license-input") && !!app.querySelector(".account-remove"), "(acct) once Pro the badge reads Pro and the entry becomes Remove");
+
+// resolveTier is the source of truth: a stored tier:pro can't survive an expired entitlement
+app.profile = { ...app.profile, entitlement: { status: "active", expiresAt: Date.now() - 1000 } };
+ok(app.tier() === "free", "(acct) an expired entitlement downgrades the effective tier to free (even with tier:pro stored)");
+
+// clearLicense → back to Free, license dropped
+app.clearLicense(); flushRaf(); app.render(); flushRaf();
+ok(app.tier() === "free" && !app.profile.licenseKey && acctTier() === "Free", "(acct) clearLicense returns to Free and drops the license");
+
+// the license entry is ABSENT inside the offline Figma plugin (the plugin stays free)
+app.inFigma = true; app.render(); flushRaf();
+ok(!app.querySelector(".account-license-input") && !app.querySelector(".account-validate"), "(acct) the license entry is hidden when running inside Figma (offline plugin)");
+app.inFigma = false; app.render(); flushRaf();
+app.closeSettings(); flushRaf();
+
 // ── report ──────────────────────────────────────────────────────────────────────────
 if (fails.length) {
   console.error("HEADLESS BOOT FAIL:");

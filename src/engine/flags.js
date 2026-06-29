@@ -23,8 +23,11 @@ export const TIERS_ENFORCED = false;
 
 // resolveFlags(profile, opts?) → the resolved flag map. base = the tier's values when enforced, else the
 // unlocked (pro) values; then any explicit flagOverrides (dev / QA / early-access) win.
-export function resolveFlags(profile = {}, { enforced = TIERS_ENFORCED } = {}) {
-  const tier = profile && profile.tier === "pro" ? "pro" : "free";
+export function resolveFlags(profile = {}, { enforced = TIERS_ENFORCED, nowMs } = {}) {
+  // resolve the EFFECTIVE tier from the entitlement (a stored tier:"pro" with no valid entitlement is
+  // free) — so the entitlement gate can't be bypassed by a direct caller, not just app.flagOf. Clockless:
+  // pass nowMs to ALSO enforce expiry; without it only the no-entitlement spoof is caught, not staleness.
+  const tier = resolveTier(profile, nowMs);
   const base = enforced ? TIER_FLAGS[tier] || TIER_FLAGS.free : TIER_FLAGS.pro;
   const overrides = profile && profile.flagOverrides && typeof profile.flagOverrides === "object" ? profile.flagOverrides : {};
   const out = { ...base };
@@ -39,12 +42,50 @@ export function flagOf(flags, key) {
   return key in TIER_FLAGS.free ? TIER_FLAGS.free[key] : false;
 }
 
-// clampProfile(raw) → a sanitized profile { tier, flagOverrides? }. Unknown/invalid drops; default free;
-// flagOverrides keeps only known keys with the right TYPE (maxSets = a finite int ≥ 0; the rest boolean).
-// No payment fields here — licenseKey/entitlement/checkedAt arrive in Layer 2.
+// ── Layer 2: entitlement → tier ──────────────────────────────────────────────────────────────────────
+// PURE — no DOM, no clock. The CALLER supplies `nowMs` (never Date.now here), so these stay deterministic +
+// testable. An entitlement is the validated proof of purchase ({ status, expiresAt? } — Lemon-Squeezy-shaped);
+// the stored `tier` alone can't fake Pro — it must be BACKED by a currently-active entitlement (resolveTier).
+
+// entitlementActive(entitlement, nowMs) → true iff the entitlement is "active" AND not past its expiry.
+// A missing/blank expiresAt = perpetual (never expires). A malformed entitlement → false (restrictive).
+export function entitlementActive(entitlement, nowMs) {
+  if (!entitlement || typeof entitlement !== "object" || entitlement.status !== "active") return false;
+  if (entitlement.expiresAt != null) {
+    const exp = Number(entitlement.expiresAt);
+    if (Number.isFinite(exp) && Number(nowMs) > exp) return false;
+  }
+  return true;
+}
+
+// resolveTier(profile, nowMs) → the EFFECTIVE tier. "pro" iff the stored tier is pro AND the entitlement is
+// currently active; otherwise "free". This is what every gate reads through (resolveFlags), so a stored
+// tier:"pro" with no/expired entitlement can never unlock Pro.
+export function resolveTier(profile, nowMs) {
+  const p = profile && typeof profile === "object" ? profile : {};
+  return p.tier === "pro" && entitlementActive(p.entitlement, nowMs) ? "pro" : "free";
+}
+
+// clampEntitlement(raw) → a sane { status, expiresAt? } or undefined. status must be a non-empty string;
+// expiresAt is kept only when finite. Everything else drops (no passthrough of untrusted fields).
+function clampEntitlement(raw) {
+  if (!raw || typeof raw !== "object" || typeof raw.status !== "string" || !raw.status) return undefined;
+  const ent = { status: raw.status };
+  if (raw.expiresAt != null) {
+    const exp = Number(raw.expiresAt);
+    if (Number.isFinite(exp)) ent.expiresAt = exp;
+  }
+  return ent;
+}
+
+// clampProfile(raw) → a sanitized profile { tier, flagOverrides?, licenseKey?, entitlement?, checkedAt? }.
+// Unknown/invalid drops; default free. flagOverrides keeps only known keys with the right TYPE (maxSets =
+// a finite int ≥ 0; the rest boolean). The Layer-2 payment fields are OPTIONAL and individually clamped:
+// licenseKey = a non-empty string · entitlement = a sane {status, expiresAt?} · checkedAt = a finite ms ≥ 0.
+// Emit order is stable (tier → flagOverrides → licenseKey → entitlement → checkedAt) so JSON round-trips.
 export function clampProfile(raw) {
   const p = raw && typeof raw === "object" ? raw : {};
-  const tier = p.tier === "pro" ? "pro" : "free";
+  const out = { tier: p.tier === "pro" ? "pro" : "free" };
   const fo = {};
   if (p.flagOverrides && typeof p.flagOverrides === "object") {
     for (const k of FLAG_KEYS) {
@@ -56,5 +97,13 @@ export function clampProfile(raw) {
       } else if (typeof v === "boolean") fo[k] = v;
     }
   }
-  return Object.keys(fo).length ? { tier, flagOverrides: fo } : { tier };
+  if (Object.keys(fo).length) out.flagOverrides = fo;
+  if (typeof p.licenseKey === "string" && p.licenseKey) out.licenseKey = p.licenseKey;
+  const ent = clampEntitlement(p.entitlement);
+  if (ent) out.entitlement = ent;
+  if (p.checkedAt != null) {
+    const ca = Number(p.checkedAt);
+    if (Number.isFinite(ca) && ca >= 0) out.checkedAt = ca;
+  }
+  return out;
 }

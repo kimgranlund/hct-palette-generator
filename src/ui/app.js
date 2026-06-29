@@ -24,7 +24,7 @@ import {
   SCRIM_STEPS,
 } from "./model.mjs";
 import { STORAGE_KEY, serialize, hydrate } from "./persist.js";
-import { clampProfile, resolveFlags, flagOf as flagFromFlags } from "../engine/flags.js";
+import { clampProfile, resolveFlags, flagOf as flagFromFlags, resolveTier, entitlementActive } from "../engine/flags.js";
 import { FIGMA_PLUGIN } from "./figma-plugin-assets.js";
 import { MCP_BRAND_KIT } from "./mcp-assets.js";
 import { TYPE_FONTS_CSS } from "./type-fonts.js";
@@ -119,6 +119,27 @@ function loadProfile() {
 function saveProfile(profile) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(clampProfile(profile))); } catch { /* in-memory */ }
 }
+
+// defaultLicenseValidator — the default for the pluggable license SEAM (this._licenseValidator), item 7
+// Layer 2. PURE + OFFLINE (no network): a dev/QA "manual entitlement" path so the tier flip + caching are
+// real and testable without a server. A key shaped "PRO-XXXX" grants an active entitlement; anything else
+// is a friendly rejection. The WEB build assigns the REAL validator that talks to Lemon-Squeezy's license
+// API (see enterLicense's doc-comment) — that network call is intentionally NOT written in this file, so
+// app.js (and the offline Figma plugin bundle it becomes, manifest networkAccess:"none") stays network-free.
+// Returns { ok, entitlement?, error? }; may be async (the web validator is) — enterLicense awaits it.
+function defaultLicenseValidator(key) {
+  const k = String(key || "").trim();
+  if (/^PRO-[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]+)*$/.test(k)) return { ok: true, entitlement: { status: "active" } };
+  return { ok: false, error: "We couldn't validate that license key. Check it and try again." };
+}
+
+// The boolean capability flags exposed as dev/QA override toggles in Settings › Account (maxSets is VALUED,
+// so it's not a toggle). Each writes profile.flagOverrides via setProfile — handy for exercising a gate.
+const DEV_FLAG_TOGGLES = [
+  { key: "proExport", label: "Pro export formats", desc: "Force the Pro-only export formats on or off." },
+  { key: "advancedTreatments", label: "Advanced treatments", desc: "Force the advanced type/geometry treatments." },
+  { key: "hostedMcp", label: "Hosted MCP", desc: "Force the hosted Brand-Kit MCP capability." },
+];
 
 function newSet(name) {
   const doc = serialize(defaultDocument());
@@ -399,7 +420,13 @@ class HctApp extends HTMLElement {
     ensureAppTheme(); // inject the generated --c-* design tokens once, globally
     migrateStorageKeys(); // copy any pre-rename saved sets/config into the new key namespace
     this.sets = loadSets();
-    this.profile = loadProfile(); // per-machine { tier, flagOverrides } — drives this.flagOf() (item 7)
+    this.profile = loadProfile(); // per-machine { tier, flagOverrides, licenseKey?, entitlement?, checkedAt? } — drives this.flagOf()/this.tier() (item 7)
+    // The pluggable license-validation SEAM (item 7, Layer 2). Default = an offline dev/QA validator (no
+    // network). The WEB build reassigns this to a Lemon-Squeezy-backed validator AFTER construction; the
+    // offline Figma plugin keeps the default (the Account license UI is hidden there anyway).
+    this._licenseValidator = defaultLicenseValidator;
+    this._licenseDraft = ""; // the in-progress license-key text (Account section, web only)
+    this._licenseError = null; // last inline license-entry error (a friendly string — never a raw stack)
     // session (UI-only, not persisted with the doc)
     this.view = "gallery"; // gallery | editor
     this.category = null; // open Category category slug within the gallery hub (null = hub). UI-session only.
@@ -1194,20 +1221,83 @@ class HctApp extends HTMLElement {
     } catch { /* no frame */ }
   }
 
-  // flagOf(key) — the SINGLE gate check for a Pro/feature flag (item 7, Layer 1). Resolves from the
-  // per-machine profile's tier + dev overrides; returns a boolean or a value (e.g. maxSets → 2|Infinity).
-  // Gated surfaces MUST read this, never `this.profile.tier === "pro"`. Pre-launch it returns the unlocked
-  // values (TIERS_ENFORCED is false), so wiring a guard now is a safe no-op until payment lands (Layer 2).
-  flagOf(key) {
-    return flagFromFlags(resolveFlags(this.profile), key);
+  // tier() — the EFFECTIVE tier (item 7, Layer 2): "pro" only when the stored tier is pro AND backed by a
+  // currently-active entitlement; else "free". resolveTier takes the clock here (the engine stays clockless).
+  tier() {
+    return resolveTier(this.profile, Date.now());
   }
 
-  // setProfile(patch) — merge + clamp + persist the profile (used by Layer 2's license entry / Layer 3's
-  // Settings « Account »). Re-renders so any flagOf-gated UI updates. No payment code here yet.
+  // flagOf(key) — the SINGLE gate check for a Pro/feature flag (item 7). Resolves from the EFFECTIVE tier
+  // (tier(), entitlement-backed — not the raw stored tier) plus the dev overrides; returns a boolean or a
+  // value (e.g. maxSets → 2|Infinity). Gated surfaces MUST read this, never `this.profile.tier === "pro"`.
+  // Pre-launch it returns the unlocked values (TIERS_ENFORCED is false), so wiring a guard now is a safe
+  // no-op until the product flips enforcement on.
+  flagOf(key) {
+    // resolveFlags resolves the effective tier from the entitlement itself; pass nowMs to enforce expiry.
+    return flagFromFlags(resolveFlags(this.profile, { nowMs: Date.now() }), key);
+  }
+
+  // setProfile(patch) — merge + clamp + persist the profile (used by the license entry + the Settings
+  // « Account » dev toggles). Re-renders so any flagOf-gated UI updates.
   setProfile(patch) {
     this.profile = clampProfile({ ...this.profile, ...patch });
     saveProfile(this.profile);
     this.render();
+  }
+
+  // enterLicense(key) — validate a license key through the pluggable SEAM (this._licenseValidator) and, on a
+  // currently-active entitlement, flip the profile to Pro (cached on this machine). The DEFAULT validator is
+  // offline (a dev/QA manual path). The WEB build assigns a Lemon-Squeezy-backed validator that POSTs the key
+  // to LS's license endpoint with the store's product id and maps the JSON to { ok, entitlement:{ status,
+  // expiresAt } }. That fetch is WEB-ONLY (guard it with !this.inFigma) and is deliberately NOT written into
+  // this file — so app.js stays network-free inside the offline Figma plugin bundle (networkAccess:"none").
+  // Any failure becomes a friendly inline message (this._licenseError); the raw detail goes to console only.
+  async enterLicense(key) {
+    const k = String(key || "").trim();
+    this._licenseDraft = k;
+    if (this.inFigma) { this._licenseError = "License activation is available in the web app."; this.render(); return false; }
+    if (!k) { this._licenseError = "Enter a license key."; this.render(); return false; }
+    this._licenseError = null;
+    let res;
+    try {
+      res = await this._licenseValidator(k);
+    } catch (e) {
+      if (typeof console !== "undefined" && console.error) console.error("license validation failed:", e);
+      this._licenseError = "Couldn't reach the license service — check your connection and try again.";
+      this.render();
+      return false;
+    }
+    if (!res || !res.ok || !res.entitlement) {
+      this._licenseError = (res && typeof res.error === "string" && res.error) || "That license key wasn't recognized.";
+      this.render();
+      return false;
+    }
+    if (!entitlementActive(res.entitlement, Date.now())) {
+      this._licenseError = "That license isn't active right now (it may have expired). Manage it from your account.";
+      this.render();
+      return false;
+    }
+    this._licenseError = null;
+    this._licenseDraft = "";
+    this.setProfile({ tier: "pro", licenseKey: k, entitlement: res.entitlement, checkedAt: Date.now() }); // re-renders
+    this.toast("Pro unlocked");
+    return true;
+  }
+
+  // clearLicense() — drop the license + entitlement and return to Free (keeps any dev flagOverrides).
+  clearLicense() {
+    this._licenseError = null;
+    this._licenseDraft = "";
+    this.setProfile({ tier: "free", licenseKey: undefined, entitlement: undefined, checkedAt: undefined });
+    this.toast("Switched to Free");
+  }
+
+  // setFlagOverride(key, value) — write/clear a single dev flag override (Settings › Account toggles).
+  // value === null clears the override (inherit the tier value); a boolean pins it. Persists via setProfile.
+  setFlagOverride(key, value) {
+    const next = { ...(this.profile.flagOverrides || {}) };
+    if (value === null) delete next[key]; else next[key] = value;
+    this.setProfile({ flagOverrides: next });
   }
 
   // persistSets — write the gallery's sets to durable storage. The browser uses localStorage; a Figma
@@ -5110,6 +5200,7 @@ class HctApp extends HTMLElement {
     return [
       { group: "Tokens", items: [{ id: "mapping", label: "Mapping" }] },
       { group: "App", items: [{ id: "appearance", label: "Appearance" }] },
+      { group: "Account", items: [{ id: "account", label: "Account" }] },
       { group: "About", items: [{ id: "about", label: "About" }] },
     ];
   }
@@ -5129,6 +5220,7 @@ class HctApp extends HTMLElement {
         ])],
       };
     }
+    if (sec === "account") return this._accountPanel();
     if (sec === "about") {
       return {
         title: "About", desc: "Color Tokens by NONOUN.",
@@ -5164,6 +5256,85 @@ class HctApp extends HTMLElement {
         h("p", { class: "settings-note" }, "These are resolution-layer mapping choices — they re-point how roles resolve, not the ramps, and apply to every export."),
       ],
     };
+  }
+
+  // _accountPanel — the Settings « Account » home (item 7, Layer 3): the effective plan (Free/Pro badge),
+  // the license-key entry (Validate/Remove — WEB only; hidden/disabled in the offline Figma plugin), a
+  // Manage-subscription link, and the dev/QA flag-override toggles. No payment UI beyond the seam.
+  _accountPanel() {
+    const isPro = this.tier() === "pro";
+    const ent = this.profile.entitlement;
+    const web = !this.inFigma;
+    const expText = ent && ent.expiresAt ? (() => { try { return new Date(ent.expiresAt).toLocaleDateString(); } catch (e) { return null; } })() : null;
+    const body = [];
+
+    // Plan: the effective tier as a badge.
+    body.push(this._settingsGroup("Plan", [
+      h("div", { class: "settings-row" },
+        h("div", { class: "settings-row-text" },
+          h("b", {}, "Current plan"),
+          h("small", {}, isPro ? "Pro — every feature unlocked." : "Free — the core generator. A Pro license unlocks the rest.")),
+        h("span", { class: "account-tier acct-badge " + (isPro ? "is-pro" : "is-free") }, isPro ? "Pro" : "Free")),
+    ]));
+
+    // License: the key entry / status. WEB only — the offline Figma plugin stays free, so it shows a note
+    // instead of the entry (no localStorage/network there to validate against).
+    if (web) {
+      const rows = [];
+      if (isPro) {
+        rows.push(h("div", { class: "settings-row" },
+          h("div", { class: "settings-row-text" },
+            h("b", {}, "License"),
+            h("small", {}, "Active on this machine." + (expText ? " Valid until " + expText + "." : ""))),
+          btn("Remove", { cls: "account-remove", onclick: () => this.clearLicense() })));
+      } else {
+        rows.push(h("div", { class: "settings-row" },
+          h("div", { class: "settings-row-text" },
+            h("b", {}, "License key"),
+            h("small", {}, "Paste the key from your purchase email to unlock Pro.")),
+          h("div", { class: "account-license-entry" },
+            h("input", {
+              type: "text", class: "account-license-input", placeholder: "PRO-XXXX-XXXX", "aria-label": "License key",
+              value: this._licenseDraft || "",
+              oninput: (e) => { this._licenseDraft = e.target.value; },
+              onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); this.enterLicense(e.target.value); } },
+            }),
+            btn("Validate", { variant: "primary", cls: "account-validate", onclick: () => this.enterLicense((this.querySelector(".account-license-input") || {}).value ?? this._licenseDraft) }))));
+      }
+      if (this._licenseError) rows.push(h("p", { class: "account-error settings-note" }, this._licenseError));
+      body.push(this._settingsGroup("License", rows));
+    } else {
+      body.push(this._settingsGroup("License", [
+        h("div", { class: "settings-row" },
+          h("div", { class: "settings-row-text" },
+            h("b", {}, "License"),
+            h("small", {}, "Activate a Pro license in the web app — the Figma plugin is free and runs fully offline.")),
+          h("span", { class: "settings-meta" }, "Web only")),
+      ]));
+    }
+
+    // Manage subscription — a placeholder account portal link.
+    body.push(this._settingsGroup(null, [
+      h("div", { class: "settings-row" },
+        h("div", { class: "settings-row-text" },
+          h("b", {}, "Manage subscription"),
+          h("small", {}, "Invoices, payment method, and cancellation.")),
+        h("a", { class: "account-manage settings-meta", href: "https://nonoun.io/account", target: "_blank", rel: "noopener noreferrer" }, "nonoun.io/account")),
+    ]));
+
+    // Developer · flag overrides — three-state (Default / On / Off) per boolean capability flag, written to
+    // profile.flagOverrides. "Default" inherits the tier value; On/Off pin it. Handy for QA-ing a gate.
+    const fo = this.profile.flagOverrides || {};
+    const triItems = [{ id: "default", label: "Default" }, { id: "on", label: "On" }, { id: "off", label: "Off" }];
+    const overrideRows = DEV_FLAG_TOGGLES.map((f) => {
+      const cur = f.key in fo ? (fo[f.key] ? "on" : "off") : "default";
+      return this._settingRow(f.label, f.desc, triItems, cur,
+        (id) => this.setFlagOverride(f.key, id === "default" ? null : id === "on"), "fovr-" + f.key);
+    });
+    body.push(this._settingsGroup("Developer · flag overrides", overrideRows));
+    body.push(h("p", { class: "settings-note" }, "Overrides win over your plan everywhere a gate reads flagOf() — for testing only; they live on this machine and never travel with a set."));
+
+    return { title: "Account", desc: "Your plan, license, and developer flag overrides.", body };
   }
 
   renderSettings() {
