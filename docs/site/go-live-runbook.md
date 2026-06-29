@@ -4,8 +4,30 @@ Everything that must happen to turn the **soft launch** (built, but nothing with
 launch** (Pro features gated, only an active license unlocks them). Current state: `TIERS_ENFORCED` in
 `src/engine/flags.js` is `false`; the store id (`420293`) and per-seat activation flow are already wired.
 
-Do steps **1 and 2 yourself** (Lemon Squeezy dashboard + a CORS check I can't run). Then tell me and I
-merge the prepared flip (step 3).
+Do steps **1 and 2 yourself** (Lemon Squeezy dashboard + a CORS check I can't run). Step **0** is code I
+do; then tell me and I merge the flip (step 3).
+
+---
+
+## 0. Wire the Pro gates (code — PREREQUISITE; the flip is a no-op without it)
+
+> **Discovered while prepping the flip:** the flag *resolver* is complete (`flagOf()` returns the right
+> value per tier), but **no feature surface consumes `flagOf()` yet** — the only references are its
+> definition and a comment. So flipping `TIERS_ENFORCED` today changes nothing a user can see. Each gate
+> must be wired to *read* `flagOf()` and withhold the feature. Since `flagOf()` returns the unlocked values
+> while `TIERS_ENFORCED` is `false`, the gates can be wired and shipped **now with zero user impact** — the
+> flip (step 3) then activates them all at once.
+
+Gates to wire (and the decisions each needs):
+- [ ] **`maxSets`** → block creating a brand kit past the cap (gallery) + upsell to checkout. Cap is
+      already defined (free 2 / pro ∞), so this one needs no product decision — just the UX (block vs.
+      upsell modal).
+- [ ] **`proExport`** → gate the Pro export formats in the export drawer. **Decision needed:** which
+      formats are Free vs Pro (e.g. CSS + DTCG free; Tailwind + shadcn Pro?).
+- [ ] **`advancedTreatments`** → gate the advanced type/geometry treatments. **Decision needed:** which
+      treatments count as "advanced."
+- [ ] **`hostedMcp`** → the hosted Brand-Kit MCP endpoint. **Blocked:** no hosted MCP server is deployed
+      yet, so only the free *download* exists — nothing to gate until one ships.
 
 ---
 
@@ -62,7 +84,7 @@ One line: `TIERS_ENFORCED = true` in `src/engine/flags.js`, plus the handful of 
 pre-launch `false` default. I've **prepared this as a draft PR** (CI-green, not merged) so go-live is a
 single merge once steps 1 & 2 are confirmed.
 
-**Effect the moment it merges + deploys:**
+**Effect the moment it merges + deploys (assuming step 0's gates are wired):**
 - Free users → capped at **2 brand kits**, and `proExport` / `advancedTreatments` / `hostedMcp` turn off.
 - Pro/Studio (activated license) → everything unlocked, per seat.
 - A lapsed subscription / freed seat → auto-downgrade to Free (already wired via the entitlement re-check).
