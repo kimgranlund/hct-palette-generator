@@ -68,6 +68,15 @@ ok(T.TYPE_TREATMENTS.some((t) => t.id === "product") && T.TYPE_TREATMENTS.some((
 // ── unknown treatment falls back to the first ──
 ok(T.typeScale({ treatment: "nope" }).treatment === T.TYPE_TREATMENTS[0].id, "unknown treatment → first treatment");
 
+// ── fonts: a per-role CUSTOM override (config.fonts) replaces that family; blanks ignored; absent ⇒ treatment ──
+{
+  const baseF = T.typeScale({ treatment: "product" });
+  const ovF = T.typeScale({ treatment: "product", fonts: { body: "Custom Sans", display: "   " } });
+  ok(ovF.fonts.body === "Custom Sans", "typeScale: config.fonts overrides that role's family");
+  ok(ovF.fonts.display === baseF.fonts.display && ovF.fonts.mono === baseF.fonts.mono, "typeScale: a blank override is ignored + un-overridden roles keep the treatment family");
+  ok(Array.isArray(T.BUNDLED_FONTS) && T.BUNDLED_FONTS.includes("Inter"), "BUNDLED_FONTS lists the bundled families");
+}
+
 // ── CSS emit: custom props + a utility class per step ──
 {
   const css = T.typeTokensCSS(T.typeScale({ treatment: "product" }));

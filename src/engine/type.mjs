@@ -83,6 +83,9 @@ export const TYPE_TREATMENTS = [
 ];
 
 export const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
+// The families bundled (woff2 in type-fonts.js) — the Fonts combobox menu. A user may also TYPE any custom
+// family per role (config.fonts in typeScale); it exports + renders if installed, else falls back to a generic.
+export const BUNDLED_FONTS = ["Inter", "Inter Tight", "Source Serif 4", "JetBrains Mono"];
 
 // `overrides` (optional) — a flat per-cell SIZE override map keyed "<voiceName>|<stepName>", already
 // mode-selected by the caller. When a positive number exists for a step, it REPLACES the derived size and
@@ -119,7 +122,13 @@ export function typeScale(config = {}) {
   const overrides = config.overrides && typeof config.overrides === "object" ? config.overrides : null;
   const categories = {};
   for (const [name, p] of Object.entries(t.categories)) categories[name] = buildCategory(name, p, factor, overrides);
-  return { treatment: t.id, label: t.label, fonts: { ...t.fonts }, roleOf: Object.fromEntries(Object.entries(t.categories).map(([k, v]) => [k, v.role])), categories };
+  // fonts: the treatment's families, with optional per-role CUSTOM overrides (config.fonts). A custom family
+  // exports as-is + renders if installed/bundled; the specimen falls back to a generic otherwise.
+  const fonts = { ...t.fonts };
+  if (config.fonts && typeof config.fonts === "object") {
+    for (const role of Object.keys(fonts)) { const f = config.fonts[role]; if (typeof f === "string" && f.trim()) fonts[role] = f.trim(); }
+  }
+  return { treatment: t.id, label: t.label, fonts, roleOf: Object.fromEntries(Object.entries(t.categories).map(([k, v]) => [k, v.role])), categories };
 }
 
 // ── emitters ───────────────────────────────────────────────────────────────────────────────────

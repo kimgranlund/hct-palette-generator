@@ -288,6 +288,13 @@ function clampType(t) {
   // without overrides round-trips identically. Type sizes clamp into [1, 512] px.
   const tov = clampTokenOverrides(t.tokenOverrides, 1, 512, 3); // type keys: "<voice>|<step>|<modeKey>" (3 segments)
   if (Object.keys(tov).length) out.tokenOverrides = tov;
+  // per-role CUSTOM font overrides — OPTIONAL map { role: family } for known roles; non-empty strings only,
+  // attached only when non-empty so a config without custom fonts round-trips identically.
+  if (t.fonts && typeof t.fonts === "object") {
+    const fonts = {};
+    for (const r of ["display", "heading", "body", "ui", "mono"]) if (typeof t.fonts[r] === "string" && t.fonts[r].trim()) fonts[r] = t.fonts[r].trim();
+    if (Object.keys(fonts).length) out.fonts = fonts;
+  }
   // breakpoint MODES (Phase 5) — each a named bodyBase override. OPTIONAL: only attach when present, so a
   // config without modes round-trips identically (the hydrate identity gate). Each mode = { id, name, bodyBase }.
   if (Array.isArray(t.modes) && t.modes.length) {

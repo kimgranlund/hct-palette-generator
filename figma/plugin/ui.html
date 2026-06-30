@@ -1276,9 +1276,12 @@ a.account-manage:hover { text-decoration: underline; }
 .tyi-voice-stats dt { color: var(--ink-dim); font-size: 11px; margin: 0; }
 .tyi-voice-stats dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .tyi-fonts { display: flex; flex-direction: column; gap: 8px; }
-.tyi-font-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.tyi-font-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--panel); }
 .tyi-font-role { color: var(--ink-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; flex: none; }
-.tyi-font-name { font-size: 18px; text-align: right; line-height: 1.2; }
+/* editable combobox per role — a borderless label look until hover/focus, then a real input */
+.tyi-font-input { flex: 1; min-width: 0; font-size: 15px; line-height: 1.2; text-align: right; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--ink); padding: 3px 6px; }
+.tyi-font-input:hover { border-color: var(--line); }
+.tyi-font-input:focus { border-color: var(--accent, #5b9dff); outline: none; background: var(--panel-2); text-align: left; }
 .tyi-specimen { display: flex; flex-direction: column; gap: 16px; }
 .tyi-example { display: flex; flex-direction: column; gap: 8px; }
 .tyi-ex-head { margin: 0; }
@@ -2611,6 +2614,9 @@ const TYPE_TREATMENTS = [
 ];
 
 const DEFAULT_TYPE = { treatment: "product", bodyBase: 16 };
+// The families bundled (woff2 in type-fonts.js) — the Fonts combobox menu. A user may also TYPE any custom
+// family per role (config.fonts in typeScale); it exports + renders if installed, else falls back to a generic.
+const BUNDLED_FONTS = ["Inter", "Inter Tight", "Source Serif 4", "JetBrains Mono"];
 
 // `overrides` (optional) — a flat per-cell SIZE override map keyed "<voiceName>|<stepName>", already
 // mode-selected by the caller. When a positive number exists for a step, it REPLACES the derived size and
@@ -2647,7 +2653,13 @@ function typeScale(config = {}) {
   const overrides = config.overrides && typeof config.overrides === "object" ? config.overrides : null;
   const categories = {};
   for (const [name, p] of Object.entries(t.categories)) categories[name] = buildCategory(name, p, factor, overrides);
-  return { treatment: t.id, label: t.label, fonts: { ...t.fonts }, roleOf: Object.fromEntries(Object.entries(t.categories).map(([k, v]) => [k, v.role])), categories };
+  // fonts: the treatment's families, with optional per-role CUSTOM overrides (config.fonts). A custom family
+  // exports as-is + renders if installed/bundled; the specimen falls back to a generic otherwise.
+  const fonts = { ...t.fonts };
+  if (config.fonts && typeof config.fonts === "object") {
+    for (const role of Object.keys(fonts)) { const f = config.fonts[role]; if (typeof f === "string" && f.trim()) fonts[role] = f.trim(); }
+  }
+  return { treatment: t.id, label: t.label, fonts, roleOf: Object.fromEntries(Object.entries(t.categories).map(([k, v]) => [k, v.role])), categories };
 }
 
 // ── emitters ───────────────────────────────────────────────────────────────────────────────────
@@ -2762,7 +2774,7 @@ function typeTokensFigmaModes(baseScale, modes = []) {
   };
 }
 
-return { TYPE_RATIOS, TYPE_TREATMENTS, DEFAULT_TYPE, typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, disambiguateModeNames, typeTokensFigmaModes };
+return { TYPE_RATIOS, TYPE_TREATMENTS, DEFAULT_TYPE, BUNDLED_FONTS, typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, disambiguateModeNames, typeTokensFigmaModes };
 })();
 __M.geometry = (function(){
 // geometry.mjs — the GEOMETRY / dimensional engine: the spatial analog of the color & type engines.
@@ -3531,6 +3543,13 @@ function clampType(t) {
   // without overrides round-trips identically. Type sizes clamp into [1, 512] px.
   const tov = clampTokenOverrides(t.tokenOverrides, 1, 512, 3); // type keys: "<voice>|<step>|<modeKey>" (3 segments)
   if (Object.keys(tov).length) out.tokenOverrides = tov;
+  // per-role CUSTOM font overrides — OPTIONAL map { role: family } for known roles; non-empty strings only,
+  // attached only when non-empty so a config without custom fonts round-trips identically.
+  if (t.fonts && typeof t.fonts === "object") {
+    const fonts = {};
+    for (const r of ["display", "heading", "body", "ui", "mono"]) if (typeof t.fonts[r] === "string" && t.fonts[r].trim()) fonts[r] = t.fonts[r].trim();
+    if (Object.keys(fonts).length) out.fonts = fonts;
+  }
   // breakpoint MODES (Phase 5) — each a named bodyBase override. OPTIONAL: only attach when present, so a
   // config without modes round-trips identically (the hydrate identity gate). Each mode = { id, name, bodyBase }.
   if (Array.isArray(t.modes) && t.modes.length) {
@@ -5354,7 +5373,7 @@ const { MCP_BRAND_KIT } = __M.mcpAssets;
 const { TYPE_FONTS_CSS } = __M.typeFonts;
 const { CATEGORY_INDEX, loadCategory } = __M.categoryIndex;
 const { deriveNeutral, deriveRelative, RELATIONSHIPS } = __M.derive;
-const { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, typeTokensFigmaModes, TYPE_TREATMENTS, DEFAULT_TYPE } = __M.type;
+const { typeScale, typeTokensCSS, typeTokensResponsiveCSS, typeTokensDTCG, typeTokensFigmaModes, TYPE_TREATMENTS, DEFAULT_TYPE, BUNDLED_FONTS } = __M.type;
 const { geomScale, geomTokensCSS, geomTokensResponsiveCSS, geomTokensDTCG, geomTokensFigma, geomTokensFigmaModes, GEOMETRY_TREATMENTS, DEFAULT_GEOMETRY } = __M.geometry;
 const { zipStore } = __M.zip;
 const { icon, brandMark } = __M.icons;
@@ -9579,30 +9598,63 @@ class HctApp extends HTMLElement {
       h("p", { class: "insp-sub tyi-future" }, "Per-voice tuning (ratio · leading · weight · tracking) is coming. Today these come from the treatment."),    );
   }
 
-  // typeFontsTab — the 5 role→family bindings the treatment resolves to (read-only; custom fonts later).
+  // typeFontsTab — an editable combobox per role: pick a bundled font or TYPE any custom family. The value
+  // resolves to scale.fonts[role] (treatment default, or the custom override on doc.type.fonts).
   typeFontsTab() {
     const cfg = this._activeType();
     const scale = this._activeTypeScale();
     const ROLE_LABEL = { display: "Display", heading: "Heading", body: "Body", ui: "UI", mono: "Mono" };
+    const treatment = TYPE_TREATMENTS.find((t) => t.id === cfg.treatment) || TYPE_TREATMENTS[0];
+    const opts = [...BUNDLED_FONTS, "system-ui", "Georgia", "Arial"]; // bundled families + a few common system ones
     return h(
       "div",
       { class: "insp-body" },
       h("h3", { class: "insp-title" }, icon("type"), "Fonts"),
-      h("div", { class: "insp-sub" }, "The families this treatment binds to each role."),
+      h("div", { class: "insp-sub" }, "Pick a bundled font or type any family for each role."),
       h(
         "div",
         { class: "tyi-fonts" },
         ...Object.entries(scale.fonts).map(([role, family]) => {
           const generic = role === "mono" || /mono/i.test(family) ? "monospace" : /serif/i.test(family) ? "serif" : "sans-serif";
+          const custom = !!(cfg.fonts && cfg.fonts[role]);
           return h(
             "div",
             { class: "tyi-font-row" },
-            h("span", { class: "tyi-font-role" }, ROLE_LABEL[role] || role),
-            h("span", { class: "tyi-font-name", style: `font-family:'${family}', ${generic}` }, family),
+            h("label", { class: "tyi-font-role", for: "tyfont-" + role }, ROLE_LABEL[role] || role),
+            h("input", {
+              id: "tyfont-" + role,
+              class: "tyi-font-input",
+              type: "text",
+              list: "tyfonts-" + role,
+              value: family,
+              placeholder: treatment.fonts[role],
+              "aria-label": (ROLE_LABEL[role] || role) + " font family",
+              "data-fk": "tyfont:" + role,
+              title: custom ? "Custom family — exports as-is; the specimen falls back if it isn't installed/bundled" : "From the " + treatment.label + " treatment",
+              style: `font-family:'${family}', ${generic}`,
+              onchange: (e) => this._setTypeFont(role, e.target.value),
+            }),
+            h("datalist", { id: "tyfonts-" + role }, ...opts.map((f) => h("option", { value: f }))),
           );
         }),
       ),
-      h("p", { class: "insp-sub tyi-future" }, "Custom font families are a future step. Today fonts come bundled with the treatment."),    );
+      h("p", { class: "insp-sub tyi-future" }, "Custom families export in the CSS / DTCG / Figma tokens; the live specimen falls back to a generic if the font isn't installed or bundled."),
+    );
+  }
+
+  // _setTypeFont(role, value) — set/clear a per-role custom font on doc.type.fonts. Empty OR the treatment
+  // default clears the override (so a default round-trips clean). Fonts are mode-independent → always the base.
+  _setTypeFont(role, value) {
+    this.commit((doc) => {
+      const t = doc.type || { ...DEFAULT_TYPE };
+      const treatment = TYPE_TREATMENTS.find((x) => x.id === t.treatment) || TYPE_TREATMENTS[0];
+      const v = String(value || "").trim();
+      const fonts = { ...(t.fonts || {}) };
+      if (!v || v === treatment.fonts[role]) delete fonts[role]; else fonts[role] = v;
+      const next = { ...t };
+      if (Object.keys(fonts).length) next.fonts = fonts; else delete next.fonts;
+      doc.type = next;
+    });
   }
 
   // typeSpecimenTab — a compact in-pane specimen: each of the seven voices at its MD step. The full

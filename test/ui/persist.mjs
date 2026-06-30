@@ -81,6 +81,11 @@ if (!deepEq(hyd2.palettes[0].chroma, base.palettes[0].chroma)) FAIL("clamp", "cl
   const R = U.hydrate(U.serialize(S));
   if (!deepEq(R.type.tokenOverrides, S.type.tokenOverrides)) FAIL("token-overrides", `type tokenOverrides did not round-trip: ${JSON.stringify(R.type.tokenOverrides)}`);
   if (!deepEq(R.geometry.tokenOverrides, S.geometry.tokenOverrides)) FAIL("token-overrides", `geom tokenOverrides did not round-trip: ${JSON.stringify(R.geometry.tokenOverrides)}`);
+  // per-role custom font overrides round-trip; junk role keys / blank families drop.
+  const Rf = U.hydrate(U.serialize({ ...inDomainState(), type: { treatment: "luxury", bodyBase: 16, fonts: { body: "Custom Sans", ui: "My Mono", bogus: "x", display: "  " } } }));
+  if (!deepEq(Rf.type.fonts, { body: "Custom Sans", ui: "My Mono" })) FAIL("type-fonts", `type.fonts did not round-trip / didn't drop junk: ${JSON.stringify(Rf.type.fonts)}`);
+  const Rf0 = U.hydrate(U.serialize({ ...inDomainState(), type: { treatment: "product", bodyBase: 16 } }));
+  if ("fonts" in Rf0.type) FAIL("type-fonts", "an absent fonts override must NOT materialize a fonts key (round-trip identity)");
 
   // OUT-OF-RANGE values clamp to the nearest bound (type size [1,512], geom height [8,256]).
   const C = U.hydrate(U.serialize({ ...inDomainState(),

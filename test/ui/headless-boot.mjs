@@ -1382,6 +1382,15 @@ const tysc = tScale(app.doc.type);
 ok(tysc.treatment === "luxury" && tysc.categories.Body.MD.size === 18, `(ty) treatment + base apply (treatment ${tysc.treatment}, body MD ${tysc.categories.Body.MD.size})`);
 ok(hydSet(serSet(app.doc)).type.treatment === "luxury" && hydSet(serSet(app.doc)).type.bodyBase === 18, "(ty) the type config round-trips through persist");
 ok(bkTy(app.doc).type && bkTy(app.doc).type.categories.Body && bkTy(app.doc).type.treatment === "luxury", "(ty) brandKit carries the type scale (the MCP serves it)");
+// (tyf) Fonts tab — an editable combobox per role; a custom family overrides the treatment + flows to the scale + persist.
+app.typeSegment = "fonts"; app.render(); flushRaf();
+ok(app.querySelectorAll(".tyi-font-input").length === 5, `(tyf) the Fonts tab renders an editable combobox per role (5) (got ${app.querySelectorAll(".tyi-font-input").length})`);
+app._setTypeFont("body", "Custom Sans"); flushRaf();
+ok(app.doc.type.fonts && app.doc.type.fonts.body === "Custom Sans" && app._activeTypeScale().fonts.body === "Custom Sans", "(tyf) a custom family writes to doc.type.fonts and flows into the resolved scale");
+ok(hydSet(serSet(app.doc)).type.fonts.body === "Custom Sans", "(tyf) the custom font round-trips through persist");
+app._setTypeFont("body", ""); flushRaf();
+ok(!app.doc.type.fonts, "(tyf) clearing the only override removes doc.type.fonts (reverts to the treatment)");
+app.typeSegment = "scale"; app.render(); flushRaf();
 // the canvas Specimen·Tokens toggle flips the canvas to the READ-ONLY token MATRIX (a real <table>) in the
 // scrolling .is-table shell — rows = the 41 steps, columns = Base (+ each breakpoint), sticky token names.
 app.setTypeSpecMode("tokens"); flushRaf();
