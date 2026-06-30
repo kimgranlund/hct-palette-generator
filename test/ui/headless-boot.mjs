@@ -1021,6 +1021,9 @@ app.search = ""; app.closeCategory(); flushRaf();
 ok(app.category === null && app.querySelectorAll(".category-card").length === 7, "(hh) closing a category returns to the hub");
 
 // ── (ee) "Download all (.zip)": one foldered archive of every format + the re-importable config ──
+// post-launch (TIERS_ENFORCED on): the COMPLETE archive (incl. the Pro DTCG/Tailwind/shadcn folders) is a
+// Pro user's export — unlock via a real active entitlement. The Free gating of those folders is (pe) below.
+app.setProfile({ tier: "pro", entitlement: { status: "active" } }); flushRaf();
 const setName0 = app.doc.name;
 let zipCap = null;
 const realDB = app.downloadBytes.bind(app);
@@ -1721,19 +1724,23 @@ ok(app.section === "color" && !app.querySelector(".geom-spec") && !!app.querySel
 }
 
 // ── (fl) feature-flag substrate (item 7, Layer 1) — the app exposes flagOf() off the per-machine profile ──
-ok(app.profile && app.profile.tier === "free", `(fl) a fresh app boots with a free-tier profile (got ${app.profile && app.profile.tier})`);
-ok(app.flagOf("proExport") === true && app.flagOf("maxSets") === Infinity, "(fl) pre-launch (TIERS_ENFORCED off) every flag is unlocked — no current feature gated");
-app.setProfile({ flagOverrides: { proExport: false, maxSets: 1 } }); flushRaf();
-ok(app.flagOf("proExport") === false && app.flagOf("maxSets") === 1, "(fl) setProfile applies dev flag overrides through flagOf");
+app.setProfile({ tier: "free", entitlement: undefined, flagOverrides: {} }); flushRaf(); // a fresh free user (clear the Pro state (ee)/(pe) left)
+ok(app.profile && app.profile.tier === "free", `(fl) a free-tier profile resolves as free (got ${app.profile && app.profile.tier})`);
+ok(app.flagOf("proExport") === false && app.flagOf("maxSets") === 2, "(fl) launched (TIERS_ENFORCED on) → a free profile is GATED (proExport off, maxSets capped at 2)");
+app.setProfile({ tier: "pro", entitlement: { status: "active" } }); flushRaf();
+ok(app.flagOf("proExport") === true && app.flagOf("maxSets") === Infinity, "(fl) a Pro user (active entitlement) unlocks every flag through flagOf");
+app.setProfile({ tier: "free", entitlement: undefined, flagOverrides: { proExport: true, maxSets: 1 } }); flushRaf();
+ok(app.flagOf("proExport") === true && app.flagOf("maxSets") === 1, "(fl) explicit flagOverrides (dev/QA) win over the tier values");
 ok(app.flagOf("nope") === false, "(fl) an unknown flag resolves false (restrictive default)");
-app.setProfile({ flagOverrides: {} }); flushRaf(); // restore unlocked
+app.setProfile({ tier: "free", entitlement: undefined, flagOverrides: {} }); flushRaf(); // back to the free default
 
 // ── (cap) maxSets gate — creating a brand kit past the plan cap is BLOCKED + routes a web user to Pro.
-// A NO-OP until TIERS_ENFORCED flips (flagOf("maxSets") is Infinity), so we simulate the enforced free cap
-// with a dev flag override. The project/Figma RESTORE path is intentionally NOT capped (only New / Import).
+// The enforced free cap (2) is exercised below via a dev override pinned to the current count; the Pro
+// (unlimited) path uses a real active entitlement. The project/Figma RESTORE path is NOT capped (only New / Import).
+app.setProfile({ tier: "pro", entitlement: { status: "active" } }); flushRaf(); // a Pro user → unlimited kits
 const capBefore = app.sets.length;
 app.createSet(); flushRaf();
-ok(app.sets.length === capBefore + 1, "(cap) with the default (unlimited) cap, createSet adds a kit — current behavior preserved");
+ok(app.sets.length === capBefore + 1, "(cap) Pro (unlimited) → createSet adds a kit");
 const atCap = app.sets.length;
 app.setProfile({ flagOverrides: { maxSets: atCap } }); flushRaf(); // pin the cap to the current count → at the cap
 app.createSet(); flushRaf();
@@ -1766,7 +1773,7 @@ app.closeSettings(); flushRaf();
 app._pickGeomTreatment("spacious"); flushRaf();
 ok(app.doc.geometry.treatment === "comfortable", "(at) Free → a Pro geometry treatment (spacious) is blocked");
 app.closeSettings(); flushRaf();
-app.setProfile({ flagOverrides: {} }); flushRaf(); // restore unlocked
+app.setProfile({ tier: "free", entitlement: undefined, flagOverrides: {} }); flushRaf(); // back to a fresh free user (for the (acct) badge below)
 
 // ── (acct) Settings « Account » (item 7, Layer 3) — plan badge · license seam · offline-hidden entry ──
 app.openSet(app.sets[0].id); flushRaf(); // guarantee editor view (where renderSettings lives)
@@ -1790,7 +1797,7 @@ await app.enterLicense("PRO-TEST-1234"); flushRaf();
 ok(app.tier() === "pro" && app.profile.entitlement && app.profile.entitlement.status === "active", `(acct) enterLicense with an active entitlement flips the effective tier to pro (got ${app.tier()})`);
 ok(app.profile.instanceId === "inst-acct", "(acct) enterLicense records the activation instance id (this device's seat)");
 ok(app.profile.seats && app.profile.seats.limit === 5 && app.profile.seats.usage === 2, "(acct) enterLicense stores the seat count {limit,usage}");
-ok(app.flagOf("proExport") === true, "(acct) flagOf returns unlocked pre-launch (TIERS_ENFORCED off — the entitlement gate itself is unit-tested in flags.mjs; app.tier() above proves the effective-tier resolution)");
+ok(app.flagOf("proExport") === true, "(acct) once Pro (active entitlement), flagOf resolves unlocked through the effective tier (the entitlement gate itself is unit-tested in flags.mjs)");
 const acctStored = JSON.parse(localStorage.getItem("nonoun-color-tokens-profile") || "null");
 ok(acctStored && acctStored.tier === "pro" && acctStored.licenseKey === "PRO-TEST-1234" && acctStored.instanceId === "inst-acct" && acctStored.entitlement.status === "active", "(acct) the license + instance + entitlement persist to the profile store");
 app.render(); flushRaf();

@@ -30,9 +30,10 @@ ok(F.TIER_FLAGS.free.proExport === false && F.TIER_FLAGS.pro.proExport === true,
   ok(f.maxSets === Infinity && f.proExport === true, "unenforced → unlocked (pro values) even for a free tier");
 }
 
-// ── the shipped switch is OFF — no feature gated before a purchase path exists (no regression today) ──
-ok(F.TIERS_ENFORCED === false, "TIERS_ENFORCED ships false (pre-launch)");
-ok(F.resolveFlags({ tier: "free" }).proExport === true && F.resolveFlags({ tier: "free" }).maxSets === Infinity, "with the default switch, a free user is fully unlocked (current behavior preserved)");
+// ── the shipped switch is ON (launched) — the DEFAULT resolves through the effective tier ──
+ok(F.TIERS_ENFORCED === true, "TIERS_ENFORCED ships true (launched — gating is live)");
+ok(F.resolveFlags({ tier: "free" }).proExport === false && F.resolveFlags({ tier: "free" }).maxSets === 2, "with the default switch ON, a free user resolves to the FREE (gated) values");
+ok(F.resolveFlags({ tier: "pro", entitlement: { status: "active" } }).proExport === true && F.resolveFlags({ tier: "pro", entitlement: { status: "active" } }).maxSets === Infinity, "with the default switch ON, a Pro user with an active entitlement resolves to the PRO values");
 
 // ── overrides (dev / QA / early-access) win over the tier values ──
 {
