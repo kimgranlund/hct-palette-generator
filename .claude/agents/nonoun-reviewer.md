@@ -51,6 +51,10 @@ untouched code. Cite every finding as `path:line`.
 6. **Architecture (MAJOR).** No new runtime dependency or framework import; engines under `src/engine/` stay
    pure (no DOM); UI stays vanilla `h()`. Generated artifacts (`figma/plugin/ui.html`, `src/ui/*-assets.js`)
    must be in sync with their source when the source changed (a stale bundle is a real defect).
+   - **Engine override identity gate.** A new optional config channel (the type engine's `fonts`/`voices`,
+     per-cell `overrides`, and any future per-mode/geometry override) must be `Number.isFinite`/non-empty
+     guarded so absent/empty config ⇒ **byte-identical** output, and must carry an identity test leg proving
+     it. An ungated override silently shifts the default scale for every existing kit — a MAJOR regression.
 7. **Tests + commit (MINOR→MAJOR).** A UI/behavior change should carry a lettered headless group (`(ty)`/
    `(geo)`/`(cm)`) and/or a smoke leg; an engine change should extend its `test/engine/*` verifier. The
    commit/PR should follow the squash workflow and end with the `Co-Authored-By` trailer.

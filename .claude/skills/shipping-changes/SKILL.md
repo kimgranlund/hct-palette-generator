@@ -37,8 +37,10 @@ the smoke gate and **download the `smoke-screenshots` artifact** if a UI change 
 3. **Guard-check** (see below) — `git status --short` must be clean of `docs/other/` and `node_modules`.
 4. **Commit** with the trailer (below) → **`git push -u origin <branch>`**.
 5. **PR**: `gh pr create --fill` (or `--title`/`--body`); the PR **title becomes the squash-commit subject**
-   — write it as `feat(scope): …` / `fix(scope): …` with the changelog-worthy summary (match `git log`).
-6. **Watch CI** (~50–90s): `gh pr checks <n> --watch`. Three legs must pass: build · test · smoke.
+   — write it as `feat(scope): …` / `fix(scope): …` with the changelog-worthy summary (match `git log`). If
+   the body has backticks or `$(…)`, pass it via **`--body-file`** (see quirk) — never inline `--body`.
+6. **Watch CI** (~50–90s): **poll until the run registers, then watch it** — do *not* rely on a bare
+   `gh pr checks <n> --watch` (see quirk). Three legs must pass: build · test · smoke.
 7. **Squash-merge**: `gh pr merge <n> --squash`. Do **not** pass `--delete-branch` (see quirk).
 8. **Sync local main**: `git switch main && git fetch origin && git merge --ff-only origin/main`. A squash
    leaves the feature branch looking **unmerged**, so delete with `git branch -D <branch>` (capital D), and
@@ -67,6 +69,16 @@ the smoke gate and **download the `smoke-screenshots` artifact** if a UI change 
 
 ## gh quirks (verify, don't trust the exit code)
 
+- **`gh pr checks <n> --watch` races the run's registration.** Right after `gh pr create`, CI may not be
+  registered yet, so `--watch` prints *"no checks reported"* and **exits 0** — a merge fired on that false
+  green once and landed a PR **before CI ran**. Instead poll for the run, then watch it:
+  `RUN=$(gh run list --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId')` (loop until
+  non-empty) → `gh run watch "$RUN" --exit-status` → confirm `gh run view "$RUN" --json conclusion` is
+  `success` before `gh pr merge`.
+- **PR/issue bodies with backticks must use `--body-file`, never inline `--body`.** An inline
+  `--body "$(cat <<'EOF' … EOF)"` still lets the shell evaluate any backticks/`$(…)` inside the body —
+  it once replaced the body with dumped env vars. Write the body to a file (the Write tool) and pass
+  `--body-file <file>` (works for `gh pr create` and `gh pr edit`).
 - `gh pr merge --delete-branch` **fails its local-branch step** when `main` is checked out in the primary
   worktree (`'main' is already used by worktree`) — but the **remote merge still succeeds**. Verify with
   `gh pr view <n> --json state,mergedAt`, then delete the remote branch explicitly:
@@ -81,9 +93,10 @@ files → `npm test` + commit + push **from the worktree** → `git worktree rem
 
 ## Validate (the ship is "done" only when)
 
-`npm test` green locally → push → **CI green on all three legs** (`gh pr checks <n>`) → `gh pr view <n>
---json state,mergedAt` shows `MERGED` → local `main` fast-forwarded to the squash commit (`git log
---oneline -1`) → feature branch deleted locally **and** on the remote. Smoke is Chrome-only — green CI is
+`npm test` green locally → push → **CI green on all three legs** (poll-then-`gh run watch --exit-status`,
+not a bare `--watch`) → `gh pr view <n> --json state,mergedAt` shows `MERGED` → local `main`
+fast-forwarded to the squash commit (`git log --oneline -1`) → feature branch deleted locally **and** on
+the remote. Smoke is Chrome-only — green CI is
 **not** Safari proof; reason about WebKit from spec (see `foundations.md`).
 
 ## References
