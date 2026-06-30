@@ -15,7 +15,8 @@ surface reflects what's present: the colour tools/resources appear only with pal
 
 ## Files
 
-- `brand-kit-server.mjs` — the server. Pure Node, **no `npm install`**.
+- `brand-kit-server.mjs` — the stdio entry. Pure Node, **no `npm install`**.
+- `brand-kit-core.mjs` — the transport-agnostic MCP surface the server imports (keep it beside the server).
 - `brand-kit.json` — your resolved tokens (produced by `brandKit(doc, systems)` — the opted-in palettes +
   59 semantic roles (light + dark), the typography scale, and/or the geometry scale). The server reads
   this sibling file.

@@ -6306,6 +6306,7 @@ class HctApp extends HTMLElement {
     );
     const files = [
       { name: "brand-kit-server.mjs", data: MCP_BRAND_KIT.server },
+      { name: "brand-kit-core.mjs", data: MCP_BRAND_KIT.core }, // the server imports this sibling
       { name: "brand-kit.json", data: JSON.stringify(kit, null, 2) },
       { name: "README.md", data: MCP_BRAND_KIT.readme },
       { name: "package.json", data: pkg },

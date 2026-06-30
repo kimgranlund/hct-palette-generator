@@ -13,7 +13,7 @@ const TESTS = [
   "engine/hct.mjs", "engine/tonal.mjs", "engine/semantic.mjs", "engine/exports.mjs", "engine/okhsl.mjs", "engine/derive.mjs", "engine/type.mjs", "engine/geometry.mjs", "engine/flags.mjs",
   "ui/persist.mjs", "ui/shell.mjs", "ui/zip.mjs", "ui/headless-boot.mjs",
   "figma/plugin.mjs", "figma/binder.mjs", "figma/mode-apply.mjs",
-  "mcp/brand-kit.mjs",
+  "mcp/core.mjs", "mcp/brand-kit.mjs",
 ];
 
 let failed = 0;
