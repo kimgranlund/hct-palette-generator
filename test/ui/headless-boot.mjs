@@ -1648,6 +1648,26 @@ app.createSet(); flushRaf();
 ok(app.sets.length === atCap + 1, "(cap) raising the cap re-enables createSet");
 app.setProfile({ flagOverrides: {} }); flushRaf(); // restore unlimited
 
+// ── (at) advancedTreatments gate — only the default treatment (Product type / Comfortable geometry) is free;
+// every other is Pro. NO-OP until TIERS_ENFORCED (flagOf unlocked); simulate the enforced free plan via override. ──
+app.openSet(app.sets[0].id); flushRaf();
+app._pickTypeTreatment("editorial"); flushRaf();
+ok(app.doc.type && app.doc.type.treatment === "editorial", "(at) advancedTreatments unlocked → a non-default type treatment applies");
+app._pickGeomTreatment("compact"); flushRaf();
+ok(app.doc.geometry && app.doc.geometry.treatment === "compact", "(at) advancedTreatments unlocked → a non-default geometry treatment applies");
+app.setProfile({ flagOverrides: { advancedTreatments: false } }); flushRaf(); // simulate the enforced free plan
+app._pickTypeTreatment("product"); app._pickGeomTreatment("comfortable"); flushRaf(); // the defaults still apply
+ok(app.doc.type.treatment === "product" && app.doc.geometry.treatment === "comfortable", "(at) the default treatments still apply at Free");
+app.closeSettings(); flushRaf();
+app._pickTypeTreatment("luxury"); flushRaf();
+ok(app.doc.type.treatment === "product", "(at) Free → a Pro type treatment (luxury) is blocked (stays on the default)");
+ok(app.settingsOpen === true && app.settingsSection === "account", "(at) blocking a Pro treatment routes a web user to Account");
+app.closeSettings(); flushRaf();
+app._pickGeomTreatment("spacious"); flushRaf();
+ok(app.doc.geometry.treatment === "comfortable", "(at) Free → a Pro geometry treatment (spacious) is blocked");
+app.closeSettings(); flushRaf();
+app.setProfile({ flagOverrides: {} }); flushRaf(); // restore unlocked
+
 // ── (acct) Settings « Account » (item 7, Layer 3) — plan badge · license seam · offline-hidden entry ──
 app.openSet(app.sets[0].id); flushRaf(); // guarantee editor view (where renderSettings lives)
 app.openSettings(); app.settingsSection = "account"; app.render(); flushRaf();

@@ -1482,6 +1482,32 @@ class HctApp extends HTMLElement {
         : btn("Get Pro →", { variant: "primary", cls: "pro-upsell-cta", onclick: () => { this.settingsSection = "account"; this.openSettings(); } }));
   }
 
+  // _treatmentLocked(id, defaultId) — true when a NON-default treatment is Pro-gated and the plan doesn't
+  // unlock it (advancedTreatments). Free keeps the default (Product type / Comfortable geometry). NO-OP until
+  // go-live (flagOf("advancedTreatments") is unlocked while TIERS_ENFORCED is off).
+  _treatmentLocked(id, defaultId) {
+    return id !== defaultId && !this.flagOf("advancedTreatments");
+  }
+
+  // _treatmentBlocked(id, defaultId) — if picking `id` is Pro-gated, notify + route to Pro (web) + re-render
+  // to REVERT the <select> back to the committed treatment, and return true so the caller skips the commit.
+  _treatmentBlocked(id, defaultId) {
+    if (!this._treatmentLocked(id, defaultId)) return false;
+    this.toast("That treatment is a Pro feature — upgrade for the full set.");
+    if (this.inFigma) this.render(); else { this.settingsSection = "account"; this.openSettings(); }
+    return true;
+  }
+
+  _pickTypeTreatment(id) {
+    if (this._treatmentBlocked(id, "product")) return;
+    this.commit((d) => { d.type = { ...(d.type || DEFAULT_TYPE), treatment: id }; });
+  }
+
+  _pickGeomTreatment(id) {
+    if (this._treatmentBlocked(id, "comfortable")) return;
+    this.commit((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), treatment: id, baseHeight: (GEOMETRY_TREATMENTS.find((x) => x.id === id) || GEOMETRY_TREATMENTS[0]).baseHeight }; });
+  }
+
   createSet() {
     if (this._blockedBySetCap()) return;
     const name = "Set " + (this.sets.length + 1);
@@ -4191,8 +4217,8 @@ class HctApp extends HTMLElement {
         "Treatment",
         h(
           "select",
-          { "data-fk": "tyi:treatment", onchange: (e) => this.commit((d) => { d.type = { ...(d.type || DEFAULT_TYPE), treatment: e.target.value }; }) },
-          ...TYPE_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
+          { "data-fk": "tyi:treatment", onchange: (e) => this._pickTypeTreatment(e.target.value) },
+          ...TYPE_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, this._treatmentLocked(x.id, "product") ? x.label + " · Pro" : x.label)),
         ),
       ),
       this.slider(this.typeMode === "base" || this.typeMode === "compare" ? "Body base" : "Body base · this breakpoint", cfg.bodyBase, 12, 22, 1, (v) => fmt(v) + "px", (v) => this._setActiveTypeBodyBase(v)),
@@ -6023,8 +6049,8 @@ class HctApp extends HTMLElement {
         "Treatment",
         h(
           "select",
-          { "data-fk": "gi:treatment", onchange: (e) => this.commit((d) => { d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY), treatment: e.target.value, baseHeight: (GEOMETRY_TREATMENTS.find((x) => x.id === e.target.value) || GEOMETRY_TREATMENTS[0]).baseHeight }; }) },
-          ...GEOMETRY_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, x.label)),
+          { "data-fk": "gi:treatment", onchange: (e) => this._pickGeomTreatment(e.target.value) },
+          ...GEOMETRY_TREATMENTS.map((x) => h("option", { value: x.id, selected: cfg.treatment === x.id ? true : undefined }, this._treatmentLocked(x.id, "comfortable") ? x.label + " · Pro" : x.label)),
         ),
       ),
       this.slider(this.geomMode === "base" || this.geomMode === "compare" ? "Base height" : "Base height · this breakpoint", scale.baseHeight, 20, 48, 2, (v) => fmt(v) + "px", (v) => this._setActiveGeomBaseHeight(v)),
