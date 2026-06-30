@@ -35,13 +35,20 @@ the smoke gate and **download the `smoke-screenshots` artifact** if a UI change 
    commit straight to `main`.
 2. **Change**, then **`npm test`** green (+ **`npm run build`** if the build chain is touched).
 3. **Guard-check** (see below) — `git status --short` must be clean of `docs/other/` and `node_modules`.
-4. **Commit** with the trailer (below) → **`git push -u origin <branch>`**.
+4. **Commit** with the trailer (below) → **`git push -u origin <branch>`**. **Stage EXPLICITLY** (`git add
+   <your-files>`), not `git add -u`, whenever the tree may be shared: a concurrent background agent editing
+   `src/ui/app.js` etc. will have its half-finished edits swept into your commit by `-u` — once landed a
+   `app.js` change WITHOUT its matching test, reddening `main` (see "Concurrency isolation"). If `git status`
+   shows files you didn't touch, STOP and isolate in a worktree.
 5. **PR**: `gh pr create --fill` (or `--title`/`--body`); the PR **title becomes the squash-commit subject**
    — write it as `feat(scope): …` / `fix(scope): …` with the changelog-worthy summary (match `git log`). If
    the body has backticks or `$(…)`, pass it via **`--body-file`** (see quirk) — never inline `--body`.
 6. **Watch CI** (~50–90s): **poll until the run registers, then watch it** — do *not* rely on a bare
    `gh pr checks <n> --watch` (see quirk). Three legs must pass: build · test · smoke.
-7. **Squash-merge**: `gh pr merge <n> --squash`. Do **not** pass `--delete-branch` (see quirk).
+7. **Squash-merge** — **GATE on the run's conclusion first**: `[ "$(gh run view <run> --json conclusion
+   --jq .conclusion)" = success ] && gh pr merge <n> --squash`. The repo has **no branch protection**, so
+   `gh pr merge` merges a RED PR without complaint — never run it unconditionally after `gh run watch`
+   (which prints the conclusion but does not block the merge). Do **not** pass `--delete-branch` (see quirk).
 8. **Sync local main**: `git switch main && git fetch origin && git merge --ff-only origin/main`. A squash
    leaves the feature branch looking **unmerged**, so delete with `git branch -D <branch>` (capital D), and
    delete the remote branch via the API call below.
