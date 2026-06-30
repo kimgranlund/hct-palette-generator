@@ -313,14 +313,19 @@ const switchControl = ({ on, onToggle, label, ariaLabel }) =>
 // squares (inspector dot, role refs, …). `alpha:true` lays the fill over the shared
 // checkerboard (.swatch.alpha, defined once in CSS) so translucent colors read as
 // translucent. `size` drives the --sw custom property; decorative, so aria-hidden.
-const swatch = (hex, { size = 16, alpha = false, cls = "", title } = {}) =>
+const swatch = (hex, { size = 16, alpha = false, cls = "", title, onClick } = {}) =>
   h(
     "span",
     {
-      class: "swatch" + (alpha ? " alpha" : "") + (cls ? " " + cls : ""),
+      class: "swatch" + (alpha ? " alpha" : "") + (cls ? " " + cls : "") + (onClick ? " swatch-btn" : ""),
       style: `--sw:${size}px` + (alpha ? "" : `;background:${hex}`),
       title,
-      "aria-hidden": "true",
+      // opt-in interactive (e.g. the Roles inspector click-to-copy): a keyboard-accessible role=button.
+      ...(onClick
+        ? { role: "button", tabindex: "0", "aria-label": title || `Copy ${hex}`,
+            onclick: onClick,
+            onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(e); } } }
+        : { "aria-hidden": "true" }),
     },
     alpha ? h("span", { class: "swatch-fill", style: `background:${hex}` }) : false,
   );
@@ -4720,26 +4725,34 @@ class HctApp extends HTMLElement {
         (v) => this.editDrag((doc) => (doc.dampBias = v)),
       ),
       h("div", { class: "damp-graph" }, this.graphDamping(d)),
-      field(
-        "Hue space",
-        switchControl({
-          on: d.hueSpace === "oklch",
-          ariaLabel: "Hue space — OKLCH when on, CAM16 when off",
-          label: d.hueSpace,
-          onToggle: () => this.commit((doc) => (doc.hueSpace = doc.hueSpace === "oklch" ? "cam16" : "oklch")),
-        }),
-      ),
-      // On-color policy — opt-in WCAG-safe on-colors. Default "fixed" (light tint both modes, ADR-003);
-      // "contrast" flips on{N}/on{N}Variant to the better-contrasting end vs the accent fill, per mode.
-      field(
-        "On-colors",
-        switchControl({
-          on: d.onColorMode === "contrast",
-          ariaLabel: "On-color policy — WCAG contrast when on, fixed light tint when off",
-          label: d.onColorMode === "contrast" ? "contrast" : "fixed",
-          onToggle: () => this.commit((doc) => (doc.onColorMode = d.onColorMode === "contrast" ? "fixed" : "contrast")),
-        }),
-        { labelTitle: "fixed: on-colors are the light tint in both modes (ADR-003). contrast: on{N}/on{N}Variant flip to the end with the best WCAG contrast vs the accent fill, per mode — accessible, but no longer uniform." },
+      // Hue space + On-color policy — two 2-option choices as side-by-side segmented controls (both
+      // options visible, vs a toggle that hid the OFF label). On-colors: "fixed" = the light tint in both
+      // modes (ADR-003); "contrast" flips on{N}/on{N}Variant to the better-contrasting end vs the accent fill.
+      h(
+        "div",
+        { class: "global-seg-row" },
+        h(
+          "div",
+          { class: "field" },
+          h("label", { title: "OKLCH: perceptual hue (the default). CAM16: the legacy hue model." }, "Hue space"),
+          this.segmented(
+            [{ id: "oklch", label: "OKLCH" }, { id: "cam16", label: "CAM16" }],
+            d.hueSpace === "oklch" ? "oklch" : "cam16",
+            (id) => this.commit((doc) => (doc.hueSpace = id)),
+            { ariaLabel: "Hue space", role: "group", idPrefix: "huespace", cls: "seg-sm" },
+          ),
+        ),
+        h(
+          "div",
+          { class: "field" },
+          h("label", { title: "Fixed: on-colors are the light tint in both modes (ADR-003). Contrast: on{N}/on{N}Variant flip to the end with the best WCAG contrast vs the accent fill, per mode — accessible, but no longer uniform." }, "On-colors"),
+          this.segmented(
+            [{ id: "fixed", label: "Fixed" }, { id: "contrast", label: "Contrast" }],
+            d.onColorMode === "contrast" ? "contrast" : "fixed",
+            (id) => this.commit((doc) => (doc.onColorMode = id)),
+            { ariaLabel: "On-colors", role: "group", idPrefix: "oncolor", cls: "seg-sm" },
+          ),
+        ),
       ),
       d.toneMode === "even"
         ? field(
@@ -4790,8 +4803,8 @@ class HctApp extends HTMLElement {
                 h(
                   "span",
                   { class: "sw-pair" },
-                  swatch(r.lightHex, { size: 16, title: "light ref " + r.lightHex }),
-                  swatch(r.darkHex, { size: 16, title: "dark ref " + r.darkHex }),
+                  swatch(r.lightHex, { size: 16, title: "light ref " + r.lightHex, onClick: () => this.copy(r.lightHex, "Copied " + r.lightHex) }),
+                  swatch(r.darkHex, { size: 16, title: "dark ref " + r.darkHex, onClick: () => this.copy(r.darkHex, "Copied " + r.darkHex) }),
                 ),
               ),
             )
@@ -6315,8 +6328,8 @@ class HctApp extends HTMLElement {
     this.toast("Brand-Kit MCP downloaded — `node brand-kit-server.mjs`");
   }
 
-  copy(text) {
-    const done = () => this.toast("Copied to clipboard");
+  copy(text, msg) {
+    const done = () => this.toast(msg || "Copied to clipboard");
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, () => this.fallbackCopy(text, done));
     } else {

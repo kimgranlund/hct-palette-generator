@@ -599,6 +599,10 @@ nonoun-color-tokens.reordering, nonoun-color-tokens.reordering * { cursor: grabb
   border-radius: 3px; border: 1px solid var(--line); overflow: hidden;
 }
 .swatch-fill { position: absolute; inset: 0; display: block; }
+/* opt-in clickable swatch (Roles click-to-copy) */
+.swatch-btn { cursor: pointer; }
+.swatch-btn:hover { border-color: var(--ink-dim); }
+.swatch-btn:focus-visible { outline: 2px solid var(--accent, #5b9dff); outline-offset: 2px; }
 .swatch.alpha, .scrim-cell, .map-swatch {
   background-color: #fff;
   background-image:
@@ -772,6 +776,11 @@ button.chip:hover { background: var(--line-2); color: var(--ink); }
 .segmented button:not(.on):hover { background: var(--line-2); color: var(--ink); }
 /* canvas-header variant of .segmented — inline + compact (no right-pane margins, auto-width). */
 .canvas-seg { margin: 0; }
+/* two labeled segmented controls side-by-side in the inspector (Hue space · On-colors) */
+.global-seg-row { display: flex; gap: 12px; }
+.global-seg-row .field { flex: 1; min-width: 0; }
+.global-seg-row .segmented { width: 100%; }
+.segmented.seg-sm button { padding: 5px 6px; font-size: 12px; }
 .canvas-seg button { flex: 0 0 auto; padding: 5px 14px; }
 .seg-body { flex: 1; overflow: auto; padding: 14px; }
 /* live component preview — pinned below the panel on every tab, painted from the

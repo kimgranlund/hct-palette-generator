@@ -404,6 +404,13 @@ ok(newPal.skew === 0 && newPal.lift === 0 && (newPal.hueShift ?? 0) === 0 && new
   `(add) a new palette resets all shaping config to neutral (got skew ${newPal.skew}, lift ${newPal.lift}, hueShift ${newPal.hueShift}, sameDir ${newPal.hueSameDir})`);
 app.setSegment("roles");
 ok(app.segment === "roles" && !!app.querySelector(".roles-table"), "segmented control still switches panels (full render)");
+// (rl) role swatches are click-to-copy: a .swatch-btn (role=button) with the ref hex in its title; click copies it.
+const roleSw = app.querySelector(".swatch-btn");
+ok(roleSw && roleSw.attrs.role === "button" && /ref #?[0-9A-Fa-f]/.test(roleSw.attrs.title || ""), "(rl) role swatches are interactive (role=button) with the ref hex in the title");
+let rlCopied = null; const rlOrigCopy = app.copy.bind(app); app.copy = (t) => { rlCopied = t; };
+roleSw.click();
+app.copy = rlOrigCopy;
+ok(/^#?[0-9A-Fa-f]{3,8}$/.test(rlCopied || ""), `(rl) clicking a role swatch copies its hex (got ${rlCopied})`);
 app.setSegment("palette");
 
 // ── (j) canvas backdrop = the SELECTED palette's NEAR-EDGE color (125 light / 875 dark) + the ◐ ───
@@ -1132,6 +1139,16 @@ ok(/Skew/.test(gcText()) && /Lift/.test(gcText()), "(gc) 'even' mode shows the p
 app.doc.toneMode = "perceptual"; app.render(); flushRaf();
 const _gcp = gcText();
 ok(/Hue/.test(_gcp) && !/Skew/.test(_gcp) && !/Lift/.test(_gcp), "(gc) the OKHSL modes HIDE Skew + Lift (Hue/Chroma stay)");
+
+// (gc) Hue space + On-colors are side-by-side SEGMENTED controls (not toggles): both options shown, and the
+// active segment reflects the doc value (its "on" button's data-fk). Selection commits via that data-fk wiring.
+app.setSegment("global"); app.doc.hueSpace = "cam16"; app.doc.onColorMode = "contrast"; app.render(); flushRaf();
+const segRow = app.querySelector(".global-seg-row");
+const segTxt = (() => { const w = (n) => (n._text || "") + (n.children || []).map(w).join(""); return segRow ? w(segRow) : ""; })();
+ok(!!segRow && /OKLCH/.test(segTxt) && /CAM16/.test(segTxt) && /Fixed/.test(segTxt) && /Contrast/.test(segTxt), "(gc) Hue space + On-colors render as a side-by-side segmented row showing both options");
+const onFks = []; const walkOn = (n) => { if (n.classList && n.classList.contains("on") && n.attrs && n.attrs["data-fk"]) onFks.push(n.attrs["data-fk"]); (n.children || []).forEach(walkOn); }; if (segRow) walkOn(segRow);
+ok(onFks.includes("huespace:cam16") && onFks.includes("oncolor:contrast"), `(gc) the active segment reflects the doc (cam16 / contrast) (got ${onFks.join()})`);
+app.doc.hueSpace = "oklch"; app.doc.onColorMode = "fixed"; app.render(); flushRaf(); // restore
 
 // ── (px) primitive a11y contracts — the refactor's guarantees (component-inventory.md) ──
 app.openSet(app.sets[0].id); app.commit((doc) => (doc.toneMode = "even")); app.setSegment("global"); flushRaf();
