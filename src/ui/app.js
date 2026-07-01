@@ -536,6 +536,7 @@ class HctApp extends HTMLElement {
     this.HISTORY_MAX = 100;
     setColorScheme(this.theme); // flip the chrome's light-dark() tokens to the initial theme
     this._installKeyboard(); // editor-scoped keyboard shortcuts (guarded vs text inputs)
+    this._bindRangeDrag(); // delegated pointer-capture drag for EVERY range slider (the native drag is broken in Figma's iframe)
     // when the OS scheme flips while we follow it ("system"), re-render so the canvas preview's
     // computed light/dark hex tracks it live (the chrome's light-dark() tokens update on their own).
     if (typeof matchMedia !== "undefined") {
@@ -4619,6 +4620,54 @@ class HctApp extends HTMLElement {
         },
       }),
     );
+  }
+
+  // _snapRange(frac, min, max, step) — map a 0..1 track fraction to a stepped, clamped slider value. PURE
+  // (testable) — the sensitivity fix: value is a linear function of the MEASURED track position, nothing else.
+  _snapRange(frac, min, max, step) {
+    frac = Math.min(1, Math.max(0, frac));
+    let v = min + frac * (max - min);
+    if (step > 0) v = Math.round((v - min) / step) * step + min;
+    return Math.min(max, Math.max(min, v));
+  }
+  // _bindRangeDrag — a DELEGATED pointer-capture drag for every <input type=range>. Figma's plugin iframe
+  // breaks the native range drag two ways: it loses the implicit pointer capture (the drag dies the instant
+  // the pointer leaves the thumb) and mis-maps pointer→value (over-sensitive). We drive it ourselves — capture
+  // the pointer on the input, map clientX across the input's OWN measured rect (_snapRange), and DISPATCH the
+  // native input/change events so every existing slider handler (readout · editDrag · commit) runs unchanged.
+  // Bound ONCE on the app root; it survives re-renders (they replace children, not `this`). Keyboard is native.
+  _bindRangeDrag() {
+    if (this._rangeDragBound || typeof this.addEventListener !== "function") return;
+    this._rangeDragBound = true;
+    const fire = (el, type) => { if (typeof el.dispatchEvent === "function" && typeof Event === "function") el.dispatchEvent(new Event(type, { bubbles: true })); else if (typeof el.dispatch === "function") el.dispatch(type, { target: el }); };
+    this.addEventListener("pointerdown", (e) => {
+      const input = e.target;
+      if (!input || input.tagName !== "INPUT" || input.type !== "range" || input.disabled) return;
+      if (e.button != null && e.button !== 0) return; // primary button only
+      if (e.preventDefault) e.preventDefault(); // suppress the native drag so ours is the only one
+      if (input.focus) input.focus();
+      if (input.setPointerCapture && e.pointerId != null) { try { input.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ } }
+      const lo = Number.isFinite(parseFloat(input.min)) ? parseFloat(input.min) : 0;
+      const hi = Number.isFinite(parseFloat(input.max)) ? parseFloat(input.max) : 100;
+      const step = parseFloat(input.step) || 1;
+      const apply = (clientX) => {
+        const r = input.getBoundingClientRect();
+        if (!r || !(r.width > 0)) return;
+        const v = this._snapRange((clientX - r.left) / r.width, lo, hi, step);
+        const sv = String(v);
+        if (input.value !== sv) { input.value = sv; fire(input, "input"); } // → the input's oninput (readout + editDrag)
+      };
+      apply(e.clientX);
+      const move = (ev) => apply(ev.clientX);
+      const end = () => {
+        if (input.removeEventListener) { input.removeEventListener("pointermove", move); input.removeEventListener("pointerup", end); input.removeEventListener("pointercancel", end); }
+        if (input.releasePointerCapture && e.pointerId != null) { try { input.releasePointerCapture(e.pointerId); } catch (err) { /* already released */ } }
+        fire(input, "change"); // → the input's onchange (commitDrag + full render), the same settle a native release does
+      };
+      input.addEventListener("pointermove", move);
+      input.addEventListener("pointerup", end);
+      input.addEventListener("pointercancel", end);
+    });
   }
 
   // scrimContext — the sub-variant preview shown atop the Palette inspector while the canvas is

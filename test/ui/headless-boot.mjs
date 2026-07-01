@@ -166,6 +166,14 @@ for (let v = chroma0; v <= chroma0 + 10 && v <= 100; v++) app.editDrag((d) => (d
 app.commitDrag(); // pointer release
 const dragSteps = app.history.length - histBefore;
 ok(dragSteps === 1, `a slider drag is ONE undo step (got ${dragSteps})`);
+// (rs) the delegated range-drag maps a track fraction → a stepped, clamped value (_snapRange). This is the
+// sensitivity fix: value is a linear function of the MEASURED pointer position, so Figma's iframe can't
+// over-drive it, and the drag continues off-thumb (the pointer-capture half isn't shim-observable).
+ok(app._snapRange(0, 100, 900, 10) === 100 && app._snapRange(1, 100, 900, 10) === 900, "(rs) track fraction 0/1 → min/max");
+ok(app._snapRange(0.5, 100, 900, 10) === 500, "(rs) fraction 0.5 → the midpoint, snapped to the step");
+ok(app._snapRange(2, 100, 900, 10) === 900 && app._snapRange(-1, 100, 900, 10) === 100, "(rs) out-of-track fractions clamp to min/max (drag past the ends holds)");
+ok(Math.abs(app._snapRange(0.5, 1, 1.7, 0.005) - 1.35) < 1e-9, "(rs) fractional steps snap (ratio slider: mid of 1..1.7 = 1.35)");
+ok(app._snapRange(0.26, 0, 10, 1) === 3, "(rs) rounds to the nearest step (0.26·10 = 2.6 → 3)");
 const draggedTo = app.doc.palettes[0].chroma;
 app.undo();
 ok(app.doc.palettes[0].chroma === chroma0, "one undo reverts the WHOLE drag");
