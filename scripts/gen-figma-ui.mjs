@@ -37,6 +37,10 @@ const BRIDGE = `
     // gallery sets: code.js read the user's "Your Palettes" from figma.clientStorage (the localStorage
     // the sandboxed iframe can't persist). Hand them to the generator to restore the gallery.
     if(m.type==="sets-loaded"){ var c=app(); if(c&&typeof c.receiveStoredSets==="function") c.receiveStoredSets(m.sets); }
+    // apply completion: the async variable write actually FINISHED (or failed) in the sandbox — the UI's
+    // optimistic "Applying…" toast can't know when, so code.js signals back → a real "Applied N…" / error toast.
+    if(m.type==="apply-done"){ var d=app(); if(d&&typeof d.onApplyDone==="function") d.onApplyDone(m); }
+    if(m.type==="apply-error"){ var f=app(); if(f&&typeof f.onApplyError==="function") f.onApplyError(); }
   });
 })();
 </script>`;

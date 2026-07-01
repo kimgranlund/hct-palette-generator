@@ -754,6 +754,13 @@ ok(app.applyGateOpen === true && posted === null, "(xg) requestApplyToFigma open
 ok(!!app.querySelector(".apply-gate"), "(xg) the apply-gate <dialog> is in the tree");
 app.applyGateDontShow = false; app.confirmApplyGate();
 ok(posted && posted.pluginMessage && posted.pluginMessage.type === "apply" && !posted.pluginMessage.rebuildSemantic, "(xg) confirming the gate posts the apply");
+ok(app.applyGateOpen === false, "(xg) confirming the gate CLOSES it (render → _syncApplyGate → dialog.close)");
+// the completion round-trip: onApplyDone/onApplyError are the sandbox callbacks the ui.html bridge relays.
+app.applyGateOpen = true;
+let _appErr = false; try { app.onApplyDone({ raw: 10, semantic: 59, floatVars: 8, floatCollections: 2 }); } catch { _appErr = true; }
+ok(!_appErr && app.applyGateOpen === false, "(xg) onApplyDone shows a done toast + closes any lingering gate");
+try { app.onApplyError(); } catch { _appErr = true; }
+ok(!_appErr, "(xg) onApplyError shows an error toast without throwing");
 ok(app._applyConsented() === false, "(xg) consent NOT persisted without 'don't show again'");
 posted = null; app.requestApplyToFigma(false);
 ok(app.applyGateOpen === true, "(xg) still gated on the next apply until consented");

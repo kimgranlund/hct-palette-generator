@@ -316,11 +316,23 @@ if (applyFloatPlans) {
     await F3.figma.ui._h({ type: "apply", floatPlans: typePlan, config: { name: "x" } }); // Color OFF → no dtcg
     if (F3.collections.some((c) => c.name === "Color Primitives" || c.name === "Color Modes")) FAIL("applysys", "apply with no dtcg still created a Color collection (the Color toggle was ignored)");
     if (!F3.collections.some((c) => c.name === "Typography")) FAIL("applysys", "apply with no dtcg did not apply the Typography float plan");
+    // COMPLETION FEEDBACK: a finished apply posts {apply-done} back to the UI (its counts drive the "Applied N…" toast).
+    const done = F3.figma.ui._posted.find((m) => m && m.type === "apply-done");
+    if (!done) FAIL("applydone", "a completed apply posted no {apply-done} message to the UI (no done-feedback)");
+    else if (!(done.floatVars > 0)) FAIL("applydone", `apply-done floatVars=${done.floatVars}, expected the applied Typography variables`);
   }
 }
 
+// ── apply FAILURE posts {apply-error} so the UI can clear its optimistic "Applying…" toast ──
+{
+  const F4 = mockFigma();
+  new Function("figma", "__html__", "module", code)(F4.figma, "<html>", undefined);
+  await F4.figma.ui._h({ type: "apply", dtcg: { "palette.tokens.json": null } }); // missing Light/Dark → applyBundle throws
+  if (!F4.figma.ui._posted.some((m) => m && m.type === "apply-error")) FAIL("applydone", "a FAILED apply posted no {apply-error} message to the UI");
+}
+
 // ── REPORT ───────────────────────────────────────────────────────────────────────
-for (const g of ["manifest", "offline", "vmsyntax", "ui", "parse", "apply", "cascade", "idempotent", "prune", "floatapply", "floatidem", "floatprune", "floatprov", "applysys", "config", "read"]) {
+for (const g of ["manifest", "offline", "vmsyntax", "ui", "parse", "apply", "cascade", "idempotent", "prune", "floatapply", "floatidem", "floatprune", "floatprov", "applysys", "applydone", "config", "read"]) {
   const f = fails.find((x) => x.startsWith(g + ":"));
   console.log(`  ${f ? "FAIL" : "pass"}  ${g}${f ? "  — " + f.slice(g.length + 2) : ""}`);
 }

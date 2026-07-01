@@ -5385,6 +5385,7 @@ class HctApp extends HTMLElement {
     const rebuild = this.applyGateRebuild;
     if (!rebuild && this.applyGateDontShow) this._setApplyConsent();
     this.applyGateOpen = false;
+    this.render(); // CLOSE the gate <dialog> (via _syncApplyGate) + rebuild toastEl — toast() alone never renders
     this.applyToFigma(rebuild);
   }
   // consent is a per-USER preference (not doc-bound) → localStorage, versioned so a material change to
@@ -5406,10 +5407,23 @@ class HctApp extends HTMLElement {
       const msg = { type: "apply", config: serialize(this.doc), rebuildSemantic: !!rebuild, floatPlans: this._figmaFloatPlans() };
       if (sys.color !== false) msg.dtcg = this.figmaBundle();
       parent.postMessage({ pluginMessage: msg }, "*");
-      this.toast(rebuild ? "Regrouping Color Modes…" : "Sent to Figma — check the Variables panel");
+      // Optimistic "in progress" toast; the sandbox posts {apply-done} back when the write actually completes
+      // (→ onApplyDone → a "done" toast), or {apply-error} on failure (→ onApplyError). See the ui.html bridge.
+      this.toast(rebuild ? "Regrouping Color Modes…" : "Applying to Figma…");
     } catch {
       /* not in a frame / blocked — nothing to apply to */
     }
+  }
+
+  // onApplyDone / onApplyError — the sandbox's completion callbacks (relayed by the ui.html bridge). The apply
+  // is async in the plugin VM, so THIS is the real "done" signal (the applyToFigma toast is only optimistic).
+  onApplyDone(m) {
+    const n = (m && (Number(m.raw) || 0) + (Number(m.semantic) || 0) + (Number(m.floatVars) || 0)) || 0;
+    this.applyGateOpen = false; // defensive: never leave the gate open past completion
+    this.toast(n ? `Applied ${n} variable${n === 1 ? "" : "s"} to Figma — check the Variables panel` : "Applied to Figma — check the Variables panel");
+  }
+  onApplyError() {
+    this.toast("Couldn't apply to Figma — please try again.");
   }
 
   // _figmaFloatPlans — the Type + Geometry breakpoint-moded collections (typeTokensFigmaModes /

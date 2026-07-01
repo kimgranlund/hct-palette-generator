@@ -92,6 +92,9 @@ figma.ui.onmessage = async (msg) => {
       if (r) parts.push(`${r.raw} primitives + ${r.semantic} semantic variables (Light / Dark)` + (r.rebuilt ? ", regrouped" : "") + (r.pruned ? `, ${r.pruned} stale pruned` : ""));
       if (fr && fr.collections) parts.push(`${fr.variables} type/geometry variable${fr.variables === 1 ? "" : "s"} across ${fr.collections} collection${fr.collections === 1 ? "" : "s"}`);
       figma.notify(parts.length ? "Applied " + parts.join(" · ") : "Nothing to apply — every system is toggled off.");
+      // Signal the iframe UI that the async write actually COMPLETED (its optimistic "Applying…" toast alone
+      // can't know when the sandbox finishes) → onApplyDone shows a real "Applied N…" toast + closes the gate.
+      figma.ui.postMessage({ type: "apply-done", raw: r ? r.raw : 0, semantic: r ? r.semantic : 0, floatVars: fr ? fr.variables : 0, floatCollections: fr ? fr.collections : 0 });
     } else if (msg.type === "save-config") {
       writeConfig(msg.config);
       figma.notify("Palette set saved into this file");
@@ -115,6 +118,8 @@ figma.ui.onmessage = async (msg) => {
     // Log the technical detail to the console for debugging; show the user a friendly, actionable
     // message naming what was attempted (never the raw error / stack).
     console.error("[Color Tokens] '" + (msg && msg.type) + "' failed:", e);
+    // Tell the iframe an apply FAILED so it can clear its optimistic "Applying…" toast (→ onApplyError).
+    if (msg && msg.type === "apply") { try { figma.ui.postMessage({ type: "apply-error" }); } catch (e2) { /* UI gone */ } }
     const what = (msg && ACTIONS[msg.type]) || "complete that action";
     figma.notify("Color Tokens couldn't " + what + ". Please try again — if it keeps happening, email support@nonoun.io.", { error: true });
   }
