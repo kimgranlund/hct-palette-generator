@@ -126,6 +126,17 @@ const rootToks = tokset(rootBlock), darkToks = tokset(darkBlock);
 if (rootToks.size === 0 || rootToks.size !== darkToks.size || [...rootToks].some((t) => !darkToks.has(t))) {
   FAIL("shadcn", `:root (${rootToks.size}) and .dark (${darkToks.size}) token sets differ`);
 }
+// typography + geometry props: the brand fonts fill shadcn's three family slots, and --radius is DERIVED
+// from the geometry `lg` corner (rem), not hard-coded.
+{
+  const withSys = X.exportShadcn(C(ALL), { fonts: { body: "Inter", display: "Source Serif 4", mono: "JetBrains Mono" }, radii: { lg: 12 } });
+  if (!withSys.includes("--radius: 0.75rem;")) FAIL("shadcn", "--radius not derived from the geometry lg corner (12px → 0.75rem)");
+  if (!withSys.includes("--font-sans: 'Inter',")) FAIL("shadcn", "--font-sans not mapped from the body font");
+  if (!withSys.includes("--font-serif: 'Source Serif 4',")) FAIL("shadcn", "--font-serif not mapped from the display font (quoted — digit name)");
+  if (!withSys.includes("--font-mono: 'JetBrains Mono',")) FAIL("shadcn", "--font-mono not mapped from the mono font");
+  // absent opts → the shadcn defaults (backward compatible)
+  if (!X.exportShadcn(C(ALL)).includes("--radius: 0.625rem;") || X.exportShadcn(C(ALL)).includes("--font-sans:")) FAIL("shadcn", "no opts → default 0.625rem radius + no font vars");
+}
 
 // ── hpg-export-keycolors (retained brand colors -> exact OKLCH tokens by role + JSON block) ──
 const withKey = C(ALL.map((p, i) => (i === 0 ? { ...p, keyColors: [{ role: "dominant", oklch: [0.32, 0.05, 150] }, { role: "supportive", oklch: [0.7, 0.04, 160] }] } : p)));
