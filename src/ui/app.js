@@ -5087,13 +5087,12 @@ class HctApp extends HTMLElement {
   }
 
   renderDrawer(view) {
-    // Export formats grouped by DESTINATION (what consumes the output); the item names
-    // only the variant. Group = where it goes, so labels never collide (no "CSS / CSS").
-    // Internal ids (css/oklch/tailwind/…) are unchanged — only the display labels.
+    // Export formats grouped by SYSTEM — the three brand-kit systems (Colors · Typography · Geometry) each
+    // get their own group, then Project. Within Colors the order runs CSS → frameworks → design tools. The
+    // item names disambiguate where a format spans systems (Type · DTCG vs the colour DTCG). Internal ids
+    // (css/oklch/tailwind/…) are unchanged — only the display grouping + labels.
     const FORMAT_GROUPS = [
-      ["CSS", [["css", "Hex"], ["oklch", "OKLCH"]]],
-      ["Frameworks", [["tailwind", "Tailwind v4"], ["shadcn", "shadcn/ui"]]],
-      ["Design tools", [["figma", "Figma"], ["ui3", "Figma UI3"], ["dtcg", "DTCG"], ["json", "JSON"]]],
+      ["Colors", [["css", "Hex"], ["oklch", "OKLCH"], ["tailwind", "Tailwind v4"], ["shadcn", "shadcn/ui"], ["figma", "Figma"], ["ui3", "Figma UI3"], ["dtcg", "DTCG"], ["json", "JSON"]]],
       ["Typography", [["type-css", "Type · CSS"], ["type-dtcg", "Type · DTCG"]]],
       ["Geometry", [["geom-css", "Geometry · CSS"], ["geom-dtcg", "Geometry · DTCG"]]],
       ["Project", [["config", "Config"]]],
