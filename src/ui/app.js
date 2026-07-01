@@ -4658,15 +4658,21 @@ class HctApp extends HTMLElement {
         if (input.value !== sv) { input.value = sv; fire(input, "input"); } // → the input's oninput (readout + editDrag)
       };
       apply(e.clientX);
+      // Drive the drag off the WINDOW, not the input. Figma's iframe drops the INPUT's own pointer events
+      // (and setPointerCapture doesn't hold) once the cursor moves far from the thumb — so an input-scoped
+      // listener cuts the drag off on a fast/far move. Window-level move/up fire wherever the pointer goes.
+      const dragTarget = typeof window !== "undefined" && window.addEventListener ? window : typeof document !== "undefined" && document.addEventListener ? document : this;
       const move = (ev) => apply(ev.clientX);
       const end = () => {
-        if (input.removeEventListener) { input.removeEventListener("pointermove", move); input.removeEventListener("pointerup", end); input.removeEventListener("pointercancel", end); }
+        dragTarget.removeEventListener("pointermove", move);
+        dragTarget.removeEventListener("pointerup", end);
+        dragTarget.removeEventListener("pointercancel", end);
         if (input.releasePointerCapture && e.pointerId != null) { try { input.releasePointerCapture(e.pointerId); } catch (err) { /* already released */ } }
         fire(input, "change"); // → the input's onchange (commitDrag + full render), the same settle a native release does
       };
-      input.addEventListener("pointermove", move);
-      input.addEventListener("pointerup", end);
-      input.addEventListener("pointercancel", end);
+      dragTarget.addEventListener("pointermove", move);
+      dragTarget.addEventListener("pointerup", end);
+      dragTarget.addEventListener("pointercancel", end);
     });
   }
 
