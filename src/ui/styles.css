@@ -1323,7 +1323,8 @@ a.account-manage:hover { text-decoration: underline; }
 /* the live mock control on the ramp (and the inspector example reuse the glyph/caret idiom) */
 .geom-ctl { display: inline-flex; align-items: center; box-sizing: border-box; flex: none;
   background: var(--accent); color: var(--accent-ink); font-weight: 600; line-height: 1; }
-.geom-glyph { flex: none; border-radius: 3px; background: currentColor; opacity: .85; }
+.geom-glyph { flex: none; display: inline-flex; align-items: center; justify-content: center; opacity: .95; }
+.geom-glyph .ic, .geom-glyph svg { width: 100%; height: 100%; }
 .geom-ctl-label { white-space: nowrap; }
 .geom-caret { flex: none; display: inline-flex; align-items: center; justify-content: center; transform: rotate(-90deg); opacity: .9; }
 .geom-caret .ic, .geom-caret svg { width: 100%; height: 100%; }

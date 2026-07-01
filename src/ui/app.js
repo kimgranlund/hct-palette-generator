@@ -517,6 +517,7 @@ class HctApp extends HTMLElement {
     this.geomMode = "base"; // active Geometry breakpoint mode: "base" | a doc.geometry.modes[].id | "compare" (Phase 5/5.3) — ui-session
     this._geomModeOverride = null; // a Compare column forces its breakpoint mode ("base"|id) while its scene builds (mirrors _schemeOverride) — transient
     this.geomSegment = "ramp"; // right-pane Geometry inspector tab: ramp | radius | space (ui-session)
+    this.geomSize = null; // the selected size in the ramp tab (null = none expanded) — drives per-size Height tuning (the geometry analog of typeVoice)
     this.typeSegment = "scale"; // right-pane Typography inspector tab: scale | fonts | specimen (ui-session)
     this.typeVoice = null; // the selected voice in the Scale tab (null = none expanded) — drives per-voice tuning
     this.examplesExpanded = false; // right-pane preview gallery: collapsed to the first artifact until expanded (ui-session)
@@ -3254,6 +3255,21 @@ class HctApp extends HTMLElement {
       d.geometry = { ...d.geometry, tokenOverrides: { ...d.geometry.tokenOverrides } };
       delete d.geometry.tokenOverrides[key];
       if (Object.keys(d.geometry.tokenOverrides).length === 0) delete d.geometry.tokenOverrides;
+    });
+  }
+  // _geomActiveModeKey — the tokenOverride mode key for the ramp tab's active breakpoint (Compare shows Base).
+  _geomActiveModeKey() { return this.geomMode === "base" || this.geomMode === "compare" ? "base" : this.geomMode; }
+  // _setGeomSize(size, height) — the LIVE (editDrag) per-size Height override for the active mode. Height is
+  // geometry's ONE authored lever (icon/font/pad/radius derive from it by the centering law), so this is the
+  // geometry analog of _setTypeVoice — and it writes the SAME tokenOverrides store the token matrix uses.
+  _setGeomSize(size, height) {
+    let n = Math.round(Number(height));
+    if (!Number.isFinite(n)) return;
+    n = Math.max(8, Math.min(256, n)); // same clamp as setGeomTokenOverride (live === persist range)
+    const key = size + "|" + this._geomActiveModeKey();
+    this.editDrag((d) => {
+      d.geometry = { ...(d.geometry || DEFAULT_GEOMETRY) };
+      d.geometry.tokenOverrides = { ...(d.geometry.tokenOverrides || {}), [key]: n };
     });
   }
 
@@ -6013,7 +6029,7 @@ class HctApp extends HTMLElement {
           style: `height:${s.height}px;font-size:${s.font}px;gap:${s.gap}px;padding-inline-start:${s.padding}px;padding-inline-end:${s.padding}px;border-radius:${s.radiusPill}px`,
           title: `height ${s.height} · icon ${s.icon} · font ${s.font} · pad ${s.padding} · gap ${s.gap} · radius ${s.radiusPill}`,
         },
-        h("span", { class: "geom-glyph", style: `width:${s.icon}px;height:${s.icon}px` }),
+        h("span", { class: "geom-glyph", style: `width:${s.icon}px;height:${s.icon}px` }, icon("calendar-blank", { size: s.icon })),
         h("span", { class: "geom-ctl-label" }, "Button"),
         h("span", { class: "geom-caret", style: `width:${s.caret}px;height:${s.caret}px` }, icon("caret-left")),
       );
@@ -6225,23 +6241,40 @@ class HctApp extends HTMLElement {
       h(
         "div",
         { class: "tyi-voices" },
-        h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-size"), h("small", {}, "computed · read-only")),
+        h("div", { class: "tyi-voices-head" }, h("b", {}, "Per-size"), h("small", {}, "select a size to tune its height")),
         ...["XS", "SM", "MD", "LG", "XL", "2XL"].map((n) => {
           const s = scale.sizes[n];
           if (!s) return false;
+          const sel = this.geomSize === n;
+          const tuned = Number.isFinite((cfg.tokenOverrides || {})[n + "|" + this._geomActiveModeKey()]);
+          const stats = h(
+            "dl",
+            { class: "tyi-voice-stats" },
+            h("div", {}, h("dt", {}, "Icon"), h("dd", {}, `${s.icon}`)),
+            h("div", {}, h("dt", {}, "Font"), h("dd", {}, `${s.font}`)),
+            h("div", {}, h("dt", {}, "Pad"), h("dd", {}, `${s.padding}`)),
+            h("div", {}, h("dt", {}, "Gap"), h("dd", {}, `${s.gap}`)),
+            h("div", {}, h("dt", {}, "Radius"), h("dd", {}, `${s.radiusPill}`)),
+          );
           return h(
             "div",
-            { class: "tyi-voice" },
-            h("div", { class: "tyi-voice-name" }, n, h("span", { class: "tyi-voice-font" }, `${s.height}px`)),
+            { class: "tyi-voice" + (sel ? " is-sel" : "") + (tuned ? " is-tuned" : "") },
             h(
-              "dl",
-              { class: "tyi-voice-stats" },
-              h("div", {}, h("dt", {}, "Icon"), h("dd", {}, `${s.icon}`)),
-              h("div", {}, h("dt", {}, "Font"), h("dd", {}, `${s.font}`)),
-              h("div", {}, h("dt", {}, "Pad"), h("dd", {}, `${s.padding}`)),
-              h("div", {}, h("dt", {}, "Gap"), h("dd", {}, `${s.gap}`)),
-              h("div", {}, h("dt", {}, "Radius"), h("dd", {}, `${s.radiusPill}`)),
+              "button",
+              { type: "button", class: "tyi-voice-name", "data-fk": "gsize:" + n, "aria-expanded": sel ? "true" : "false",
+                onclick: () => { this.geomSize = sel ? null : n; this.render(); } },
+              h("span", { class: "tyi-voice-label" }, n, tuned ? h("span", { class: "tyi-voice-dot", title: "Height tuned off the ramp" }, " ●") : false),
+              h("span", { class: "tyi-voice-font" }, `${s.height}px`),
             ),
+            sel
+              ? h(
+                  "div",
+                  { class: "tyi-voice-edit" },
+                  this.slider("Height", s.height, 16, 96, 1, (v) => fmt(v) + "px", (v) => this._setGeomSize(n, v)),
+                  stats,
+                  tuned ? btn("Reset size", { variant: "ghost", cls: "tyi-voice-reset", onclick: () => this.clearGeomTokenOverride(n, this._geomActiveModeKey()) }) : false,
+                )
+              : stats,
           );
         }),
       ),

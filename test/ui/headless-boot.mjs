@@ -1564,6 +1564,18 @@ ok(bkGeo(app.doc).geometry && bkGeo(app.doc).geometry.sizes && bkGeo(app.doc).ge
   ok(bkGeo(app.doc).geometry.sizes.MD.font === ui.MD.size, "(geo) brandKit's geometry shares the type UI font (one source of truth)");
   app.commit((d) => { d.type = { treatment: "product", bodyBase: 16 }; }); // restore
 }
+// (gsz) ramp-tab per-size HEIGHT tuning — the geometry analog of (tyv): select a size → its Height slider
+// expands; _setGeomSize writes the per-size override (the SAME store the token matrix uses) + persists; reset clears.
+app.setSection("geometry"); app.geomSegment = "ramp"; app.geomSize = null; app.render(); flushRaf();
+ok(app.querySelectorAll(".tyi-voice").length === 6 && !app.querySelector(".tyi-voice-edit"), `(gsz) the ramp tab lists the 6 sizes, none expanded by default (got ${app.querySelectorAll(".tyi-voice").length})`);
+app.geomSize = "MD"; app.render(); flushRaf();
+ok(!!app.querySelector(".tyi-voice-edit") && !!app.querySelector(".is-sel"), "(gsz) selecting a size expands its Height slider (is-sel + .tyi-voice-edit)");
+app._setGeomSize("MD", 52); flushRaf();
+ok(app.doc.geometry.tokenOverrides && app.doc.geometry.tokenOverrides["MD|base"] === 52 && app._geomScaleFor("base").sizes.MD.height === 52, "(gsz) a per-size Height override writes doc.geometry.tokenOverrides[size|base] + flows into the resolved scale");
+ok(hydSet(serSet(app.doc)).geometry.tokenOverrides["MD|base"] === 52, "(gsz) the per-size Height override round-trips through persist");
+app.clearGeomTokenOverride("MD", "base"); flushRaf();
+ok(!app.doc.geometry.tokenOverrides || !("MD|base" in app.doc.geometry.tokenOverrides), "(gsz) reset clears the per-size override (back to the derived height)");
+app.geomSize = null; app.render(); flushRaf(); // leave the section in Geometry for the following legs
 // the canvas Controls·Tokens toggle flips the canvas to the READ-ONLY token MATRIX (a real <table>) in the
 // scrolling .is-table shell — rows = the 6 control sizes, columns = Base (+ each breakpoint), sticky names.
 app.setGeomSpecMode("tokens"); flushRaf();
