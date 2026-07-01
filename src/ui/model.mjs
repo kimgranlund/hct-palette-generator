@@ -483,6 +483,11 @@ export function projectView(doc) {
   // once and surface those files INDIVIDUALLY so the UI can download Light_tokens.json
   // and Dark_tokens.json as separate files (one per Figma variable-collection mode).
   const dtcgObj = exportDTCG(state);
+  // the resolved type + geometry scales — so the shadcn theme carries the brand fonts (--font-*) + a
+  // geometry-derived --radius, not just colours. Fonts/radii come from the treatment (size overrides don't
+  // affect them), so the base scales are correct here.
+  const shadType = typeScale(state.type || DEFAULT_TYPE);
+  const shadGeom = geometryScale(state);
   const exports = {
     css: exportCSS(state),
     oklch: exportOKLCH(state),
@@ -490,7 +495,7 @@ export function projectView(doc) {
     dtcg: JSON.stringify(dtcgObj, null, 2),
     ui3: JSON.stringify(exportUI3(state), null, 2),
     tailwind: exportTailwind(state),
-    shadcn: exportShadcn(state),
+    shadcn: exportShadcn(state, { fonts: shadType.fonts, radii: shadGeom.radii }),
     figma: {
       light: JSON.stringify(dtcgObj["Light_tokens.json"], null, 2),
       dark: JSON.stringify(dtcgObj["Dark_tokens.json"], null, 2),
