@@ -51,9 +51,9 @@ const SCRIM_KEYS = [
 /**
  * Normalise a ref for use in token names / CSS var() references.
  * - Solid stops are zero-padded to 3 digits: "50" -> "050", "550" -> "550".
- * - Scrim refs keep their "-{step}" suffix and pad the base stop: "500-200" -> "500-200",
- *   "50-2" -> "050-2".
- * @param {string} ref e.g. "50", "550", "500-200"
+ * - Scrim refs pad BOTH the base stop and the "-{step}" alpha to 3 digits (ADR-006, so every naming
+ *   surface matches the raw ramp): "500-200" -> "500-200", "500-50" -> "500-050", "50-2" -> "050-002".
+ * @param {string} ref e.g. "50", "550", "500-050"
  * @returns {string}
  */
 export function refKey(ref) {
@@ -63,10 +63,10 @@ export function refKey(ref) {
     // Solid stop: pad the whole thing to 3 digits.
     return s.padStart(3, '0');
   }
-  // Scrim: pad the base stop, preserve the "-index" suffix verbatim.
+  // Scrim: pad the base stop AND the "-step" alpha to 3 digits.
   const base = s.slice(0, dash);
-  const rest = s.slice(dash); // includes the leading "-"
-  return base.padStart(3, '0') + rest;
+  const step = s.slice(dash + 1);
+  return base.padStart(3, '0') + '-' + step.padStart(3, '0');
 }
 
 /**
@@ -190,10 +190,10 @@ export function semanticRoles(paletteName) {
   role('surfaceHighest', '-surface-highest', '200', '800');
 
   // 10. SCRIM — shared; 7 strengths, all on the 500 ramp at alpha% = step/10. Mode-independent
-  //     (light === dark === `500-${step}`). Listed LAST so the emitted token order groups as
-  //     regular colors → containers → surfaces → scrims — a cleaner Figma variable / CSS list.
+  //     (light === dark === `500-${pad3(step)}`, e.g. `500-050`). Listed LAST so the emitted token order
+  //     groups as regular colors → containers → surfaces → scrims — a cleaner Figma variable / CSS list.
   for (let i = 0; i < SCRIM_STRENGTH_STEPS.length; i++) {
-    const ref = `500-${SCRIM_STRENGTH_STEPS[i]}`;
+    const ref = `500-${String(SCRIM_STRENGTH_STEPS[i]).padStart(3, '0')}`; // ADR-006 3-digit alpha: 50 -> "050"
     role(SCRIM_KEYS[i], SCRIM_SUFFIXES[i], ref, ref);
   }
 

@@ -140,7 +140,7 @@ function roleTable(n) {
     // 10. SCRIM — shared; 7 strengths on the 500 ramp (alpha% = step/10), mode-independent.
     //     Listed LAST (mirrors semantic.js) so the bound variables group regular → containers →
     //     surfaces → scrims. Sequential 5–60%: weakest..strongest = 50/100/200/300/400/500/600.
-    { key: "scrimWeakest", suffix: "-scrim-weakest", light: "500-50", dark: "500-50" },
+    { key: "scrimWeakest", suffix: "-scrim-weakest", light: "500-050", dark: "500-050" },
     { key: "scrimWeaker", suffix: "-scrim-weaker", light: "500-100", dark: "500-100" },
     { key: "scrimWeak", suffix: "-scrim-weak", light: "500-200", dark: "500-200" },
     { key: "scrim", suffix: "-scrim", light: "500-300", dark: "500-300" },

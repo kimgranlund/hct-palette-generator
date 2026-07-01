@@ -42,7 +42,7 @@ semantic role does not surface in it unless explicitly wired into `MAP`.
      semantic names end in a WORD, so both share the --c- prefix with no collision. */
   --c-{n}-050: {hex};            ... --c-{n}-950: {hex};
   /* scrims (the 500 ramp; alpha% = step/10) */
-  --c-{n}-500-50: {hex8};  ...  --c-{n}-500-950: {hex8};
+  --c-{n}-500-050: {hex8};  ...  --c-{n}-500-950: {hex8};
   /* SEMANTIC roles -> light-dark of two raw primitives */
   --c-{n}{suffix}: light-dark(var(--c-{n}-{refKey(light)}), var(--c-{n}-{refKey(dark)}));
 }
@@ -63,7 +63,7 @@ semantic role does not surface in it unless explicitly wired into `MAP`.
   "palettes": [
     { "name", "hue", "chromaPct", "skew",
       "stops":   { "050": {hex, lstar, chroma}, ... },
-      "scrims":  { "500-50": {hex,alpha}, "500-100":{...}, ... "500-950":{...} },
+      "scrims":  { "500-050": {hex,alpha}, "500-100":{...}, ... "500-950":{...} },
       "semantic":{ "<roleKey>": {css, light, dark, lightHex, darkHex}, ... }
     }
   ]

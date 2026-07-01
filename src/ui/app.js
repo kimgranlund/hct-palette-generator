@@ -3836,8 +3836,8 @@ class HctApp extends HTMLElement {
     const ovCount = Object.keys(ov).reduce((a, k) => a + Object.keys(ov[k] || {}).length, 0);
     // raw refs you can re-point a role to: the 25 solid stops + every scrim ref (base-step), built
     // from the SAME SCRIM_BASES × SCRIM_STEPS the engine/exporters use — so the scrim roles
-    // (e.g. scrim-weakest → 500-50) always have a matching option instead of falling back to 050.
-    const scrimRefs = SCRIM_BASES.flatMap((b) => SCRIM_STEPS.map((st) => String(b).padStart(3, "0") + "-" + st));
+    // (e.g. scrim-weakest → 500-050) always have a matching option instead of falling back to 050.
+    const scrimRefs = SCRIM_BASES.flatMap((b) => SCRIM_STEPS.map((st) => String(b).padStart(3, "0") + "-" + String(st).padStart(3, "0")));
     const validRefs = [...vp.fullRamp.map((s) => String(s.stop)), ...scrimRefs];
     const tokenName = (ref) => n + "-" + (ref.includes("-") ? ref : ref.padStart(3, "0")); // the displayed raw-token name
     const padRef = (ref) => (ref.includes("-") ? ref : ref.padStart(3, "0"));

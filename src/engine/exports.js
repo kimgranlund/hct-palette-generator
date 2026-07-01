@@ -288,7 +288,7 @@ function cssFrom(palettes, oklch) {
       for (const step of SCRIM_STEPS) {
         const sc = p.scrims[base][step];
         const val = oklch ? oklchStrA(rgbToOklch(sc.rgb), sc.alphaPct) : sc.hex;
-        lines.push(`  --c-${p.n}-${pad3(base)}-${step}: ${val};`);
+        lines.push(`  --c-${p.n}-${pad3(base)}-${pad3(step)}: ${val};`);
       }
     }
     // SEMANTIC --c-{n}-{role} vars: light-dark(var(light raw), var(dark raw)) (ADR-005)
@@ -329,7 +329,7 @@ export function exportJSON(state) {
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
         const sc = p.scrims[base][step];
-        scrims[`${pad3(base)}-${step}`] = { hex: sc.hex, alpha: sc.alphaPct };
+        scrims[`${pad3(base)}-${pad3(step)}`] = { hex: sc.hex, alpha: sc.alphaPct };
       }
     }
 
@@ -375,7 +375,7 @@ export function exportDTCG(state, opts) {
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
         const sc = p.scrims[base][step];
-        grp[`${pad3(base)}-${step}`] = colorLeaf(sc.rgb, sc.frac, null);
+        grp[`${pad3(base)}-${pad3(step)}`] = colorLeaf(sc.rgb, sc.frac, null);
       }
     }
     rawTree[p.n] = grp;
@@ -431,7 +431,7 @@ export function exportUI3(state) {
     for (const base of SCRIM_BASES) {
       for (const step of SCRIM_STEPS) {
         const sc = p.scrims[base][step];
-        primVars[`raw/${p.n}/${pad3(base)}-${step}`] = { type: "COLOR", values: { Base: sc.hex } };
+        primVars[`raw/${p.n}/${pad3(base)}-${pad3(step)}`] = { type: "COLOR", values: { Base: sc.hex } };
       }
     }
     // semantic: "{n}/{key}" -> in-file aliases to the raw key paths per mode.

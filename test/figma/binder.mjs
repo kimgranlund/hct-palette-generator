@@ -13,12 +13,12 @@ const NAMES = RT.defaults.map((p) => p.name.toLowerCase());
 const fails = [];
 const FAIL = (g, m) => { if (!fails.some((f) => f.startsWith(g + ":"))) fails.push(`${g}: ${m}`); };
 
-// canonical raw-colors variable name set (the answer key): {n}/{pad3(stop)} ∪ {n}/{base}-{step}
+// canonical raw-colors variable name set (the answer key): {n}/{pad3(stop)} ∪ {n}/{pad3(base)}-{pad3(step)}
 const pad3 = (s) => String(s).padStart(3, "0");
 const CANON = new Set();
 for (const n of NAMES) {
   for (const s of EXPORT_STOPS) CANON.add(`${n}/${pad3(s)}`);
-  for (const b of SCRIM_BASES) for (const step of SCRIM_STEPS) CANON.add(`${n}/${pad3(b)}-${step}`);
+  for (const b of SCRIM_BASES) for (const step of SCRIM_STEPS) CANON.add(`${n}/${pad3(b)}-${pad3(step)}`);
 }
 
 // ── hpg-plugin-bindings: every emitted target exists in the canonical raw-colors name set ─

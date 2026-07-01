@@ -393,8 +393,8 @@
     {
       "key": "scrimWeakest",
       "suffix": "-scrim-weakest",
-      "light": "500-50",
-      "dark": "500-50"
+      "light": "500-050",
+      "dark": "500-050"
     },
     {
       "key": "scrimWeaker",
