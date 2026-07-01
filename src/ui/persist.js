@@ -251,12 +251,15 @@ export function hydrate(snapshot) {
   };
 }
 
-// clampExport — the OPTIONAL export-format prefs { unit } (Settings › Export; the CSS unit). Attached only
-// when a valid unit is present, so the hydrate identity gate holds (absent stays absent; invalid drops).
+// clampExport — the OPTIONAL export-format prefs { unit?, colorFormat? } (Settings › Export: CSS unit +
+// colour CSS format). Each key attaches only when valid, and the whole `export` only when ≥1 valid key —
+// so the hydrate identity gate holds (absent stays absent; invalid keys drop; an all-invalid object drops).
 function clampExport(e) {
   if (!e || typeof e !== "object") return {};
   const unit = clampEnum(e.unit, ["px", "rem", "em"], null);
-  return unit ? { export: { unit } } : {};
+  const colorFormat = clampEnum(e.colorFormat, ["hex", "oklch"], null);
+  const out = { ...(unit ? { unit } : {}), ...(colorFormat ? { colorFormat } : {}) };
+  return Object.keys(out).length ? { export: out } : {};
 }
 
 // a breakpoint mode's @media min-width (px) — OPTIONAL: {} when absent/invalid (no media query), or

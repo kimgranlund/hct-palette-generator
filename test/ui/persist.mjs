@@ -47,13 +47,17 @@ const mut2 = JSON.parse(JSON.stringify(base)); mut2.palettes[0].hue = 410;   // 
 const hyd2 = U.hydrate(U.serialize(mut2));
 if (hyd2.palettes[0].hue !== 360) FAIL("clamp", `palette hue 410 -> ${hyd2.palettes[0].hue}, want 360`);
 if (!deepEq(hyd2.palettes[0].chroma, base.palettes[0].chroma)) FAIL("clamp", "clamping palette hue disturbed sibling chroma");
-// export-format prefs (doc.export.unit) — round-trips when valid; absent stays absent; invalid drops.
+// export-format prefs (doc.export = { unit, colorFormat }) — each valid key round-trips; absent stays
+// absent; invalid keys drop; an all-invalid object drops the whole `export`.
 {
-  const withUnit = JSON.parse(JSON.stringify(base)); withUnit.export = { unit: "rem" };
-  if (U.hydrate(U.serialize(withUnit)).export?.unit !== "rem") FAIL("export", "doc.export.unit=rem did not round-trip");
+  const both = JSON.parse(JSON.stringify(base)); both.export = { unit: "rem", colorFormat: "oklch" };
+  const r = U.hydrate(U.serialize(both)).export;
+  if (!r || r.unit !== "rem" || r.colorFormat !== "oklch") FAIL("export", `doc.export {unit,colorFormat} did not round-trip (got ${JSON.stringify(r)})`);
   if ("export" in U.hydrate(U.serialize(base))) FAIL("export", "absent export must stay absent (identity gate)");
-  const bad = JSON.parse(JSON.stringify(base)); bad.export = { unit: "furlong" };
-  if ("export" in U.hydrate(U.serialize(bad))) FAIL("export", "an invalid unit must drop the export field");
+  const mixed = JSON.parse(JSON.stringify(base)); mixed.export = { unit: "furlong", colorFormat: "oklch" };
+  if (JSON.stringify(U.hydrate(U.serialize(mixed)).export) !== JSON.stringify({ colorFormat: "oklch" })) FAIL("export", "an invalid unit must drop only that key, keeping the valid colorFormat");
+  const bad = JSON.parse(JSON.stringify(base)); bad.export = { unit: "furlong", colorFormat: "cmyk" };
+  if ("export" in U.hydrate(U.serialize(bad))) FAIL("export", "an all-invalid export object must drop entirely");
 }
 
 // clamp-to-default hydrator would fail the above (it discards in-domain values) — that's the anti-hack

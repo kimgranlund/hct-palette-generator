@@ -5314,9 +5314,9 @@ class HctApp extends HTMLElement {
     const ex = view.exports;
     const files = [];
     if (sys.color) {
+      const cf = this._colorFormat(); // hex | oklch (Settings › Export) — the chosen colour CSS is emitted (one folder)
       files.push(
-        { name: `css-hex/${s}.css`, data: ex.css },
-        { name: `css-oklch/${s}.css`, data: ex.oklch },
+        { name: `css-${cf}/${s}.css`, data: cf === "oklch" ? ex.oklch : ex.css },
         { name: `json/${s}.json`, data: ex.json },
         { name: "figma/Light_tokens.json", data: ex.figma.light },
         { name: "figma/Dark_tokens.json", data: ex.figma.dark },
@@ -5621,6 +5621,9 @@ class HctApp extends HTMLElement {
   // travels with the kit; defaults to "px" (the pre-setting output). Figma exports ignore it (they're numeric).
   _exportUnit() { return this.doc.export && ["px", "rem", "em"].includes(this.doc.export.unit) ? this.doc.export.unit : "px"; }
   _setExportUnit(unit) { this.commit((d) => { d.export = { ...(d.export || {}), unit }; }); }
+  // _colorFormat — the colour CSS format the Download-All emits (Settings › Export). hex | oklch, default hex.
+  _colorFormat() { return this.doc.export && this.doc.export.colorFormat === "oklch" ? "oklch" : "hex"; }
+  _setColorFormat(colorFormat) { this.commit((d) => { d.export = { ...(d.export || {}), colorFormat }; }); }
 
   // _settingsPanel — the right-content for a nav section: { title, desc, body[] }.
   _settingsPanel(sec) {
@@ -5639,9 +5642,12 @@ class HctApp extends HTMLElement {
     }
     if (sec === "export") {
       const units = [{ id: "px", label: "px" }, { id: "rem", label: "rem" }, { id: "em", label: "em" }];
+      const colors = [{ id: "hex", label: "HEX" }, { id: "oklch", label: "OKLCH" }];
       return {
         title: "Export", desc: "How the CSS + DTCG exports render. Figma variables are always numeric (px).",
         body: [this._settingsGroup(null, [
+          this._settingRow("Colour format", "The raw-colour CSS the Download-All emits — sRGB HEX or wide-gamut OKLCH. (Preview either in the export drawer's CSS tabs.)", colors, this._colorFormat(),
+            (id) => this._setColorFormat(id), "setcolorformat"),
           this._settingRow("CSS units", "The unit the Typography + Geometry CSS/DTCG use. rem = px ÷ 16 (clean, thanks to the nice-number sizes). Figma stays px.", units, this._exportUnit(),
             (id) => this._setExportUnit(id), "setexportunit"),
         ])],
