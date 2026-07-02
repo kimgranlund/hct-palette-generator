@@ -16,10 +16,10 @@ export const TIER_FLAGS = {
   pro: { maxSets: Infinity, proExport: true, advancedTreatments: true, hostedMcp: true },
 };
 
-// Master enforcement switch. Ships FALSE pre-launch: with NO purchase path yet, gating a feature OFF would
-// just remove it from current users — so everyone resolves to the UNLOCKED (pro) values until Layer 2 wires
-// payment and the product flips this to true. (The free/pro split below is defined + tested now, ready.)
-export const TIERS_ENFORCED = false;
+// Master enforcement switch. Now TRUE (launched): the purchase + activation path is wired (Layer 2/3), so a
+// free profile resolves to the FREE values and Pro requires a currently-active entitlement (resolveTier).
+// Pre-launch this shipped FALSE — everyone resolved to the UNLOCKED (pro) values — until payment was wired.
+export const TIERS_ENFORCED = true;
 
 // resolveFlags(profile, opts?) → the resolved flag map. base = the tier's values when enforced, else the
 // unlocked (pro) values; then any explicit flagOverrides (dev / QA / early-access) win.
