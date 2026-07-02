@@ -8,7 +8,7 @@ an **MCP brand-kit** server. A brand kit is **one document** with three composin
 **sections of one editor**: **Color** (palettes → 59 semantic roles) · **Typography** · **Geometry**
 (its per-step text size composes *from* the Type UI scale).
 
-Canonical specs + rubrics: `docs/spec/` (e.g. `docs/spec/data/role-table.json` is the role answer key).
+Canonical specs + rubrics: `.claude/docs/spec/` (e.g. `.claude/docs/spec/data/role-table.json` is the role answer key).
 
 ## Commands
 
@@ -33,7 +33,7 @@ Canonical specs + rubrics: `docs/spec/` (e.g. `docs/spec/data/role-table.json` i
   sandbox (parity-gated). `figma/plugin/ui.html` is a generated bundle of the whole app.
 - `test/` — `engine/*` verifiers · `ui/headless-boot.mjs` (the shim run, lettered groups) · `figma/` ·
   `mcp/` · `smoke/smoke.mjs`. `scripts/` — the generators. `mcp/` — the MCP server.
-- `docs/spec/` — canonical specs, rubrics, role-table answer key. `docs/other/` — **PRIVATE** (see below).
+- `.claude/docs/spec/` — canonical specs, rubrics, role-table answer key. `.claude/docs/other/` — **PRIVATE** (see below).
 
 ## Conventions (non-obvious only)
 
@@ -42,7 +42,7 @@ Canonical specs + rubrics: `docs/spec/` (e.g. `docs/spec/data/role-table.json` i
 - **Sections.** `this.section` (`color`|`typography`|`geometry`) routes `renderCenter`/`renderLeftPane`/
   `renderRightPane`. A section = a canvas header + a pannable `.canvas-scene` (the full dataset) + left
   analysis cards + a right inspector.
-- **59 semantic roles / palette.** `docs/spec/data/role-table.json` deep-equals `semanticRoles`; the
+- **59 semantic roles / palette.** `.claude/docs/spec/data/role-table.json` deep-equals `semanticRoles`; the
   Figma `code.js` table mirrors it (parity-gated) — so a role-count change moves several files in lockstep.
 - **Quote interpolated font-family names** with digits/spaces — `font-family:'Source Serif 4', serif`.
   Unquoted, WebKit/Safari drops the declaration (the digit is invalid); Chrome tolerates it.
@@ -71,8 +71,8 @@ concurrently, isolate your commit in a `git worktree` off `origin/main`.
 ## Always
 
 - `npm test` green before treating a change as done (and `npm run build` if you touched the build chain).
-- **`git status --short | grep docs/other` must be empty before every commit** — `docs/other/` is a
+- **`git status --short | grep .claude/docs/other` must be empty before every commit** — `.claude/docs/other/` is a
   local-only working folder (ignored via `.git/info/exclude`); it must never reach a commit.
 
-<!-- Enforcement: there are NO local hooks yet. The guards above (role-table parity, docs/other, font-quoting) are conventions + CI + the test gates, not enforced pre-commit. A Stop/pre-commit hook for the docs/other + parity guards would be the place to make them reliable. -->
-<!-- This file is the always-loaded INDEX of cross-cutting, always-true facts only. Domain PROCEDURES (changing an engine, adding a role/format, the Figma binder, building a section, shipping, palette research) are owned by on-demand skills/agents in .claude/ — discovered via their frontmatter descriptions, NOT routed from here. Conceptual depth: docs/spec/ + the engine files' header comments. Keep this thin; let the frontmatter system do the routing. -->
+<!-- Enforcement: there are NO local hooks yet. The guards above (role-table parity, .claude/docs/other, font-quoting) are conventions + CI + the test gates, not enforced pre-commit. A Stop/pre-commit hook for the .claude/docs/other + parity guards would be the place to make them reliable. -->
+<!-- This file is the always-loaded INDEX of cross-cutting, always-true facts only. Domain PROCEDURES (changing an engine, adding a role/format, the Figma binder, building a section, shipping, palette research) are owned by on-demand skills/agents in .claude/ — discovered via their frontmatter descriptions, NOT routed from here. Conceptual depth: .claude/docs/spec/ + the engine files' header comments. Keep this thin; let the frontmatter system do the routing. -->

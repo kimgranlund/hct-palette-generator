@@ -1,10 +1,10 @@
 // type.mjs — the perceptual TYPOGRAPHY engine: the type analog of the color engine. A few parameters
 // → a systematic type scale → DTCG / CSS tokens. Pure, no DOM. Mirrors the structure of the target
-// schema (docs/spec/typography/typography.tokens.json): four role "voices" — Display · Heading · Body
+// schema (.claude/docs/spec/typography/typography.tokens.json): four role "voices" — Display · Heading · Body
 // (Content) · UI — each a size ramp whose every step carries size, line-height, letter-spacing, weight,
 // and paragraph spacing, all DERIVED from the treatment's params (no hand-authored magic numbers).
 //
-// The system relationships (see docs/spec/typography/README.md):
+// The system relationships (see .claude/docs/spec/typography/README.md):
 //   size          = base · ratio^n           (a modular scale; n = the step's distance from the base)
 //   lineHeight     = round(size · leading)     (per-role leading; single-line = size)
 //   letterSpacing = round(size · trackingEm)  (optical: negative tightens big display, positive loosens UI)
@@ -34,7 +34,7 @@ export const TYPE_RATIOS = [
 // the SCALE + tracking + weight + leading + case relationships are the product. Free families only.
 const cat = (role, base, ratio, leading, weight, trackingEm, steps = STEPS_5, transform = "none") => ({ role, base, ratio, leading, weight, trackingEm, steps, transform });
 
-// make7 — the SEVEN named type groups (the canonical taxonomy from docs/spec/typography): Display · the
+// make7 — the SEVEN named type groups (the canonical taxonomy from .claude/docs/spec/typography): Display · the
 // three Headings (Editorial · Context · Eyebrow) · Body · UI · Code. Shared STRUCTURE across treatments;
 // each treatment passes its fonts + a few character knobs. Eyebrow + Code ride the MONO role.
 //

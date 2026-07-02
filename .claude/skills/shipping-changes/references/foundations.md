@@ -50,7 +50,7 @@ errors, your local main has drifted (a stray commit) — investigate, don't forc
 There are **no local git hooks** in this repo (CLAUDE.md says so explicitly). Every guard is a convention +
 CI + the test gate — meaning **you** are the enforcement at commit time:
 
-- **`docs/other/`** is a private working folder, ignored via **`.git/info/exclude`** (local, not the shared
+- **`.claude/docs/other/`** is a private working folder, ignored via **`.git/info/exclude`** (local, not the shared
   `.gitignore`). A teammate's clone has no such exclude, so committing it would leak local scratch into the
   shared history. It must never appear in `git status --short`.
 - **`node_modules` is de-tracked and ignored** — `npm install`/`npm ci` is the source of truth. It was

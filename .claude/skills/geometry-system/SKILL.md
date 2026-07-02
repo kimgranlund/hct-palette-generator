@@ -19,13 +19,14 @@ six-size ramp → derived control geometry → DTCG / CSS / Figma tokens.** Pure
 law and TWO families; the verifier proves both on every change. Geometry is unforgiving the same way color is —
 a pad hand-tuned to "look right", a density that leaks into the frame, or a font that nudges the box ships
 un-centered controls that *look* plausible. This skill is the procedure + the gotchas + the gates. The
-conceptual *why* is owned by `docs/spec/geometry/README.md` (de-staled — accurate to cite) and the
-`design-skills:component-decomposer` skill's `references/geometry-system.md` — **cite them, don't re-derive.**
+conceptual *why* is owned by `.claude/docs/spec/geometry/README.md` (de-staled — accurate to cite) and the
+`design-skills:component-decomposer` skill's geometry-system reference — **cite them, don't re-derive.**
 
 ## THE ONE LAW (read first)
 
-> **Edge padding for a glyph = (height − glyph) / 2.** Every glyph centers in a **square cell** of side = the
-> control height. `padding-block` is `0`; **block-size (height) is the vertical lever, never block-padding.**
+**Edge padding for a glyph = (height − glyph)/2** — every glyph centers in a square cell of side = the control
+height; block-size is the vertical lever, never block-padding (`padding-block: 0`). The full statement + its
+derivations: `references/foundations.md` §2.
 
 From that single rule fall out, mechanically: the slot pad `(height − icon)/2`, the slotless/bare-label edge
 `round(height/2)`, the icon-only **square** `minWidth = height`, and the **pill radius** `round(height/2)`. The
@@ -35,10 +36,9 @@ is a derivation, not a fit. The `.control-{size}` CSS utility **embodies** it (b
 
 ## THE TWO FAMILIES — density rides the rhythm, never the frame
 
-| Family | Scales with | Members | Density |
-|---|---|---|---|
-| **Frame** | the box **height** | `icon`, slot `padding`, `edgePadding`, `minWidth`, `radiusPill` | **density-invariant** |
-| **Rhythm** | the **font** | `gap = font/2`, `caret = font` | density multiplies the rhythm **only** |
+**Frame** (`icon`, slot `padding`, `edgePadding`, `minWidth`, `radiusPill`) scales with the box **height** and
+is **density-invariant**; **Rhythm** (`gap = font/2`, `caret = font`) scales with the **font** and is all
+density may touch. The full table: `references/foundations.md` §3.
 
 `density` (treatment knob: comfortable 1 · compact 0.75 · spacious 1.25 · touch 1.1 · pill 1) multiplies
 **`gap` and only `gap`** (`gap = max(1, round((font/2)·density))`). **Scaling the frame would un-center the
@@ -48,14 +48,9 @@ glyph** — so density (and the type scale) must never touch it. Depth: `referen
 
 `SIZES = [XS 20, SM 24, MD 28, LG 36, XL 48, 2XL 64]` (heights) — **two bands** at the MD|LG seam (compact `+4`
 linear below: 20·24·28, expressive `×4/3` geometric above: 36·48·64). The glyphs scale **sublinearly** (the
-optical correction):
-
-```
-icon = 2.49·height^0.58  (roundEven)     font = 3.16·height^0.45 ≈ √h  (round)     caret = font
-```
-
-These reproduce the hand-tuned reference table to **±1px** — one rule sampled six times. `CANON_MD = 28`;
-`baseHeight` scales the whole ramp by `baseHeight/28`. The reference ramp + the table are in
+optical correction): two tuned power laws of height — `icon` (roundEven) and `font ≈ √h` (round), `caret =
+font` — that reproduce the hand-tuned reference table to **±1px**: one rule sampled six times. `CANON_MD =
+28`; `baseHeight` scales the whole ramp by `baseHeight/28`. The constants + the reference table:
 `references/foundations.md` §4.
 
 ## THE COMPOSITION — one number, two engines (the JOIN)
@@ -101,8 +96,9 @@ ladder — the gap **BETWEEN** components, a **separate concern** from control p
 3. **Keep density (and composition) out of the frame.** `density` multiplies `gap` only. `fontOverride`
    replaces `font` only. The frame (`height·icon·padding·edgePadding·radiusPill·minWidth`) must be identical
    across densities AND between composed/standalone — the gates compare exactly that.
-4. **Constants are tuned, not arbitrary.** `2.49/0.58/3.16/0.45` reproduce the reference ramp to ±1px;
-   `CANON_MD = 28` is the pivot. Don't retune without updating the test's `REF` table in the same change.
+4. **Constants are tuned, not arbitrary.** The power-law coefficients/exponents (`references/foundations.md`
+   §4) reproduce the reference ramp to ±1px; `CANON_MD = 28` is the pivot. Don't retune without updating the
+   test's `REF` table in the same change.
 5. **Three emitters, one source.** A new per-size field in `buildSize` must be added to `geomTokensCSS`,
    `geomTokensDTCG`, `geomTokensFigma`, and the test — together. DTCG carries `px`; Figma is unitless.
 
@@ -133,15 +129,8 @@ state what each group proves.
 | `references/foundations.md` | the pipeline, the centering law's derivations, the two families (why density skips the frame), the power-law ramp + reference table, the composition JOIN, treatments/ladders/space, the three emitters — the mental model the procedure assumes |
 | `references/best-practices.md` | the non-obvious do/don't (law-is-a-derivation, density-rides-the-rhythm, constants-are-tuned, frame-untouched-by-composition, emitter-lockstep) + a worked walkthrough from the typography-composition history |
 | `references/rubric.md` | score the change before calling it done — the centering law + the two families + the ramp + the composition are the gates |
-| `docs/spec/geometry/README.md` | the reference token shape + the law + the table + the Figma export (de-staled — cite, don't copy) |
-| `design-skills:component-decomposer` → `references/geometry-system.md` | the centering law's first principles + the WHY (the square cell, the forced asymmetric pad); its `bin/geometry-check.py` mechanizes the same law |
+| `.claude/docs/spec/geometry/README.md` | the reference token shape + the law + the table + the Figma export (de-staled — cite, don't copy) |
+| `design-skills:component-decomposer` (its geometry-system reference) | the centering law's first principles + the WHY (the square cell, the forced asymmetric pad); its `bin/geometry-check.py` mechanizes the same law |
 
-## Relation to sibling skills
-
-- **`building-editor-sections`** owns the **Geometry UI section** (the editor pane that drives
-  `doc.geometry`) — cite it for the section shell; this skill owns the ENGINE behind it.
-- **`adding-export-formats`** cites `geomTokensDTCG`/`geomTokensFigma` for adding a geometry export — that skill
-  owns wiring a new format into `FORMAT_GROUPS` + the download; this skill owns the emitter math.
-- **`color-math`** (the perceptual color engine) and the type engine (`src/engine/type.mjs`, which has no
-  dedicated skill yet) are the **siblings** — same shape (a few params → a systematic ramp → tokens). The
-  composition JOIN ties geometry to type.
+Peers: [[type-scale]] (composition with type) · [[adding-export-formats]] (the geometry emitter) ·
+[[building-editor-sections]] (the Geometry section) · [[shipping-changes]].

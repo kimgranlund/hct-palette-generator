@@ -1,7 +1,7 @@
 ## Foundations — the model the Figma plugins lean on
 
 The load-bearing ideas behind both plugins. The conceptual *why* (aliasing as the only cascade mechanism) is
-owned by `docs/spec/references/knowledge-05-figma-plugin.md`; this file is the mental model the *procedure*
+owned by `.claude/docs/spec/references/knowledge-05-figma-plugin.md`; this file is the mental model the *procedure*
 assumes, grounded in the actual `code.js` files.
 
 ### 1. Two plugins, one vocabulary, different jobs
@@ -64,16 +64,18 @@ The Figma VM can't `import` the `.mjs`, so the binder's `roleTable(n)` is a **li
 `semanticRoles` + `refKey` from `src/engine/semantic.js` and exposes:
 
 - `bindingTargets(names)` → de-duped, sorted set of every `"{n}/{refKey(ref)}"` target the binder aliases.
-- `bindingPlan(names)` → one `{semanticVar, lightTarget, darkTarget}` per (palette, role), length **53 ×
-  palette names** (`rolesPerPalette: 53` in `docs/spec/data/role-table.json`; 8 default palettes).
+- `bindingPlan(names)` → one `{semanticVar, lightTarget, darkTarget}` per (palette, role), length
+  **`rolesPerPalette` × palette names** (owned by `.claude/docs/spec/data/role-table.json` — 59 at the time
+  of writing; 8 default palettes).
 
 The parity gate (`test/figma/binder.mjs`) loads `roleTable`/`refKey` straight out of `code.js` (strips the
 top-level `main();` call, evals via `new Function`), derives its ref-target set, and diffs it BOTH directions
 against `bindingTargets(NAMES)`. So a drift in any ref flags loudly — but a NEW role whose refs are already
 produced by another role will NOT flag a missing row (the set already contains those targets). That is why a
 role addition must add the binder row by discipline, per `adding-semantic-roles` step 4 — this skill does not
-re-own that procedure. (The verifier reports `248 binding targets vs 288 canonical` — the binder only aliases
-the stops referenced by roles, a subset of all raw stops; that gap is expected, not a miss.)
+re-own that procedure. (The verifier's summary line reports the live counts — `checked N binding targets vs
+M canonical raw-colors names`; the binder only aliases the stops referenced by roles, a subset of all raw
+stops, so targets < canonical is expected, not a miss.)
 
 ### 5. The app apply path — create, embed, prune, rebuild (read `figma/plugin/code.js#applyBundle`)
 

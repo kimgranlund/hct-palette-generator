@@ -23,4 +23,4 @@ done regardless of how good the new ramp looks.
 `okhslStops`), but `curve`/`skew`/`lift`/`relChroma`/`chromaFloor` and the `toneAt` math live in the `even`
 (CIELAB-L\*) path. A "fix the default ramp" change that lands in `toneAt`/`chromaFloor` touches nothing users
 see by default — and the even-only gates stay green, so it *looks* done. Confirm which `toneMode` the bug is
-in (read `DEFAULT_CONTROLS` + the `paletteStops` branch at `tonal.js:133–134`) before editing.
+in (read `DEFAULT_CONTROLS` + the `paletteStops` mode branch in tonal.js) before editing.

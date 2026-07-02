@@ -13,8 +13,8 @@ The non-obvious do/don'ts (each cost a real bug or a review cycle), then a worke
   binding (ES2019) PARSE-fails there but loads fine in Node, so your local `node --check` and the verifier's
   own `new Function` load can't see it. The whole plugin failed to run with *"Syntax error: Unexpected token
   {"* (2026-06-17). `test/figma/plugin.mjs`'s `vmsyntax` gate statically forbids it for the APP plugin — keep
-  it green. The binder's `code.js` has the same hazard (it uses `catch (e)` at line 46) but NO static guard,
-  so be disciplined when editing it.
+  it green. The binder's `code.js` has the same hazard (its one catch is the `main().catch((e) => …)`
+  wrapper) but NO static guard, so be disciplined when editing it.
 - **Never `figma.notify` a raw error.** Figma policy rejects plugins that show a stack or `e.message`. Pattern
   (both plugins): `main().catch((e) => { console.error("[…]", e); figma.notify("Couldn't … — please try
   again.", { error: true }); figma.closePlugin(); })` (binder), or the message handler's `catch (e)` (app).
@@ -48,7 +48,8 @@ The non-obvious do/don'ts (each cost a real bug or a review cycle), then a worke
 - **Prune the full mirror.** Any var not in the current bundle is removed from BOTH collections — that is how
   old-format scrims and removed palettes get cleaned up. Delete semantic orphans before raw orphans (a stale
   semantic var may alias a raw var you're about to remove). If you add a path that creates vars, make sure
-  prune still reaches them (the `prune` gate seeds dead vars and asserts they're gone + `pruned` count = 4).
+  prune still reaches them (the `prune` gate seeds dead vars and asserts they're gone AND reported in the
+  returned `pruned` count).
 - **Regroup is destructive — keep it behind the always-warn gate.** `rebuildSemantic` deletes + re-creates
   `Color Modes`, detaching bound layers. `renderApplyGate` must NOT offer "don't show again" for the rebuild
   path (`rebuild ? false : <checkbox>`), and `confirmApplyGate` must persist consent only when `!rebuild`.
@@ -70,10 +71,9 @@ The non-obvious do/don'ts (each cost a real bug or a review cycle), then a worke
 ### Validation loop
 
 Run `node test/figma/binder.mjs` and `node test/figma/plugin.mjs` first — they are the fastest signal and the
-ones that catch the two silent killers: `parity` (the `roleTable` copy drifted from `bind-plan`) and
-`vmsyntax` (a `catch {` that runs in Node but breaks in Figma). Then `npm test` (its `test/run.mjs` runs both
-plus the engine/ui suite). Don't trust a green local app run for a sandbox question — the Node VM is more
-permissive than Figma's.
+ones that catch the two silent killers, `parity` and `vmsyntax` (the per-verifier gate-group list is owned by
+`references/rubric.md`). Then `npm test` (its `test/run.mjs` runs both plus the engine/ui suite). Don't trust
+a green local app run for a sandbox question — the Node VM is more permissive than Figma's.
 
 ## Worked debug walkthrough — the scrim-ref drift (condensed, 2026-06-18)
 
@@ -87,6 +87,5 @@ The symptom was the *binder skipping scrim roles* after the scrim model changed 
 3. **Fixed at the source of truth**: this was an `adding-semantic-roles`-shaped change — updated
    `semantic.js`'s scrim arrays, the `role-table.json` answer key, AND pasted the identical scrim rows into
    the binder's `roleTable(n)` with `refKey`-grammar refs (no hand-padding).
-4. **Re-checked**: `node test/figma/binder.mjs` green (`parity` + `bindings` — bindingPlan length =
-   53 × palettes), `node test/figma/plugin.mjs` green, `npm test` green. Confirmed no `catch {` and no raw
-   error in `figma.notify` survived the edit.
+4. **Re-checked**: `node test/figma/binder.mjs` green (`parity` + `bindings`), `node test/figma/plugin.mjs`
+   green, `npm test` green. Confirmed no `catch {` and no raw error in `figma.notify` survived the edit.

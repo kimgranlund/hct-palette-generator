@@ -1,4 +1,4 @@
-// gen-preview.mjs — render docs/img/palette-preview.svg straight from the engine.
+// gen-preview.mjs — render .claude/docs/img/palette-preview.svg straight from the engine.
 //
 // The README hero is the tool's REAL output, not a mockup: it goes through the
 // exact same projection the app renders from (defaultDocument -> projectView),
@@ -14,7 +14,7 @@ import { dirname, resolve } from "node:path";
 import { defaultDocument, projectView } from "../src/ui/model.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = resolve(here, "../docs/img/palette-preview.svg");
+const OUT = resolve(here, "../.claude/docs/img/palette-preview.svg");
 
 // ── The real projection ───────────────────────────────────────────────────────
 // The hero deliberately showcases the PERCEPTUAL distribution (the headline feature), pinned here so

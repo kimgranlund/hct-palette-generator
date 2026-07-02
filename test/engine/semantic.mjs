@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import * as S from "../../src/engine/semantic.js";
 
-const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json", import.meta.url), "utf8"));
+const RT = JSON.parse(readFileSync(new URL("../../.claude/docs/spec/data/role-table.json", import.meta.url), "utf8"));
 const CANON = RT.roleTable;                         // the canonical primary-palette table (answer key)
 const { EXPORT_STOPS, SCRIM_BASES, SCRIM_STEPS } = RT.constants;
 const fails = [];

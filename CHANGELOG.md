@@ -149,7 +149,7 @@ they landed on `main` and reference the squash-merged PR that introduced them.
   the default; added a **Compose new palettes** feature bullet (the derivation modal + drag-reorder);
   framed the hero as the perceptual export.
 - **Spec/reference docs brought current** — the Figma collections renamed to `Color Primitives` /
-  `Color Modes` across the `docs/spec/**` prose; a new `knowledge-06-palette-derivation.md` for the
+  `Color Modes` across the `.claude/docs/spec/**` prose; a new `knowledge-06-palette-derivation.md` for the
   "New Palette" engine; `component-inventory.md` + `spec-draft.md` updated for the ghost reorder, the
   native-`<dialog>` overlays, the gallery, and the evolved data model. (Internal spec; see spec CHANGELOG 1.37.)
 
@@ -187,7 +187,7 @@ eyebrows, and hardens the CI smoke harness against cold-runner flakes.
 
 #### Changed
 - Renamed the **"Surveys"** feature to **"Color Categories"** throughout — the gallery label/nav and
-  the **internal code**: `src/ui/surveys/` → `src/ui/categories/`, `docs/spec/colors/surveys/` →
+  the **internal code**: `src/ui/surveys/` → `src/ui/categories/`, `.claude/docs/spec/colors/surveys/` →
   `…/categories/`, `scripts/gen-surveys.mjs` → `gen-categories.mjs` (npm `gen:categories`),
   `SURVEY_INDEX`/`loadSurvey` → `CATEGORY_INDEX`/`loadCategory`, the `openSurvey`/`closeSurvey`/
   `renderSurveyBody` methods, and the `.survey-*` CSS classes. The curated category + volume eyebrows
@@ -281,7 +281,7 @@ per-palette **Cusp pull**, durable Figma persistence, and a pass of naming/order
   grid of **7 curated categories** (Architecture, Cuisine, Film, Literature, Music, Nature, Travel),
   each **12 volumes × 4 = 48** palettes (**336 total**). Each category is a page of volume-grouped,
   story-carrying palettes that open as an editable copy. Sourced from clean per-category JSON
-  (`docs/spec/colors/surveys/*.json`) via `npm run gen:surveys`, and **lazy-loaded** per category
+  (`.claude/docs/spec/colors/surveys/*.json`) via `npm run gen:surveys`, and **lazy-loaded** per category
   (the web build code-splits each into its own chunk; the offline single-file build inlines them). (#51)
 - **Sticky gallery masthead** — a pinned two/three-row header per screen: hub = title + search /
   description; a category = back-eyebrow + search / title / description, over a scrolling body. (#52)
@@ -358,6 +358,6 @@ per-palette **Cusp pull**, durable Figma persistence, and a pass of naming/order
 ### Foundations
 
 The engine (HCT/CAM16 tonal ramps, the 37-role semantic layer validated against the canonical
-`docs/spec/data/role-table.json`, the export formats, and the Figma raw→semantic cascade), the
+`.claude/docs/spec/data/role-table.json`, the export formats, and the Figma raw→semantic cascade), the
 `<nonoun-color-tokens>` web component, the offline single-file build, and the Figma generator +
 Semantic Binder plugins predate this changelog. See the git history for the full record.

@@ -6,7 +6,7 @@ distribution-mode / chroma-floor history.
 ### Constants and spaces
 
 - **The CAM16 constants (`hct.js`) and the OKLab/Ottosson constants (`okhsl.js`) are copied VERBATIM from
-  their references — never re-derive, re-round, or "tidy" them.** `okhsl.js:2–4` says so explicitly
+  their references — never re-derive, re-round, or "tidy" them.** The okhsl.js header says so explicitly
   ("Ported VERBATIM … the magic constants are load-bearing and copied exactly"). A single wrong digit shifts
   an anchor (`red` = `27.41° / 113.36 / 53.23`) past tolerance and the engine is broken — and it will still
   produce *plausible-looking* swatches, so only the anchor gate catches it.
@@ -26,15 +26,15 @@ distribution-mode / chroma-floor history.
   deliberately re-clamped afterward. The `damping-curve` gate runs extreme corners (`dampAmp:100`; `damp:100`
   with `dampBias:±100` driving the bracket negative) and asserts `max(0,·)` holds (no negative chroma) and
   nothing exceeds `maxc+0.5`, across EVERY saturated hue.
-- **`oklchToRgb` (`okhsl.js:167`) is gamut-CLAMPED, not gamut-mapped** — an out-of-gamut OKLCH snaps each
-  channel to `[0,255]` via `clamp255` (defined at `okhsl.js:144`), which can distort hue. It is only for
+- **`oklchToRgb` (okhsl.js) is gamut-CLAMPED, not gamut-mapped** — an out-of-gamut OKLCH snaps each
+  channel to `[0,255]` via `clamp255`, which can distort hue. It is only for
   seeding RETAINED key colors (stored as OKLCH, less lossy than 8-bit hex), NOT for emitting ramp stops. Use
   the HCT/OKHSL paths for ramp output, where in-gamut is guaranteed by the search/bijection.
 
 ### Both ramp paths, in lockstep
 
-- **The damping multiplier `m` exists in BOTH paths** — `tonal.js:166–171` (even) and `tonal.js:235–237`
-  (OKHSL) — with the IDENTICAL formula. If you change the damping math, change both, or
+- **The damping multiplier `m` exists in BOTH paths** — the even loop in `paletteStops` and `okhslStops`
+  — with the IDENTICAL formula. If you change the damping math, change both, or
   `damp`/`dampCurve`/`dampAmp`/`dampBias` will mean different things in `even` vs `perceptual`/`peak`.
 - **Damping must NEVER touch tone.** The `damping-curve (f)` gate asserts tone is identical (`|Δ| ≤ 1e-9`)
   with damping on vs off. Tone monotonicity depends on it.
@@ -48,9 +48,9 @@ distribution-mode / chroma-floor history.
 ### Anchors are truth; the floors are guardrails
 
 - **The 6 anchors in `verification-anchors.json` are the absolute-correctness backstop.** The `anchor-roundtrip`
-  gate (`hct.mjs:35–46`) asserts FOUR tolerances per chromatic anchor — L\* within **1.5**, CAM16 hue within
-  **2.0°**, CAM16 chroma within **3.0**, and the forward+inverse RGB roundtrip Δ ≤ **2** (current engine: 0 on
-  all). If a change moves any anchor past ANY of these, revert — do NOT "adjust the tolerance."
+  gate (`test/engine/hct.mjs`) asserts the FOUR per-anchor tolerances owned by `references/rubric.md` C1
+  (forward L\* · CAM16 hue · CAM16 chroma · RGB roundtrip; current engine: 0 on all). If a change moves any
+  anchor past ANY of them, revert — do NOT "adjust the tolerance."
 - **`chromaFloor` is capped at `intended`** so it lifts the dead zone without over-saturating muted palettes
   or tinting true neutrals (`intended≈0` → floorC 0). The `chroma-floor` gate proves all four: muted lifts,
   never exceeds the mid, true neutral untouched, saturated untouched.
@@ -84,8 +84,8 @@ The dead-zone fix (PR #41 lineage: distribution modes #38, perceptual-default + 
 4. **Added gates for the new behavior** without re-deriving the formula: `chroma-floor` (4 properties —
    muted-lifts / never-exceeds-mid / neutral-untouched / saturated-untouched), `okhsl-modes` (in-gamut, every
    stop distinct = no dead zone, tone monotone, white/black ends, 19-vs-25 stop consistency), `vibrancy`,
-   `cusp-pull`. The CIELAB gates were pinned to `toneMode:"even", chromaFloor:0` (`tonal.mjs:20`) so the two
-   regimes test independently.
+   `cusp-pull`. The CIELAB gates were pinned to `toneMode:"even", chromaFloor:0` (the `CTL` pin in
+   `test/engine/tonal.mjs`) so the two regimes test independently.
 5. **Validated** — `node test/engine/tonal.mjs` (all 12 groups green), then `hct.mjs`/`okhsl.mjs`/`derive.mjs`,
    then `npm test`. Confirmed the 6 anchors still roundtrip at Δ=0 and held all four anchor tolerances (the
    perceptual default did not touch the engine core).

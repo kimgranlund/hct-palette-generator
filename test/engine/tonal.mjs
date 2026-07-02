@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import * as T from "../../src/engine/tonal.js";
 import * as E from "../../src/engine/hct.js";
 
-const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json", import.meta.url), "utf8"));
+const RT = JSON.parse(readFileSync(new URL("../../.claude/docs/spec/data/role-table.json", import.meta.url), "utf8"));
 const DEFAULTS = RT.defaults;                       // 8 palettes {name,hue,chroma,skew,lift,on}
 const STOPS = T.EXPORT_STOPS;
 // The gates below validate the CIELAB "even" path (curve/skew/lift/damp/relChroma + L*-fidelity). Pin

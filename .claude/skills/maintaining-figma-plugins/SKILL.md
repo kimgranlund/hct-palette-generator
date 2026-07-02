@@ -1,5 +1,5 @@
 ---
-name: figma-variable-binder
+name: maintaining-figma-plugins
 description: >
   Work on the Figma plugins for nonoun-color-tokens — the standalone semantic
   Binder and the app-as-plugin apply path. Use whenever a change touches figma/,
@@ -25,7 +25,7 @@ who creates what:
 | Verifier | `test/figma/binder.mjs` | `test/figma/plugin.mjs` |
 
 The conceptual model — *why* aliasing is the only thing giving a live raw→semantic cascade — is owned by
-`docs/spec/references/knowledge-05-figma-plugin.md`. **Cite it; don't re-derive it.** Role-table parity (the
+`.claude/docs/spec/references/knowledge-05-figma-plugin.md`. **Cite it; don't re-derive it.** Role-table parity (the
 `code.js#roleTable(n)` copy) is owned by `adding-semantic-roles` — **cite it; don't duplicate the procedure.**
 
 ## The four load-bearing constraints (depth in `references/foundations.md`)
@@ -41,7 +41,7 @@ The conceptual model — *why* aliasing is the only thing giving a live raw→se
    in Figma yet loads fine in Node — so a `node --check` (and the verifier's own `new Function` load) won't
    catch it. **Always write `catch (e) {`.** Both plugins follow this as a PRACTICE; the static guard is a
    GATE in `plugin.mjs` only (the `vmsyntax` check — real incident 2026-06-17). The binder's `code.js` also
-   uses `catch (e)` (line 46) but is unguarded — so be disciplined there.
+   uses `catch (e)` (its one catch is the `main().catch` wrapper) but is unguarded — so be disciplined there.
 4. **Never surface a raw error to the user.** Figma policy rejects plugins that show a stack/`e.message`.
    `main().catch(...)` (binder) / the message handler's `catch (e)` (app) logs the detail to `console.error`
    and `figma.notify`s a friendly line. Both verifiers' `compliance` check greps for
@@ -86,24 +86,19 @@ NUMBER (FLOAT) vars via `geomTokensFigma` (`src/engine/geometry.mjs`).
 
 ## Validate (draft → check → fix → re-check)
 
-Run the two pure Figma verifiers first, then the full suite. Each prints `pass`/`FAIL` per group; a
-`compliance` or `parse` failure (collected, not printed as its own line) still fails the run:
+Run the two pure Figma verifiers first, then the full suite. Each prints `pass`/`FAIL` per group — the
+per-verifier gate-group list is owned by `references/rubric.md` (read it there):
 
 ```
-node test/figma/binder.mjs   # prints: bindings · offline · parity. Also runs (unprinted, but run-failing):
-                             #   code.js node --check, compliance (no raw-error/HCT, main().catch wraps).
-                             #   bindings = bindingPlan length 53 × palettes + every target in the canonical raw set;
-                             #   offline = manifest { allowedDomains:["none"] } + main:"code.js"; parity = roleTable↔bind-plan ref-set.
-node test/figma/plugin.mjs   # prints: manifest · offline · vmsyntax · ui · parse · apply · cascade · idempotent · prune · config · read.
-                             #   (compliance is checked here too — run-failing, not a printed line.)
-                             #   vmsyntax = NO `catch {`; cascade = every sem mode-value aliases a CREATED raw var.
-npm test                     # test/run.mjs runs figma/plugin.mjs + figma/binder.mjs + the engine/ui suite.
+node test/figma/binder.mjs   # the standalone binder — owns the `parity` gate (roleTable ↔ bind-plan ref-set)
+node test/figma/plugin.mjs   # the app-as-plugin — owns the `vmsyntax` gate (NO `catch {`)
+npm test                     # test/run.mjs runs both plus the engine/ui suite
 ```
 
-The gate that catches a drifted binder copy is **`parity`** in `binder.mjs` (it loads `roleTable`/`refKey`
+The two SILENT KILLERS a green Node run hides: **`parity`** in `binder.mjs` (it loads `roleTable`/`refKey`
 out of `code.js` via `new Function`, strips the top-level `main();`, and diffs the derived ref-target SET both
-directions against `bindingTargets(NAMES)` — the real 2026-06-18 scrim drift). The gate that catches a
-sandbox-only syntax break is **`vmsyntax`** in `plugin.mjs` (`catch {`). Don't call it done until both pure
+directions against `bindingTargets(NAMES)` — the real 2026-06-18 scrim drift), and **`vmsyntax`** in
+`plugin.mjs` (a `catch {` that parses in Node but not in Figma's VM). Don't call it done until both pure
 verifiers and `npm test` are green.
 
 ## References
@@ -113,5 +108,8 @@ verifiers and `npm test` are green.
 | `references/foundations.md` | the two-plugin split, the alias-cascade mechanism, the binder bind loop, the app apply/prune/rebuild contract, the parity model, the four constraints |
 | `references/best-practices.md` | the non-obvious do/don't (offline, `catch (e)`, friendly errors, idempotent find-or-create, the binder `missing` list) + a worked debug walkthrough |
 | `references/rubric.md` | score a Figma-plugin change before calling it done (offline + parity + VM-safe are the gates) |
-| `docs/spec/references/knowledge-05-figma-plugin.md` | the conceptual model — why aliasing gives the cascade, files/manifest, run instructions, failure modes (owned there — cite, don't copy) |
+| `.claude/docs/spec/references/knowledge-05-figma-plugin.md` | the conceptual model — why aliasing gives the cascade, files/manifest, run instructions, failure modes (owned there — cite, don't copy) |
 | `.claude/skills/adding-semantic-roles/` | the `code.js#roleTable(n)` role-row edit + every parity site (owned there — a role change is THAT skill, not this one) |
+
+Peers: [[adding-semantic-roles]] (the alias-cascade parity site) · [[adding-export-formats]] (the Figma
+export variant) · [[shipping-changes]].

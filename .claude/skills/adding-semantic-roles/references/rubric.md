@@ -5,7 +5,7 @@ Scores a role addition/modification in nonoun-color-tokens. `[gate]` = mechanica
 
 | # | Dimension | Type | What it checks | 1 (fail) → 3 (adequate) → 5 (excellent) |
 |---|---|---|---|---|
-| R1 | Answer-key parity | [gate] | `docs/spec/data/role-table.json#roleTable` deep-equals `semanticRoles("primary")` (key, suffix, light, dark, ORDER) and `rolesPerPalette` matches; `node test/engine/semantic.mjs` `refs-canonical` passes | 1: `refs-canonical` red (key set / ref / order ≠ canonical) · 3: passes, key-order brittle · 5: passes + `rolesPerPalette` + line-1 header comment all bumped |
+| R1 | Answer-key parity | [gate] | `.claude/docs/spec/data/role-table.json#roleTable` deep-equals `semanticRoles("primary")` (key, suffix, light, dark, ORDER) and `rolesPerPalette` matches; `node test/engine/semantic.mjs` `refs-canonical` passes | 1: `refs-canonical` red (key set / ref / order ≠ canonical) · 3: passes, key-order brittle · 5: passes + `rolesPerPalette` + line-1 header comment all bumped |
 | R2 | Figma runtime parity | [gate] | `figma/binder/figma-semantic-binder/code.js#roleTable(n)` has the identical row(s); `node test/figma/binder.mjs` ref-set parity + bindingPlan length pass | 1: row missing (binder won't create the variable) or `binder.mjs` red · 3: present, refs hand-padded · 5: present, refs via `refKey`, parity green |
 | R3 | Count-gate completeness | [gate] | EVERY count literal moved together: `test/engine/semantic.mjs`, `test/engine/exports.mjs`, `test/figma/binder.mjs`, `test/figma/plugin.mjs` message, `test/ui/shell.mjs`, `test/ui/headless-boot.mjs` (s4); `npm test` green | 1: any `!== N` left at the old number (a gate red, usually shell.mjs) · 3: all flipped, `npm test` green · 5: green + the scrim asserts (`scrims.length !== 7`, `(z) === 7`) handled if scrims changed |
 | R4 | Ref correctness | [review] | New refs are valid primitives in the right grammar (solid in `EXPORT_STOPS`; scrim `500-{step}` with step in `SCRIM_STEPS`, which is the safe rule satisfying both gate checks), and mirror a same-group neighbour's light/dark logic | 1: invalid/out-of-range ref (fails `refs-canonical`) or wrong grammar for the group · 3: valid, plausible · 5: valid + consistent with the group's mode/mirror rule |
@@ -17,7 +17,7 @@ Scores a role addition/modification in nonoun-color-tokens. `[gate]` = mechanica
 runtime copy is missing the row (R2), that leaves any count gate red (R3), or that mutates the canonical
 table (R6) is not done regardless of how clean the new role reads.
 
-**Top failure to look for first:** a half-applied count (R3) — one `!== 53` literal left at the old number,
+**Top failure to look for first:** a half-applied count (R3) — one count literal left at the old number,
 most often `test/ui/shell.mjs` (it lives under `ui/`, not `engine/`), producing a red gate that looks
-unrelated to the role you added. Grep `53` and confirm every live literal moved before trusting a
+unrelated to the role you added. Grep the current count and confirm every live literal moved before trusting a
 "looks done."
