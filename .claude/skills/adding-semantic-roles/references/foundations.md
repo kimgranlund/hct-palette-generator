@@ -2,7 +2,7 @@
 
 These are the load-bearing ideas. If adding a role feels like it needs a new mechanism, you are probably
 fighting one of these. The full taxonomy + rationale is owned by
-`docs/spec/references/knowledge-03-semantic-system.md` and the answer key by `docs/spec/data/role-table.json`
+`.claude/docs/spec/references/knowledge-03-semantic-system.md` and the answer key by `.claude/docs/spec/data/role-table.json`
 — this file is only the mental model the *procedure* assumes.
 
 ### 1. Two layers: raw primitives (mode-independent) → semantic roles (the light/dark flip)
@@ -79,7 +79,7 @@ count.
 
 The role set is authored once in `semantic.js`, but its shape is independently encoded in:
 
-- `docs/spec/data/role-table.json` — the hand-maintained **answer key** (deep-equality gate). No generator.
+- `.claude/docs/spec/data/role-table.json` — the hand-maintained **answer key** (deep-equality gate). No generator.
 - `figma/binder/figma-semantic-binder/code.js#roleTable(n)` — a **hardcoded copy** (the Figma sandbox can't
   `import` the `.mjs`). `bind-plan.mjs` is the pure importable planner that the verifier imports; `code.js`
   replicates the same rows verbatim.

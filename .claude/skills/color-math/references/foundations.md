@@ -1,8 +1,8 @@
 ## Foundations — the model an engine change leans on
 
 The load-bearing ideas. If a change feels like it needs a new mechanism, you are probably fighting one of
-these. The full math is owned by `docs/spec/references/knowledge-0{1,2,6}-*.md` +
-`docs/spec/color-neutral-derivation.md` — this file is only the mental model the *procedure* assumes.
+these. The full math is owned by `.claude/docs/spec/references/knowledge-0{1,2,6}-*.md` +
+`.claude/docs/spec/color-neutral-derivation.md` — this file is only the mental model the *procedure* assumes.
 
 ### 1. Three color spaces, three jobs
 
@@ -63,8 +63,14 @@ exports non-portable — knowledge-01 §3).
   sampled a fixed mid OKLCH point (L 0.72/C 0.10) and drifted ~15° on vivid blues; a cusp-only anchor regresses
   muted hues ~11°. Anchoring at the palette's OWN chroma lands the identity color on the stored hue to ~0°.
   Memoized by `h.toFixed(2)+":"+chromaFrac.toFixed(3)`. Gate: `hct-oklch-inverse`.
+- **Producers emit OKLCH hues** (the #117 flip): `gen-categories` stores each preset's source OKLCH hue +
+  bakes `hueSpace:"oklch"`; `seedFromKeyColor(oklch, hueSpace)` returns the OKLCH hue (or CAM16 for a legacy
+  doc); `defaultDocument` converts the 8 starter CAM16 hues via `camHueToOklch`. **`role-table.json` is
+  UNCHANGED** (still the cam16 answer key; parity gate intact); legacy docs saved under cam16 carry
+  `hueSpace:"cam16"` explicitly and stay cam16. `projectView` emits `keyOklch` (the high-res key OKLCH, via
+  `hctToOklch`); the key hex is derived from it for consumption.
 
-### 5. The even-path chroma pipeline (`paletteStops`, even mode, `tonal.js` ~148–193)
+### 5. The even-path chroma pipeline (`paletteStops`, even mode)
 
 ```
 baseHue = effHue(palette.hue, hueSpace, palette.chroma/100)  # CAM16 hue, computed ONCE
@@ -97,7 +103,7 @@ per stop:
   muted palette and never tints a true neutral (`intended≈0` → floorC 0). Saturated ramps already clamp at
   `maxc`, so the floor never binds. (The `chroma-floor` gate proves all four.)
 
-### 6. The OKHSL-path pipeline (`okhslStops`, perceptual/peak, `tonal.js` ~209–245)
+### 6. The OKHSL-path pipeline (`okhslStops`, perceptual/peak)
 
 `l` per stop blends the **even-perceptual** distribution toward the **cusp-anchored** ("peak") one by
 `vibrancy`/`cuspPull` (`t=0` even, `t=1` the hue's cusp at stop 500; `peak` mode pins `t=1`). This pulls
@@ -115,9 +121,9 @@ in the 19-stop display ramp and the 25-stop export ramp.
   `{hue, coherence}` (`coherence = |resultant|/ΣC ∈ [0,1]`; ≈0 = samples cancel / near-neutral → hue noisy;
   falls back to `samples[0]`'s hue when ΣC=0 or the vector is zero). Weighting by chroma means a near-grey
   contributes almost nothing.
-- `deriveNeutral(samples)` = `[0.66, clamp(0.30·meanC, 0.004, 0.018), weightedMeanHue.hue]` — a seeded first
-  palette (NOT a separate strip); the standard ramp supplies the lightness steps + chroma taper. The
-  two-number rule (hue + the C_max clamp, floor 0.004 / ceiling 0.018) is owned by `color-neutral-derivation.md`.
+- `deriveNeutral(samples)` — seeds the neutral as a first PALETTE (NOT a separate strip); the standard ramp
+  supplies the lightness steps + chroma taper. The formula and the two-number rule (hue + the C_max clamp)
+  are owned by `.claude/docs/spec/color-neutral-derivation.md` — cite, don't copy.
 - `deriveRelative(id, samples)` over `RELATIONSHIPS` (`extend +30°`, `complete` largest-gap, `contrast +180°`,
   `bridge` shorter-arc midpoint, `anchor` same hue, `recontextualize` complement·0.6 chroma); empty context
   → `[0.6, 0.12, 0]`. Single-reference relationships (extend/contrast/anchor/recontextualize) pivot on the

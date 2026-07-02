@@ -6,7 +6,7 @@ The non-obvious do/don'ts (each one is a real trap in this repo), then a worked 
 
 - **The answer key is hand-maintained — there is NO `gen:role-table` script.** (The `gen:*` scripts cover
   figma-assets / mcp-assets / categories / type-fonts / preview / figma-ui only.) Editing
-  `docs/spec/data/role-table.json#roleTable` is a manual mirror of the `role(...)` calls, in the same order,
+  `.claude/docs/spec/data/role-table.json#roleTable` is a manual mirror of the `role(...)` calls, in the same order,
   for the **primary** palette only (shared rows are name-independent; name-prefixed rows use the `primary`
   substitution — `primaryHover`, `onPrimaryActive`). Bump `rolesPerPalette`. The `refs-canonical` gate in
   `test/engine/semantic.mjs` deep-equals `semanticRoles("primary")` against it, key-order included — so a
@@ -18,24 +18,20 @@ The non-obvious do/don'ts (each one is a real trap in this repo), then a worked 
   are already produced by another role will NOT flag a missing row — you must add it by discipline, or the
   binder silently won't create that variable. Real incident (2026-06-18): the scrim refs drifted here and
   only the ref-set check caught it, because the steps actually changed.
-- **Update EVERY count literal — `grep 53` is your checklist.** The ones that bite: `test/ui/shell.mjs`
-  (`p.roles.length !== 53`) is the most-forgotten because it lives under `ui/`, not `engine/`.
-  `test/ui/headless-boot.mjs` `(s4)` asserts the emitted Figma-Light file has `=== 53` keys per palette
-  (filtering `$extensions`). `test/engine/exports.mjs` uses `< 53 * enabledCount(...)`. `test/figma/binder.mjs`
-  uses `53 * NAMES.length`. `test/figma/plugin.mjs`'s `semExpect` is DERIVED from the bundle (no literal to
-  change) but its failure message hardcodes "53 roles" — update the message for honesty.
-- **If you change the SCRIM count, also fix the scrim-count asserts:** `scrims.length !== 7` in
-  `test/engine/semantic.mjs:30` and the `(z)` `=== 7` group assert in `headless-boot.mjs`. The three scrim
-  arrays (`SCRIM_STRENGTH_STEPS` / `SCRIM_SUFFIXES` / `SCRIM_KEYS`) index in lockstep — never extend one
-  without the other two.
+- **Count literals: SKILL.md step 5 owns the site list — don't re-derive it here.** The why behind the two
+  that bite: `test/ui/shell.mjs` is the most-forgotten because it lives under `ui/`, not `engine/`; and
+  `test/figma/plugin.mjs`'s `semExpect` is DERIVED from the bundle (no literal to change) but its failure
+  message hardcodes the count — update the message for honesty. Scrim-count changes ride the same step; the
+  three scrim arrays (`SCRIM_STRENGTH_STEPS` / `SCRIM_SUFFIXES` / `SCRIM_KEYS`) index in lockstep — never
+  extend one without the other two.
 
 ### Which prose is current vs historical
 
-- **Bump CURRENT counts:** `docs/spec/references/knowledge-03-semantic-system.md` (the "53 roles" headers),
-  `docs/spec/rubrics/parity-checklist.md` (P1: `semanticRoles('primary').length === 53`), and `CLAUDE.md`
-  (the "53 semantic roles" mentions), plus the `src/ui/app.js:4046` inspector label.
+- **Bump CURRENT counts:** `.claude/docs/spec/references/knowledge-03-semantic-system.md` (the "59 roles" headers),
+  `.claude/docs/spec/rubrics/parity-checklist.md` (P1: `semanticRoles('primary').length === 59`), and `CLAUDE.md`
+  (the "59 semantic roles" mentions), plus the `src/ui/app.js` inspector label (grep `semantic roles`).
 - **LEAVE historical counts untouched:** the "36 vs 37" `surfaceHighest`-divergence anecdote in knowledge-03
-  (line ~132) and `references/decomposition.md`; `docs/spec/CHANGELOG.md` entries (which say "37"); OD/ADR
+  (line ~132) and `references/decomposition.md`; `.claude/docs/spec/CHANGELOG.md` entries (which say "37"); OD/ADR
   decision records ("37 (not 51)"); and color-data files (e.g. `nature.json`). Those record what WAS true at
   a point in time. Bumping them rewrites history and destroys the cautionary tale.
 - **Stale comment drift is real and is NOT a gate.** The per-palette role count is repeated in PROSE across
@@ -70,7 +66,7 @@ The non-obvious do/don'ts (each one is a real trap in this repo), then a worked 
 Run `node test/engine/semantic.mjs` first — it is the fastest signal and the one that catches a stale
 answer key (`refs-canonical`) or a miscounted scrim block (`roles`). Then `node test/engine/exports.mjs`,
 `node test/figma/binder.mjs`, `node test/figma/plugin.mjs`, then `npm test`. Finish with
-`git grep -nE "\b37\b|\b49\b" src test docs/spec | grep -i role` and confirm every hit is an intentional
+`git grep -nE "\b37\b|\b49\b" src test .claude/docs/spec | grep -i role` and confirm every hit is an intentional
 historical reference.
 
 ## Worked walkthrough — the interaction-states addition (condensed)
@@ -89,7 +85,7 @@ that grew the table to 53):
    OUT — disabled opts out of the contrast guarantee (it stays the inert translucent label `500-400`).
 4. **Figma `code.js`** — pasted the identical rows into `roleTable(n)` with `n +` / `"on" + N +` concat.
 5. **Count literals** — flipped the `53` literals across `test/engine/{semantic,exports}.mjs`,
-   `test/figma/{binder,plugin}.mjs`, `test/ui/{shell,headless-boot}.mjs`; updated the `app.js:4046` label
+   `test/figma/{binder,plugin}.mjs`, `test/ui/{shell,headless-boot}.mjs`; updated the `app.js` inspector label
    and the knowledge-03 / parity-checklist current counts. Left the "36 vs 37" anecdote + CHANGELOG alone.
 6. **Validate** — `node test/engine/semantic.mjs` (caught one out-of-order answer-key row → fixed), then the
    other three pure verifiers, then `npm test` green. Confirmed no live count was left at the old number.

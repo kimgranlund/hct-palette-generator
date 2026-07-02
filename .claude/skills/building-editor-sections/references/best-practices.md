@@ -4,11 +4,10 @@ The non-obvious do/don'ts (each one cost a real bug or review cycle), then a con
 
 ## Rendering
 
-- **SVG line charts: `fill: none` on the path, qualified.** An open `<path>`/`<polyline>` is filled by
-  closing it implicitly → a filled wedge/band over the chart. The series-color classes (`.x-sN`) are shared
-  by the line path AND the dot circles (the dots need `fill`), so a bare `.x-line { fill:none }` loses to
-  `.x-sN { fill }` on specificity+order. Qualify it: `.an-svg .x-line { fill: none }` (0,2,0 > 0,1,0). This
-  is the single most-repeated rendering bug here — bake it in from the first chart.
+- **The `fill: none` selector** (the rule itself is in the body): the series-color classes (`.x-sN`) are
+  shared by the line path AND the dot circles (the dots need `fill`), so a bare `.x-line { fill:none }`
+  loses to `.x-sN { fill }` on specificity+order. Qualify it: `.an-svg .x-line { fill: none }`
+  (0,2,0 > 0,1,0).
 - **Quote interpolated font-family names** with digits/spaces: `font-family:'${fam}', ${generic}`. Unquoted,
   WebKit drops the declaration (`Source Serif 4` — the digit is invalid); Chrome tolerates it, so smoke
   won't catch it. There is a `typeTokensCSS` guard test for this; keep it.
@@ -36,25 +35,22 @@ The non-obvious do/don'ts (each one cost a real bug or review cycle), then a con
 
 ## Retiring a modal cleanly
 
-- Delete `open<X>` / `close<X>` / `_sync<X>` / `render<X>`, the `<x>Open` boolean in the constructor, the
-  `this.render<X>()` child in `renderEditor`, the `this._sync<X>()` call in the post-render block, and the
-  `dialog.<x>` + any stub CSS. **Keep** `download<X>Tokens` and reusable sample helpers you still call.
-- **Grep for the removed symbols** before declaring done (`grep -n 'open<X>\|render<X>\|_<x>Sample' src/ui/app.js`)
-  — a retired modal usually leaves one dead helper (a `_geomSample`, a stub class) that the dead-code lens
-  flags. Remove it.
+The delete/keep checklist is in the body (Procedure step 6). Mechanics it doesn't carry:
+
+- The `this._sync<X>()` **call site** lives in the post-render block — delete the call, not just the method.
+- Grep the removed symbols before declaring done — `grep -n 'open<X>\|render<X>\|_<x>Sample' src/ui/app.js`;
+  a retired modal usually leaves one dead helper (a `_geomSample`, a stub class). Remove it.
 
 ## Tests (the shim is not jsdom)
 
 - Add a **lettered headless group** mirroring `(ty)`/`(geo)`/`(cm)`. Assert: enter via `setSection(...)`;
-  the full-dataset markers + exact count (e.g. 41 type steps / 6 geom controls); `.an-card` ≥ 4; the
-  inspector renders (`.tyi-voices` or `.insp-title`); the header view/mode toggle flips a class; download
-  emits a `.zip`; round-trip back to Color restores the ramp canvas. Keep engine/persist/`brandKit`/
-  composition assertions — those are the real coverage.
-- **Shim limits**: `querySelector` takes a **single class only** (no `.a .b` descendant, no compound);
-  elements have **no `.id` and no `.textContent`** — use `getAttribute('data-fk')` or the `txtOf(node)`
-  walker (`node._text` + children). `document.fonts.check` lies for variable fonts — measure DOM width.
-- `npm run smoke` is Chrome-only: add a section leg + a screenshot, and **read the screenshot** (don't trust
-  green smoke for a Safari/WebKit rendering question — reason from the CSS spec).
+  the full-dataset markers + exact count (the count literals are owned by the lettered gates in
+  `test/ui/headless-boot.mjs` — match those); `.an-card` ≥ 4; the inspector renders (`.tyi-voices` or
+  `.insp-title`); the header view/mode toggle flips a class; download emits a `.zip`; round-trip back to
+  Color restores the ramp canvas. Keep engine/persist/`brandKit`/composition assertions — those are the
+  real coverage.
+- **Shim internals** (the selector rule is in the body): the `txtOf(node)` walker reads `node._text` +
+  children; `document.fonts.check` lies for variable fonts — measure DOM width instead.
 
 ## Worked walkthrough — the Geometry section (condensed, from PR #97)
 

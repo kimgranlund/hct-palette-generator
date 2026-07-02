@@ -1,12 +1,11 @@
 ---
 name: building-editor-sections
 description: >
-  Add or evolve an editor SECTION (Color · Typography · Geometry) in the
-  nonoun-color-tokens workbench — the canvas + left-analysis + right-inspector
-  pattern, the this.section routing, promoting a modal into a section, and the
-  lettered headless + smoke tests. Use whenever building a new section,
-  retiring a modal into one, or adding a per-section canvas view/mode to the
-  <nonoun-color-tokens> editor.
+  Use when adding a new editor section, promoting a modal into a section, or
+  adding a per-section canvas view/mode/table to the nonoun-color-tokens
+  workbench editor. Covers the Color · Typography · Geometry pattern — canvas
+  + left-analysis + right-inspector, this.section routing, tokenOverrides
+  matrix, lettered headless + smoke tests.
 ---
 
 # Building editor sections (nonoun-color-tokens workbench)
@@ -66,16 +65,20 @@ Type/Geom **Tokens** matrix both do this:
   breakpoint mode)** columns; sticky first column = the token name; each column carries the **real `modeKey`**
   (`"base"` or the mode id), not a constant. Build columns from `doc.{type,geometry}.modes`, not a name-only
   helper. `<th scope>` on a genuine 2-D matrix (col/row/colgroup).
-- **Editable overrides — the per-cell lever (mirrors color `roleOverrides`).** Cells are number inputs that
-  write `doc.{type,geometry}.tokenOverrides` (flat, keyed `<voice>|<step>|<modeKey>` / `<size>|<modeKey>`,
-  attached only when non-empty). The pure engines take an optional `overrides` param (size/height is the
-  lever; type keeps tracking+weight, geom re-derives via the laws). **Centralize resolution** in
-  `_typeScaleFor`/`_geomScaleFor` so the matrix, the specimen preview, AND every export (CSS `@media` ·
-  per-mode DTCG · Figma · MCP `brandKit`) read the SAME resolved scale — a missed export site is the classic
-  bug. Live setters **clamp to the persisted range** ([1,512]/[8,256]) like `setTypeModeMinWidth` (an
-  unclamped value diverges live-vs-persist and can yield negative geom padding); `deleteMode` strips stale
-  `|<id>` keys; identity holds (no override ⇒ byte-identical). Keep overrides **mode-local** (Base does not
-  cascade into breakpoint columns) + say so in a one-line UI hint.
+- **Editable overrides — the per-cell lever (mirrors color `roleOverrides`).** One directive per frame:
+  - **Write path.** Cells are number inputs that write `doc.{type,geometry}.tokenOverrides` — flat,
+    keyed `<voice>|<step>|<modeKey>` / `<size>|<modeKey>`, attached only when non-empty (no override ⇒
+    byte-identical doc).
+  - **Engine param.** The pure engines take an optional `overrides` param; size/height is the lever
+    (type keeps tracking+weight, geom re-derives via the laws).
+  - **Centralize resolution** in `_typeScaleFor`/`_geomScaleFor` so the matrix, the specimen preview,
+    AND every export (CSS `@media` · per-mode DTCG · Figma · MCP `brandKit`) read the SAME resolved
+    scale — a missed export site is the classic bug.
+  - **Clamp in the live setters** to the persisted range — the range literals are owned by
+    `setTypeTokenOverride`/`setGeomTokenOverride` (`src/ui/app.js`), mirroring persist's
+    `clampTokenOverrides`; an unclamped value diverges live-vs-persist and can yield negative geom padding.
+  - **`deleteMode` hygiene.** Deleting a mode strips its stale `|<id>` override keys.
+  - **Mode-local.** Base does not cascade into breakpoint columns — say so in a one-line UI hint.
 - **Sticky headers (the scrollport gotcha):** for the `thead`/first-column to pin, the **table** must be
   `overflow: visible` — `overflow != visible` makes the *table itself* the sticky scrollport (so headers
   scroll away with it). The scroll lives on `.canvas-scene` (set its top padding to 0 so a sticky header
@@ -99,5 +102,8 @@ Type/Geom **Tokens** matrix both do this:
 | Path | Use when |
 |---|---|
 | `references/foundations.md` | the workbench principle, the doc→view→render data flow, the `h()`/render/`_sync` model |
-| `references/best-practices.md` | the non-obvious do/don't (fill:none, shim limits, font-quoting, scheme/mode, reuse-over-CSS) + worked walkthrough |
+| `references/best-practices.md` | the mechanics behind the body's rules (the fill:none selector, font-quoting, reuse-over-CSS, shim internals, retire-modal call sites) + worked walkthrough |
 | `references/rubric.md` | score a built/evolved section before calling it done |
+
+**Peers:** [[color-math]] · [[type-scale]] · [[geometry-system]] (the engines the sections host) ·
+[[shipping-changes]].

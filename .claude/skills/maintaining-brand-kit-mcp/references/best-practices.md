@@ -9,7 +9,8 @@ addition history.
   `console.log`/`console.info` write to stdout, which IS the JSON-RPC channel; one stray line desyncs the
   client and the agent stops seeing replies. The server's own load-failure path
   (`process.stderr.write("[brand-kit] could not read …"); process.exit(1)`), bad-message path, and the startup
-  banner all model this — and there is **zero `console.*` in the file** (grep to confirm after your edit). Test
+  banner all model this — and there is **zero `console.*` in `mcp/`** (grep both files to confirm after your
+  edit; the core does no I/O at all). Test
   it the brutal way: `node mcp/brand-kit-server.mjs <kit.json> 2>/dev/null` should print **nothing** until you
   feed it a request on stdin.
 - **A tool error is a result, not a protocol error.** A `run` that throws is caught and returned as
@@ -25,19 +26,21 @@ addition history.
   first (as `initialize`'s `instructions` tells it to — "read brand://guide first") never learns the tool
   exists. The test asserts the type-only / geometry-only / color-only kits expose ONLY their system's surface
   via `brandKit({…})` — extend that assertion.
-- **Don't compute in the server what the kit can carry.** The server is engine-free by design (`mcp/` has no
+- **Don't compute in `mcp/` what the kit can carry.** The core is engine-free by design (`mcp/` has no
   import of `src/engine`). If a new tool needs, say, a contrast ratio or a hue, add it to `brandKit` in
-  `model.mjs` so it's in `brand-kit.json`, and have the tool read it. Re-implementing color math in the server
-  would (a) duplicate the engine, (b) make the zero-dep server depend on engine code it can't import, (c) drift.
-  The two helpers that DO compute (`nearestToken`, `semanticFor`) are pure RGB/flatten — no engine.
+  `model.mjs` so it's in `brand-kit.json`, and have the tool read it. Re-implementing color math in the core
+  would (a) duplicate the engine, (b) make the zero-dep package depend on engine code it can't import, (c) drift.
+  The two helpers that DO compute (`nearestToken`, `semanticFor`, both in the core) are pure RGB/flatten — no
+  engine.
 
 ### The asset is generated — regenerate it
 
-- **`src/ui/mcp-assets.js` is GENERATED from `mcp/brand-kit-server.mjs` + `mcp/README.md`. Never hand-edit it.**
-  It carries a `// GENERATED … DO NOT EDIT` header. After ANY edit to the server or the README, run
-  `npm run gen:mcp-assets` (`scripts/gen-mcp-assets.mjs`). `npm test` and `npm run build` run it too, so a green
-  suite regenerates it — but if you eyeball the download without re-running gen, you ship a stale server. The
-  user downloads `MCP_BRAND_KIT.server` (the asset), not the file on disk.
+- **`src/ui/mcp-assets.js` is GENERATED from `mcp/brand-kit-server.mjs` + `mcp/brand-kit-core.mjs` +
+  `mcp/README.md`. Never hand-edit it.** It carries a `// GENERATED … DO NOT EDIT` header. After ANY edit to
+  the server, the core, or the README, run `npm run gen:mcp-assets` (`scripts/gen-mcp-assets.mjs`). `npm test`
+  and `npm run build` run it too, so a green suite regenerates it — but if you eyeball the download without
+  re-running gen, you ship a stale server. The user downloads `MCP_BRAND_KIT.{server,core}` (the asset), not
+  the files on disk.
 - **`mcp/README.md` is a hand-mirrored doc, not generated from the code.** Its "What it exposes" tool table and
   resource list are written by hand (`gen-mcp-assets.mjs` only copies the README verbatim into the asset — it
   does not derive the table from the server). A new tool/resource that isn't added to the README is invisible to
@@ -54,7 +57,7 @@ addition history.
   `ty.categories.UI.MD.size`, `geo.sizes.MD.padding/height/icon/font`, `geo.typed`).
 - **The geometry `font` is composed from the type UI scale.** The test pins `geo.sizes.MD.font ===
   ty.categories.UI.MD.size` and `geo.typed === true` — one source of truth across the two systems. That
-  composition is `geometryScale(doc)`'s job (`model.mjs:35`, which passes `{ typeScale }` into `geomScale`); a
+  composition is `geometryScale(doc)`'s job (`model.mjs:39`, which passes `{ typeScale }` into `geomScale`); a
   server change must not break the round-trip the test asserts.
 - **The centering law is `padding === (height − icon) / 2`.** The field is `icon` (the server's guide prose
   loosely says "glyph"); the radius ladder is the top-level `radii`, not a per-size `radius` (the per-size
@@ -71,7 +74,8 @@ addition history.
 
 ### Validation loop
 
-Run `node test/mcp/brand-kit.mjs` first — it spawns the real server and drives the protocol, so it catches a
+Run `node test/mcp/core.mjs` (the pure surface — buildSurface + handle, the stdio/Worker parity lock) and
+`node test/mcp/brand-kit.mjs` first — the latter spawns the real server and drives the protocol, so it catches a
 stdout leak (the parse loop chokes), a missing gate (the opt-in asserts fail on the projection), and a broken
 tool (the tool-call assert fails) in one shot. Then `npm test` (which also regenerates `mcp-assets.js`). Finish
 by running the server by hand on a real kit and confirming the stderr banner + a clean stdout.
@@ -83,7 +87,8 @@ The change that grew the kit from color-only to three opt-in systems:
 1. **Extended the kit first.** `brandKit(doc, systems)` gained the `systems` opt-in and `if (sys.type) kit.type
    = typeScale(doc.type || DEFAULT_TYPE)` / `if (sys.geometry) kit.geometry = geometryScale(doc)`. The server
    can only serve what the kit carries — so the data came first.
-2. **Added the gated surface in the server.** `if (kit.geometry) TOOLS.push({ name: "get_geometry", …,
+2. **Added the gated surface** (today these pushes live in `buildSurface`, `mcp/brand-kit-core.mjs`; at the
+   time, in the pre-split server). `if (kit.geometry) TOOLS.push({ name: "get_geometry", …,
    run: () => kit.geometry })` and `if (kit.geometry) RESOURCES.push({ uri: "brand://geometry", … })`. Mirrored
    the `kit.type` block. Serves the kit section verbatim — no reshaping.
 3. **Extended the guide in lockstep.** Added the `## Geometry` section to `usageGuide()` behind `if

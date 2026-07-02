@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import * as X from "../../src/engine/exports.js";
 
-const RT = JSON.parse(readFileSync(new URL("../../docs/spec/data/role-table.json", import.meta.url), "utf8"));
+const RT = JSON.parse(readFileSync(new URL("../../.claude/docs/spec/data/role-table.json", import.meta.url), "utf8"));
 const C = (palettes) => ({ palettes, curve: "logistic", tension: 0, lmin: 5, lmax: 100, damp: 80, hueSpace: "cam16", theme: "auto" });
 const ALL = RT.defaults.map((p) => ({ ...p, on: true }));
 const enabledCount = (st) => st.palettes.filter((p) => p.on !== false).length;

@@ -57,7 +57,7 @@ const rampRgbDist = (a, b) => { let m = 0; for (let i = 0; i < a.length; i++) { 
 //     on-the-fly cam16→oklch hue conversion round-trips through the engine within the hue-space
 //     precision (a few RGB units; the blue Primary is the loose pole — see fidelity note).
 {
-  const RT = JSON.parse(readFileSync(join(HERE, "..", "..", "docs", "spec", "data", "role-table.json"), "utf8"));
+  const RT = JSON.parse(readFileSync(join(HERE, "..", "..", ".claude", "docs", "spec", "data", "role-table.json"), "utf8"));
   const dd = M.defaultDocument();
   if (dd.hueSpace !== "oklch") FAIL("oklch-native", `defaultDocument hueSpace ${dd.hueSpace}, want "oklch"`);
   const ctl = { curve: dd.curve, tension: dd.tension, lmin: dd.lmin, lmax: dd.lmax, damp: dd.damp, dampCurve: dd.dampCurve, dampAmp: dd.dampAmp, dampBias: dd.dampBias, relChroma: dd.relChroma, chromaFloor: dd.chromaFloor, toneMode: dd.toneMode, vibrancy: dd.vibrancy };

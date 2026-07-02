@@ -8,12 +8,15 @@ The non-obvious do/don'ts (each cost a real cycle), then the worktree procedure 
 git fetch origin && git switch -c fix/chroma-floor origin/main
 # … make the change …
 npm test                       # green; + npm run build only if you touched TS/vite/scripts/fonts
-git status --short | grep -E 'docs/other|node_modules'   # MUST print nothing
+git status --short | grep -E '.claude/docs/other|node_modules'   # MUST print nothing
 git add -A && git commit        # body ends with the Co-Authored-By trailer
 git push -u origin fix/chroma-floor
 gh pr create --fill             # title = the squash subject; body ends with the 🤖 line
-gh pr checks <n> --watch        # build · test · smoke all green
-gh pr merge <n> --squash
+# CI: poll-then-watch, then gate the merge on the run's conclusion — a bare `gh pr checks --watch`
+# false-greens before the run registers (SKILL.md "gh quirks" owns the commands + recovery)
+RUN=$(gh run list --branch fix/chroma-floor --limit 1 --json databaseId --jq '.[0].databaseId')  # loop until non-empty
+gh run watch "$RUN" --exit-status
+[ "$(gh run view "$RUN" --json conclusion --jq .conclusion)" = success ] && gh pr merge <n> --squash
 git switch main && git fetch origin && git merge --ff-only origin/main
 git branch -D fix/chroma-floor  # -D, not -d (squash leaves it "unmerged")
 ```
@@ -30,26 +33,6 @@ git branch -D fix/chroma-floor  # -D, not -d (squash leaves it "unmerged")
   as Safari-safe — reason about WebKit from the spec (quote font-family idents with digits, etc.).
 - **Do** verify the merge landed on `main` (`gh pr view <n> --json state,mergedAt`) **before** `git branch
   -D` — the stacked-PR/branch-cleanup work-loss trap is real.
-
-## The gh `--delete-branch` quirk (recover, don't panic)
-
-`gh pr merge <n> --squash --delete-branch` will print an error from its **local** branch-delete step when
-`main` is checked out in the primary worktree:
-
-```
-failed to delete local branch <branch>: 'main' is already used by worktree at …
-```
-
-The **remote merge already succeeded** — the error is only the local cleanup. Don't re-run the merge.
-Recover:
-
-```
-gh pr view <n> --json state,mergedAt        # state: MERGED  → confirmed
-gh api -X DELETE repos/:owner/:repo/git/refs/heads/<branch>   # delete the remote branch
-git switch main && git merge --ff-only origin/main && git branch -D <branch>
-```
-
-Simpler: **omit `--delete-branch`** and do the two deletes yourself (the procedure already does).
 
 ## Concurrency isolation — the worktree procedure (the big one)
 
@@ -71,7 +54,7 @@ it. Isolate:
    worktree's clean-main version and **re-apply only your hunk**. For `ui.html`, don't edit it at all — let
    the `npm test` generators rebuild it in the worktree.
 6. **Gate + commit + push from the worktree**: `cd /tmp/wt-<branch> && npm test` (green) → `git add -A`
-   (after the `docs/other`/`node_modules` grep) → commit with the trailer → `git push -u origin <branch>`.
+   (after the `.claude/docs/other`/`node_modules` grep) → commit with the trailer → `git push -u origin <branch>`.
    Open the PR as usual.
 7. **Cleanup**: `git worktree remove --force /tmp/wt-<branch>` → `git worktree prune` → `git branch -D
    <branch>` (after the squash-merge landed).

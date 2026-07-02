@@ -17,7 +17,7 @@ component**, and a **Figma plugin** that writes the palette straight into the fi
 collections.
 
 <!-- Hero: regenerate with `npm run gen:preview` — rendered straight from the engine (projectView) in the PERCEPTUAL distribution. -->
-![The 8 default palettes — perceptual tonal ramps, 050 → 950](docs/img/palette-preview.svg)
+![The 8 default palettes — perceptual tonal ramps, 050 → 950](.claude/docs/img/palette-preview.svg)
 
 > The image above is the tool's **real output** — the eight default palettes in the **perceptual**
 > distribution, rendered straight from the engine (no mockup): perceptually-even steps, in-gamut deep
@@ -110,15 +110,15 @@ figma/
   plugin/   code.js · manifest.json · ui.html              — the generator AS a Figma plugin
   binder/   bind-plan.mjs · figma-semantic-binder/          — the standalone Semantic Binder plugin
 scripts/    bundle.mjs · gen-categories.mjs · gen-figma-ui.mjs · gen-figma-assets.mjs · gen-preview.mjs
-docs/spec/  the product specification, the canonical data/role-table.json (the answer key),
+.claude/docs/spec/  the product specification, the canonical data/role-table.json (the answer key),
             and colors/categories/*.json (the color-category source data gen-categories reads)
 test/       engine/ · ui/ · figma/ · run.mjs
 ```
 
 The engine is pure and DOM-free; `src/ui/app.js` defines the `<nonoun-color-tokens>` web component over
-it; the Figma plugin reuses the exact same bundle. `docs/spec/data/role-table.json` is the **canonical
+it; the Figma plugin reuses the exact same bundle. `.claude/docs/spec/data/role-table.json` is the **canonical
 contract** the semantic / export / figma verifiers validate against — it is the spec, not a derived
-file. The Color Categories are generated from `docs/spec/colors/categories/*.json` by
+file. The Color Categories are generated from `.claude/docs/spec/colors/categories/*.json` by
 `npm run gen:categories` (into `src/ui/categories/`).
 
 ## Figma plugin

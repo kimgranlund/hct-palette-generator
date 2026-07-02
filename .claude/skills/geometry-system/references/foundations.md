@@ -1,8 +1,8 @@
 ## Foundations — the model a geometry change leans on
 
 The load-bearing ideas behind `src/engine/geometry.mjs`. If a change feels like it needs a new mechanism, you
-are probably fighting one of these. The conceptual *why* is owned by `docs/spec/geometry/README.md` (the
-de-staled reference shape) and the `design-skills:component-decomposer` skill's `references/geometry-system.md`
+are probably fighting one of these. The conceptual *why* is owned by `.claude/docs/spec/geometry/README.md` (the
+de-staled reference shape) and the `design-skills:component-decomposer` skill's geometry-system reference
 (the law's first principles) — this file is only the mental model the *procedure* assumes.
 
 ### 1. The pipeline — two parameters → a ramp → derived geometry → tokens
@@ -126,7 +126,8 @@ type scale (`true` composed, `false` standalone).
 > join matches by name (`uiSteps && uiSteps[name]`), so geometry picks XS…2XL out of it and ignores 3XS/2XS.
 > The pure `geomScale(config)` with no `opts` keeps the standalone power-law `font` (the spec sample is that
 > pure output). `model.mjs`'s `geometryScale(doc)` is the **production caller** — and it IS exercised by
-> `npm test`: the UI headless-boot suite (`test/ui/headless-boot.mjs` ~1362–1377) imports `geometryScale`,
+> `npm test`: the UI headless-boot suite (`test/ui/headless-boot.mjs` — grep the `// COMPOSITION:` comment
+> block and its `(geo)` composed-font asserts) imports `geometryScale`,
 > resolves it for the live doc, and asserts the composed `font === typeScale(...).categories.UI.MD.size`, the
 > centering law on the resolved scale, AND that `brandKit(doc).geometry` shares that same UI font (one source
 > of truth, all the way to the MCP). So both layers are gated — the engine's own `composition` block in

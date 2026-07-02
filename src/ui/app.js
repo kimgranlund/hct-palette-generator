@@ -291,7 +291,7 @@ const DAMP_PRESETS = [
 // contract (markup + a11y) lives in ONE place instead of being re-typed inline.
 // Pure builders take their handlers as arguments and live here; the one stateful,
 // focus-managing control (segmented) is a class method below (it needs `this` to
-// re-focus after a render). See docs/spec/references/component-inventory.md.
+// re-focus after a render). See .claude/docs/spec/references/component-inventory.md.
 
 // switchControl — an accessible on/off (or either/or) switch. Replaces the old
 // `<div class=toggle onclick>` which had no role, no tab focus, and no keyboard. A
@@ -1024,7 +1024,7 @@ class HctApp extends HTMLElement {
   }
 
   // buildPresetTiles — the read-only palette shelf for ONE category category (its lazily-loaded
-  // { VOLUMES, PRESETS }). Presets ship in code (generated from docs/spec/colors/categories/), never in
+  // { VOLUMES, PRESETS }). Presets ship in code (generated from .claude/docs/spec/colors/categories/), never in
   // localStorage; clicking one OPENS AN EDITABLE COPY into the user's sets (openConfigAsSet hydrates +
   // appends + opens). Grouped by volume; filtered by the search box.
   buildPresetTiles(data) {
@@ -2278,7 +2278,7 @@ class HctApp extends HTMLElement {
   //   • Relative — a color-theory relationship (extend/complete/contrast/bridge/anchor/
   //     recontextualize) computed from the included palettes' identity colors.
   //   • Environmental — a neutral/environment tone (chroma-weighted-mean hue + a clamped low
-  //     chroma) per docs/spec/color-neutral-derivation.md.
+  //     chroma) per .claude/docs/spec/color-neutral-derivation.md.
   //   • Custom — pick Hue + Chroma directly (parametric, the classic seed).
   // A/B derive a TARGET OKLCH (engine/derive.mjs), seed hue+chroma from it (seedFromKeyColor),
   // and retain it as the dominant key color; C sets hue+chroma straight. The "Derive from"
