@@ -15,7 +15,7 @@ voice-check script and the platform rubric before it ships.
 
 | Doc | Surface |
 |---|---|
-| [`store-copy.md`](store-copy.md) | Lemon Squeezy store: products, checkout, lifecycle emails, FAQ, policies, in-app tie-ins |
+| [`store-copy.md`](store-copy.md) | Lemon Squeezy store, schema-keyed to each LS object + field (store, products, variants, checkout, discounts, emails, policies) + in-app tie-ins |
 | [`product/boilerplate.md`](product/boilerplate.md) | The description ladder — one-liner → long — for directories, cards, press |
 | [`product/figma-plugin.md`](product/figma-plugin.md) | The Figma Community listing |
 | [`product/brand-kit-mcp.md`](product/brand-kit-mcp.md) | The MCP story — download copy, directory listing, agent pitch, setup block |
