@@ -32,7 +32,7 @@ precise/craft voice (matches the app).
 | Token | Meaning |
 |---|---|
 | `{{APP_URL}}` | The web app URL (e.g. `app.nonoun.io`) |
-| `{{SUPPORT_EMAIL}}` | Support address (default `support@nonoun.io`) |
+| `{{SUPPORT_EMAIL}}` | **Pinned: `support@nonoun.io`** (decided 2026-07-02 — all customer comms come and go from this address; lifecycle mail routes through our own mailer sending as it, once one exists) |
 | `{{CUSTOMER_PORTAL}}` | Lemon Squeezy customer portal (manage / cancel) |
 | `{{LICENSE_KEY}}` · `{{RENEWAL_DATE}}` · `{{PERIOD_END}}` · `{{SEATS}}` | Injected by Lemon Squeezy per order |
 | `{{CODE}}` / `{{N}}` / `{{DATE}}` | Discount-code template fields |
@@ -286,9 +286,12 @@ Annual, per user
 > Ultimate Tokens Pro for one maker — $39/year, renewing until you cancel. One license key, activated on
 > every device you work from.
 
-Context (not customer copy): `has_license_keys: true`; `license_activation_limit` is set for one
-person's own devices — this is not a seat model (that's Studio). Keys track the subscription
-(`is_license_length_unlimited` semantics for subscription variants).
+Context (not customer copy): `has_license_keys: true`; `license_activation_limit` is a high abuse
+ceiling (e.g. 25), never the binding constraint for one person — **direction (2026-07-02):
+enforcement moves to email-bound identity** (the key works on unlimited devices when the holder's
+email matches the key's `customer_email`; see `.claude/docs/site/licensing-identity-spec.md`). Keys
+track the subscription. The customer copy moves to "tied to your email" phrasing only when Phase 1
+ships.
 
 ### 3.2 · Studio variant — `variants[1849376]`
 
@@ -306,7 +309,10 @@ Annual, 5 seats
 Context (not customer copy): `has_license_keys: true`; `license_activation_limit: 5` (the 5 included
 seats); extra seats bill usage-based at $19/seat/year via usage records on the subscription item. Each
 device `/activate` (instance) consumes one seat; removing the instance frees it (shipped #131). This is
-the source of the seat copy above and in the Studio email (§5).
+the source of the seat copy above and in the Studio email (§5). **Direction (2026-07-02): Studio seats
+become NAMED EMAILS (a seat = a person, devices unlimited per person) when the account system ships —
+`.claude/docs/site/licensing-identity-spec.md` Phase 2; the copy above describes shipped behavior until
+then.**
 
 ---
 
@@ -347,7 +353,7 @@ post-purchase receipt. Defaults inherit the product; fill a field only where the
 | `description` | *(inherit the product — leave empty; fill only for a context-specific checkout, e.g. an embedded checkout on the landing page)* |
 | `receipt_button_text` | `Open Ultimate Tokens` |
 | `receipt_link_url` | `{{APP_URL}}` |
-| `redirect_url` | *(empty — keep the LS receipt so the thank-you note + button show; set to `{{APP_URL}}` only to skip straight to the app)* |
+| `redirect_url` | *(empty — DECIDED 2026-07-02: keep the LS receipt so the thank-you note + "Open Ultimate Tokens" button show)* |
 | `receipt_thank_you_note` | per product, below |
 
 **Pro — `product_options.receipt_thank_you_note`** (checkout for variant `1849393`)

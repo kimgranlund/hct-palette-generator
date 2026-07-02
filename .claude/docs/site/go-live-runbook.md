@@ -39,11 +39,14 @@ License validation/activation only works if **license keys are enabled on each p
 - [ ] **Enable license keys** on **both** products (Pro and Studio) — Product → *License keys* → enable.
       (Subscription products issue a key per subscription; the key's `status`/`expires_at` tracks the
       billing period, so a lapse auto-expires the key — which the app already honors.)
-- [ ] **Pro — activation limit:** set to a small per-user device count (e.g. **3–5**), **not 1**. The
-      store copy says "activate on any device you work from," and each device consumes one activation;
-      a limit of 1 would block a user's second machine.
-- [ ] **Studio — activation limit:** **5** (the base 5 seats). For the "+$19 / additional seat" add-ons,
-      configure the variant/quantity so the activation limit rises with seats purchased (each extra seat
+- [ ] **Pro — activation limit:** set HIGH (e.g. **25**) — per the 2026-07-02 decision
+      (`licensing-identity-spec.md`), enforcement is moving to **email-bound identity** (unlimited
+      devices for the key's owner); the activation limit is only an abuse ceiling and must never be
+      the binding constraint for one person. Never 1. The store copy says "activate on any device you
+      work from."
+- [ ] **Studio — activation limit:** **5** (the base 5 seats — device-seats are the SHIPPED model,
+      #131, until Phase 2's named-email seats). For the "+$19 / additional seat" add-ons, configure
+      the variant/quantity so the activation limit rises with seats purchased (each extra seat
       = +1 activation). One Studio key, N activations = N seats.
 - [ ] Confirm the **product/variant belongs to store 420293** (the app rejects keys from any other store).
 - [ ] (Optional) Do a **test-mode** purchase first to get a real key for step 3's verification.

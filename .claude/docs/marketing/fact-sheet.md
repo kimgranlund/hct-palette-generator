@@ -34,6 +34,8 @@ is the cautionary tale — the product had moved to 59 while the copy still said
 | Studio | **$149/year for 5 seats**, +**$19/seat/year** — Pro for a team, one account | store |
 | Refund | **14 days**, full, no questions | store policy |
 | Store | Lemon Squeezy (`ultimate-tokens.lemonsqueezy.com`) | store-copy.md |
+| Support / comms address | **support@nonoun.io** — all customer comms come and go from it (decided 2026-07-02) | store-copy.md placeholders |
+| Licensing direction | email-bound identity: unlimited devices for the key's owner; Studio seats become named emails (Phase 2) — customer copy describes SHIPPED behavior until each phase lands | `.claude/docs/site/licensing-identity-spec.md` |
 | Dogfooding | the app chrome runs on the very tokens it generates | README |
 
 **Rules of use**
