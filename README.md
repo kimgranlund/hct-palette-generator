@@ -50,10 +50,10 @@ collections.
   **Figma UI3** (Material), **DTCG**, **JSON**, a re-importable parametric **Config**, and a
   **Download-all `.zip`**. An **Include** toggle row picks which token systems — **Color · Typography ·
   Geometry** — ride the Download-All `.zip` and the Brand-Kit MCP.
-- **Typography.** The type analog of the color engine — a few params → a **systematic type scale**
-  (Display · Heading · Body · UI), with derived size (modular scale), optical letter-spacing, leading, and
-  weight. Pick a **treatment** (Lifestyle, Luxury, Editorial, Technical, Brutalist), preview a live
-  specimen, export **CSS + DTCG** type tokens.
+- **Typography.** The type analog of the color engine — a few params → a **systematic type scale** of
+  seven voices (Display · three Headings · Body · UI · Code), with derived size (modular scale), optical
+  letter-spacing, leading, and weight. Pick a **treatment** (Product, Luxury, Editorial, Technical,
+  Brutalist), preview a live specimen, export **CSS + DTCG** type tokens.
 - **Geometry.** The spatial analog — a few params → a **systematic size ramp** (XS–2XL) → derived control
   geometry on one **centering law** (edge padding = (height − glyph) / 2; the pill radius, the icon-only
   square, and the slot paddings all fall out of it). Pick a **treatment** (Comfortable, Compact, Spacious,

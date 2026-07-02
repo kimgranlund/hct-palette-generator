@@ -19,10 +19,13 @@ precise/craft voice (matches the app).
 | `{{LICENSE_KEY}}` · `{{RENEWAL_DATE}}` · `{{PERIOD_END}}` · `{{SEATS}}` | Injected by Lemon Squeezy per order |
 | `{{CODE}}` / `{{N}}` / `{{DATE}}` | Discount-code template fields |
 
-> **⚠ Follow-up.** Studio **seat enforcement** is a code change (in progress): the license check was
-> validate-only, so it didn't cap seats. The 5-seat (+$19 extra) model uses the Lemon Squeezy `/activate`
-> (instance) flow — each device consumes one seat, freed on removal. The customer copy below describes that
-> behaviour. (Free/Pro/Studio capability split confirmed; it comes from `src/engine/flags.js`.)
+> **Seat enforcement is live** (shipped #131): the 5-seat (+$19 extra) model uses the Lemon Squeezy
+> `/activate` (instance) flow — each device consumes one seat, freed on removal. The customer copy below
+> describes that behaviour. (The Free/Pro/Studio capability split comes from `src/engine/flags.js`.)
+>
+> Facts in this copy are pinned by [`fact-sheet.md`](fact-sheet.md); voice by
+> [`voice/voice-platform.md`](voice/voice-platform.md). Gate any edit with the
+> `color-tokens-brand-voice` skill's voice-check script before shipping.
 
 ---
 
@@ -90,7 +93,7 @@ Ultimate Tokens — Pro
 
 > ### Tokens, derived — not guessed
 > Ultimate Tokens turns a few perceptual decisions into a complete design system. Pick a key color and it
-> derives an even, OKLCH-true tonal ramp. Map it to **53 semantic roles** across light and dark. Compose a
+> derives an even, OKLCH-true tonal ramp. Map it to **59 semantic roles** across light and dark. Compose a
 > type scale and a geometry system from the same source — every step measured, not hand-nudged.
 >
 > ### One source, every export
@@ -105,7 +108,8 @@ Ultimate Tokens — Pro
 > - **Unlimited brand kits** — every client, product, and experiment in one place
 > - **The complete export suite** — every target, every format
 > - **Advanced type & geometry treatments**
-> - **Hosted Brand-Kit MCP** — a live endpoint your agents read directly, no local server to run
+> - **Hosted Brand-Kit MCP, when it ships** — Pro will include the hosted endpoint; today every tier
+>   gets the downloadable server
 >
 > **$39 a year**, per user — every update and customer support included. Cancel anytime.
 >
@@ -129,8 +133,8 @@ Ultimate Tokens — Studio
 
 > ### Everything in Pro, for the team
 > Studio gives every member of your studio the full Pro toolkit — unlimited brand kits, the complete export
-> suite, advanced treatments, and the hosted Brand-Kit MCP — at a **reduced per-seat rate**, billed once and
-> managed from a single account.
+> suite, and advanced treatments — at a **reduced per-seat rate**, billed once and managed from a single
+> account.
 >
 > - **5 seats included** — add more anytime at $19 / seat / year
 > - **One place to manage** — assign and reassign seats as the team changes
@@ -143,7 +147,7 @@ Ultimate Tokens — Studio
 
 ```
 • OKLCH-native — perceptually even ramps; HEX derived only for output
-• 53 semantic roles per palette, light + dark
+• 59 semantic roles per palette, light + dark
 • Three composing systems — Color · Typography · Geometry
 • Exports: CSS · DTCG · Tailwind · shadcn
 • Figma variables — semantic binding cascade + breakpoint modes
@@ -157,20 +161,20 @@ Ultimate Tokens — Studio
 | | Free | Pro | Studio |
 |---|---|---|---|
 | The full generator (Color · Type · Geometry) | ✓ | ✓ | ✓ |
-| 53 semantic roles, light + dark | ✓ | ✓ | ✓ |
+| 59 semantic roles, light + dark | ✓ | ✓ | ✓ |
 | Figma plugin (offline) | ✓ | ✓ | ✓ |
 | Brand kits | Up to 2 | **Unlimited** | **Unlimited** |
 | Export suite | Core | **Complete** | **Complete** |
 | Advanced type & geometry treatments | — | ✓ | ✓ |
-| Brand-Kit MCP | Download | **Hosted** | **Hosted** |
-| Updates + customer support | — | ✓ | ✓ |
+| Brand-Kit MCP | Download | Download (**hosted when live**) | Download (**hosted when live**) |
+| Customer support | — | ✓ | ✓ (priority) |
 | Seats | 1 | 1 | **5 included (+$19 each)** |
 | Price | Free | **$39/year** | **$149/year (5 seats)** |
 
 **"What's included" (post-purchase summary)**
 
 > An Ultimate Tokens **Pro** subscription · unlimited brand kits · the complete export suite · advanced
-> treatments · hosted Brand-Kit MCP · every update and customer support for as long as you're subscribed.
+> treatments · every update and customer support for as long as you're subscribed.
 
 **FAQ**
 
@@ -319,7 +323,8 @@ Subject: Three things to try with Pro
 > Now that you're Pro:
 > 1. **Spin up a kit per client** — there's no limit anymore.
 > 2. **Export the full suite** — drop the same tokens into CSS, Figma, and Tailwind without re-deriving.
-> 3. **Point your AI agent at the hosted MCP** — it'll build with your exact roles instead of guessing.
+> 3. **Download the Brand-Kit MCP and point your AI agent at it** — it'll build with your exact roles
+>    instead of guessing.
 >
 > Stuck on anything? Reply to this email.
 
@@ -396,9 +401,9 @@ Questions, licensing, or team plans → {{SUPPORT_EMAIL}}
 ```
 Plan row (Free):   "Free — the core generator. A Pro license unlocks the rest."
 Upgrade row title: "Upgrade to Pro"
-Upgrade row desc:  "Unlimited brand kits, the complete export suite, advanced
-                    treatments, and hosted MCP. From $39/year — updates &
-                    support included."
+Upgrade row desc:  "Unlimited brand kits, the complete export suite, and
+                    advanced treatments. From $39/year — updates & support
+                    included."
 Upgrade button:    "Get Pro →"
 Buy-link:          "Don't have a key? Get a Pro license →"
 License help:      "Paste the key from your purchase email to unlock Pro."
@@ -415,18 +420,5 @@ License help:      "Paste the key from your purchase email to unlock Pro."
 > unlimited kits and the full export suite again.
 > `[ Resubscribe → ]`
 
-**Launch announcement (social / newsletter)**
-
-> Ultimate Tokens is out. Derive a perceptual color, type, and geometry system from one source — then
-> export it to CSS, Figma variables, and your AI agents, in sync. Free to start; Pro is $39/year, Studio
-> for teams. → {{APP_URL}}
-
-**Short social variants**
-
-```
-• Design tokens, derived — not guessed. Color, type, geometry from one
-  source; every export in sync. Free to start. → {{APP_URL}}
-• OKLCH-true ramps, 53 semantic roles, light + dark. Export to CSS, Figma,
-  and MCP without a hand-off. Pro $39/yr. → {{APP_URL}}
-• Stop hand-nudging hex. Pick a key color; ship a whole system. → {{APP_URL}}
-```
+**Launch announcement + social variants** — moved to
+[`launch/launch-kit.md`](launch/launch-kit.md), which owns all announcement/social copy.

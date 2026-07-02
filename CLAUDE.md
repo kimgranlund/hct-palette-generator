@@ -33,7 +33,9 @@ Canonical specs + rubrics: `.claude/docs/spec/` (e.g. `.claude/docs/spec/data/ro
   sandbox (parity-gated). `figma/plugin/ui.html` is a generated bundle of the whole app.
 - `test/` — `engine/*` verifiers · `ui/headless-boot.mjs` (the shim run, lettered groups) · `figma/` ·
   `mcp/` · `smoke/smoke.mjs`. `scripts/` — the generators. `mcp/` — the MCP server.
-- `.claude/docs/spec/` — canonical specs, rubrics, role-table answer key. `.claude/docs/other/` — **PRIVATE** (see below).
+- `.claude/docs/spec/` — canonical specs, rubrics, role-table answer key. `.claude/docs/marketing/` — the
+  marketing corpus (voice platform · pinned fact sheet · store copy · launch kit); author via the
+  `marketing-manager` agent + `color-tokens-brand-voice` skill. `.claude/docs/other/` — **PRIVATE** (see below).
 
 ## Conventions (non-obvious only)
 
